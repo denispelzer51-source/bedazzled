@@ -177,6 +177,54 @@ const AVATAR_SET = ['🦊', '🐢', '🦄', '🦁', '🐼', '🦉'];
 // damit Tippfehler nicht verraten, welche Antwort erfunden ist. Nutzt die kostenlose
 // LanguageTool-API. Bei Fehlern/Timeout wird einfach der Originaltext verwendet,
 // damit das Spiel nie wegen eines API-Problems blockiert.
+// ---------- Ähnlichkeits-Prüfung, um zu verhindern, dass eine erfundene Antwort
+// (fast) wortgleich mit der echten Antwort ist ----------
+function normalizeForCompare(text) {
+  return (text || '')
+    .toLowerCase()
+    .normalize('NFKD').replace(/[\u0300-\u036f]/g, '') // Akzente entfernen, Umlaute bleiben
+    .replace(/[^\wäöüß\s]/g, '') // Satzzeichen entfernen
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function levenshtein(a, b) {
+  const m = a.length, n = b.length;
+  const dp = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
+  for (let i = 0; i <= m; i++) dp[i][0] = i;
+  for (let j = 0; j <= n; j++) dp[0][j] = j;
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      dp[i][j] = a[i - 1] === b[j - 1]
+        ? dp[i - 1][j - 1]
+        : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+    }
+  }
+  return dp[m][n];
+}
+
+function isTooSimilarToRealAnswer(candidate, realAnswer) {
+  const a = normalizeForCompare(candidate);
+  const b = normalizeForCompare(realAnswer);
+  if (!a || !b) return false;
+
+  // Metrik 1: Zeichen-Ähnlichkeit (fängt Tippfehler-Varianten & fast identischen Wortlaut ab)
+  const maxLen = Math.max(a.length, b.length);
+  const charSimilarity = 1 - levenshtein(a, b) / maxLen;
+
+  // Metrik 2: Wort-Überlappung relativ zur kürzeren Antwort (fängt auch den Fall ab,
+  // dass jemand nur den Kernbegriff aus einer längeren echten Antwort abschreibt)
+  const stopwords = new Set(['der', 'die', 'das', 'ein', 'eine', 'und', 'oder', 'ist', 'sind', 'von', 'zu', 'im', 'in', 'den', 'dem']);
+  const wordsA = new Set(a.split(' ').filter(w => w.length > 2 && !stopwords.has(w)));
+  const wordsB = new Set(b.split(' ').filter(w => w.length > 2 && !stopwords.has(w)));
+  let overlap = 0;
+  wordsA.forEach(w => { if (wordsB.has(w)) overlap++; });
+  const smallerSize = Math.min(wordsA.size, wordsB.size);
+  const wordSimilarity = smallerSize > 0 ? overlap / smallerSize : 0;
+
+  return charSimilarity > 0.82 || wordSimilarity > 0.7;
+}
+
 async function autoCorrectGerman(text) {
   if (!text || !text.trim()) return text;
   try {
@@ -230,15 +278,19 @@ function publicRoomState(room, forPlayerId) {
     players: room.players.map(p => ({ id: p.id, name: p.name, avatar: p.avatar, position: p.position, connected: !!p.socketId })),
     moderatorId,
     currentQuestion: room.phase !== 'lobby' && room.currentQuestionObj ? room.currentQuestionObj.question : null,
-    realAnswer: (isModerator && room.phase === 'question' && room.currentQuestionObj) ? room.currentQuestionObj.answer : null,
+    realAnswer: (isModerator && room.phase === 'answering' && room.currentQuestionObj) ? room.currentQuestionObj.answer : null,
     answeredCount: Object.keys(room.answers || {}).length,
     votedCount: Object.keys(room.votes || {}).length,
-    // Der/die Moderator:in sieht schon während der Antwort-Phase, wer was geschrieben hat
-    answersPreview: (isModerator && room.phase === 'answering')
-      ? Object.entries(room.answers).map(([pid, text]) => {
-          const author = room.players.find(pp => pp.id === pid);
-          return { name: author ? author.name : '???', text };
-        })
+    // Der/die Moderator:in sieht schon während der Antwort-Phase live, wer was schreibt
+    // (auch bevor abgeschickt wurde), inkl. Kennzeichnung ob final abgeschickt.
+    answersPreview: (isModerator && room.phase === 'answering' && room.roundType !== 'estimate')
+      ? room.players
+          .filter(p => p.id !== moderatorId)
+          .map(p => {
+            const submitted = room.answers[p.id] !== undefined;
+            const text = submitted ? room.answers[p.id] : ((room.liveTyping && room.liveTyping[p.id]) || '');
+            return { name: p.name, text, submitted };
+          })
       : [],
     // Damit jede:r sofort sieht, ob die eigene Wahl in der Abstimmung richtig war
     myVote: room.votes[forPlayerId] || null,
@@ -317,6 +369,7 @@ io.on('connection', (socket) => {
       usedEstimateQuestions: [],
       answers: {},
       votes: {},
+      liveTyping: {},
       shuffledAnswers: [],
       currentQuestionObj: null,
       roundType: 'question',
@@ -398,18 +451,23 @@ io.on('connection', (socket) => {
     }
     room.roundType = roundType;
     room.pendingRoundType = 'question';
-    room.phase = 'question';
+    room.phase = 'answering';
     room.answers = {};
     room.votes = {};
+    room.liveTyping = {};
     room.shuffledAnswers = [];
     room.currentQuestionObj = pickNextQuestion(room, roundType);
     broadcastState(code);
   });
 
-  socket.on('goToAnswering', ({ code }) => {
+  socket.on('typingAnswer', ({ code, text }) => {
     const room = rooms[code];
-    if (!room) return;
-    room.phase = 'answering';
+    if (!room || room.phase !== 'answering' || room.roundType === 'estimate') return;
+    const myId = socket.data.token;
+    const moderatorId = room.players[room.moderatorIndex].id;
+    if (myId === moderatorId) return;
+    if (!room.liveTyping) room.liveTyping = {};
+    room.liveTyping[myId] = (text || '').slice(0, 140);
     broadcastState(code);
   });
 
@@ -429,6 +487,12 @@ io.on('connection', (socket) => {
     }
 
     const rawText = (text || '').trim().slice(0, 140);
+
+    if (isTooSimilarToRealAnswer(rawText, room.currentQuestionObj.answer)) {
+      socket.emit('answerRejected', { reason: 'Das ist zu ähnlich zur echten Antwort – bitte anders formulieren.' });
+      return;
+    }
+
     socket.emit('answerChecking'); // UI: "wird geprüft ..."
     const corrected = await autoCorrectGerman(rawText);
 
@@ -436,7 +500,15 @@ io.on('connection', (socket) => {
     const stillRoom = rooms[code];
     if (!stillRoom || stillRoom.phase !== 'answering') return;
 
+    // Nach der Rechtschreibkorrektur nochmal prüfen: manchmal macht erst die Korrektur
+    // den Text verräterisch ähnlich zur echten Antwort
+    if (isTooSimilarToRealAnswer(corrected, stillRoom.currentQuestionObj.answer)) {
+      socket.emit('answerRejected', { reason: 'Das ist zu ähnlich zur echten Antwort – bitte anders formulieren.' });
+      return;
+    }
+
     stillRoom.answers[myId] = corrected;
+    if (stillRoom.liveTyping) delete stillRoom.liveTyping[myId];
     socket.emit('answerCorrected', { text: corrected, wasChanged: corrected !== rawText });
     broadcastState(code);
   });
@@ -540,6 +612,7 @@ io.on('connection', (socket) => {
     room.moderatorIndex = (room.moderatorIndex + 1) % room.players.length;
     room.answers = {};
     room.votes = {};
+    room.liveTyping = {};
     room.shuffledAnswers = [];
     room.phase = 'lobby';
     broadcastState(code);

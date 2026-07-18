@@ -64,6 +64,24 @@ input[type="text"], textarea {
 input::placeholder, textarea::placeholder { color: rgba(245,239,227,0.35); }
 textarea { min-height: 90px; resize: vertical; }
 
+.estimate-input-wrap { display: flex; justify-content: center; margin: 8px 0 18px; }
+#input-answer-number {
+  width: 100%;
+  max-width: 280px;
+  text-align: center;
+  font-family: var(--font-display);
+  font-size: 34px;
+  font-weight: 700;
+  padding: 22px 16px;
+  border-radius: 16px;
+  border: 2px solid rgba(255,255,255,0.14);
+  background: rgba(255,255,255,0.06);
+  color: var(--gold);
+  margin-bottom: 0;
+}
+#input-answer-number::placeholder { font-size: 16px; font-family: var(--font-body); font-weight: 400; color: rgba(245,239,227,0.35); }
+#input-answer-number:focus { outline: none; border-color: var(--gold); background: rgba(242,183,5,0.08); }
+
 .btn {
   width: 100%;
   border: none;
@@ -163,6 +181,9 @@ h2 { font-family: var(--font-display); font-weight: 700; font-size: 24px; text-a
 }
 .reveal-item.my-correct .my-vote-badge { background: var(--teal); color: var(--night); }
 .reveal-item.my-wrong .my-vote-badge { background: var(--pink); color: var(--night); }
+.reveal-item.typing-preview { opacity: 0.75; border-style: dashed; border-color: rgba(255,255,255,0.15); }
+.typing-tag { display: block; font-size: 11px; color: var(--gold); font-style: italic; margin-top: 4px; }
+.placeholder-text { color: var(--ink-dim); font-style: italic; }
 
 .reconnect-banner {
   text-align: center;

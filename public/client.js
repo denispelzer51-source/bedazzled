@@ -58,7 +58,6 @@ function avatarFor(player) {
 const screens = {
   start: document.getElementById('screen-start'),
   lobby: document.getElementById('screen-lobby'),
-  question: document.getElementById('screen-question'),
   answering: document.getElementById('screen-answering'),
   voting: document.getElementById('screen-voting'),
   reveal: document.getElementById('screen-reveal'),
@@ -165,11 +164,6 @@ document.getElementById('btn-start-round').addEventListener('click', () => {
   socket.emit('startRound', { code: currentCode });
 });
 
-// ---------- QUESTION ----------
-document.getElementById('btn-to-answering').addEventListener('click', () => {
-  socket.emit('goToAnswering', { code: currentCode });
-});
-
 // ---------- ANSWERING ----------
 let currentRoundType = 'question';
 
@@ -196,11 +190,32 @@ socket.on('answerChecking', () => {
   document.getElementById('btn-submit-answer').textContent = 'Wird geprüft …';
 });
 
+socket.on('answerRejected', ({ reason }) => {
+  const ta = document.getElementById('input-answer');
+  ta.disabled = false;
+  document.getElementById('btn-submit-answer').disabled = false;
+  document.getElementById('btn-submit-answer').textContent = 'Antwort abschicken';
+  document.getElementById('answer-reject-msg').textContent = reason;
+  document.getElementById('answer-reject-msg').classList.remove('hidden');
+  ta.focus();
+});
+
 socket.on('answerCorrected', ({ text, wasChanged }) => {
   document.getElementById('input-answer').value = text;
+  document.getElementById('answer-reject-msg').classList.add('hidden');
   document.getElementById('btn-submit-answer').textContent = wasChanged
     ? 'Antwort abgeschickt ✓ (automatisch korrigiert)'
     : 'Antwort abgeschickt ✓';
+});
+
+// Live-Tippen: Moderator:in sieht in Echtzeit, was gerade eingetippt wird
+let typingDebounce = null;
+document.getElementById('input-answer').addEventListener('input', (e) => {
+  clearTimeout(typingDebounce);
+  const text = e.target.value;
+  typingDebounce = setTimeout(() => {
+    socket.emit('typingAnswer', { code: currentCode, text });
+  }, 250);
 });
 
 document.getElementById('btn-to-voting').addEventListener('click', () => {
@@ -379,20 +394,18 @@ socket.on('state', (state) => {
     selectedVote = null;
     voteSubmitted = false;
   }
-  const enteringQuestion = state.phase === 'question' && (!lastState || lastState.phase !== 'question');
-  if (enteringQuestion) {
+  const enteringAnswering = state.phase === 'answering' && (!lastState || lastState.phase !== 'answering');
+  const enteringBoard = state.phase === 'board' && (!lastState || lastState.phase !== 'board');
+  if (enteringAnswering) {
     roundStartPositions = {};
     state.players.forEach(p => { roundStartPositions[p.id] = p.position; });
-  }
-  const enteringBoard = state.phase === 'board' && (!lastState || lastState.phase !== 'board');
-  const enteringAnswering = state.phase === 'answering' && (!lastState || lastState.phase !== 'answering');
-  if (enteringAnswering) {
     const ta = document.getElementById('input-answer');
     const num = document.getElementById('input-answer-number');
     ta.value = ''; ta.disabled = false;
     num.value = ''; num.disabled = false;
     document.getElementById('btn-submit-answer').disabled = false;
     document.getElementById('btn-submit-answer').textContent = 'Antwort abschicken';
+    document.getElementById('answer-reject-msg').classList.add('hidden');
   }
 
   lastState = state;
@@ -425,26 +438,10 @@ socket.on('state', (state) => {
     showScreen('lobby');
   }
 
-  if (state.phase === 'question') {
-    currentRoundType = state.roundType || 'question';
-    document.getElementById('question-text').textContent = state.currentQuestion || '';
-    document.getElementById('answering-phase-tag').textContent = currentRoundType === 'estimate' ? 'Schätz-Frage 🔢' : 'Antwort-Phase';
-    if (iAmModerator) {
-      document.getElementById('moderator-banner').textContent = currentRoundType === 'estimate'
-        ? 'Du bist Moderator:in – lies die Schätzfrage laut vor!'
-        : 'Du bist Moderator:in – lies die Frage laut vor!';
-      document.getElementById('real-answer-box').classList.remove('hidden');
-      document.getElementById('real-answer-box').textContent = (currentRoundType === 'estimate' ? 'Echte Zahl (nur für dich): ' : 'Echte Antwort (nur für dich): ') + (state.realAnswer ?? '');
-    } else {
-      document.getElementById('moderator-banner').textContent = '';
-      document.getElementById('real-answer-box').classList.add('hidden');
-    }
-    showScreen('question');
-  }
-
   if (state.phase === 'answering') {
     currentRoundType = state.roundType || 'question';
     const isEstimate = currentRoundType === 'estimate';
+    document.getElementById('answering-phase-tag').textContent = isEstimate ? 'Schätz-Frage 🔢' : 'Antwort-Phase';
     document.getElementById('question-text-2').textContent = state.currentQuestion || '';
     document.getElementById('answered-count').textContent = state.answeredCount;
     document.getElementById('answering-total').textContent = Math.max(state.players.length - 1, 0);
@@ -455,21 +452,29 @@ socket.on('state', (state) => {
     document.getElementById('input-answer-number').classList.toggle('hidden', !isEstimate);
     document.getElementById('btn-to-voting').classList.toggle('hidden', isEstimate);
     document.getElementById('btn-reveal-estimate').classList.toggle('hidden', !isEstimate);
+
     if (iAmModerator) {
       document.getElementById('answer-input-box').classList.add('hidden');
       document.getElementById('moderator-wait-box').classList.remove('hidden');
+      document.getElementById('real-answer-box').classList.remove('hidden');
+      document.getElementById('real-answer-box').textContent = (isEstimate ? 'Echte Zahl (nur für dich): ' : 'Echte Antwort (nur für dich): ') + (state.realAnswer ?? '');
       const previewBox = document.getElementById('moderator-answers-preview');
       previewBox.classList.remove('hidden');
       previewBox.innerHTML = '';
       (state.answersPreview || []).forEach(a => {
         const div = document.createElement('div');
-        div.className = 'reveal-item';
-        div.innerHTML = `${escapeHtml(String(a.text))}<span class="owner">${escapeHtml(a.name)}</span>`;
+        div.className = 'reveal-item' + (a.submitted ? '' : ' typing-preview');
+        const statusTag = a.submitted
+          ? ''
+          : `<span class="typing-tag">${a.text ? 'tippt gerade …' : 'noch nichts eingegeben'}</span>`;
+        const shownText = a.text ? escapeHtml(String(a.text)) : '<span class="placeholder-text">…</span>';
+        div.innerHTML = `${shownText}${statusTag}<span class="owner">${escapeHtml(a.name)}</span>`;
         previewBox.appendChild(div);
       });
     } else {
       document.getElementById('answer-input-box').classList.remove('hidden');
       document.getElementById('moderator-wait-box').classList.add('hidden');
+      document.getElementById('real-answer-box').classList.add('hidden');
       document.getElementById('moderator-answers-preview').classList.add('hidden');
     }
     showScreen('answering');

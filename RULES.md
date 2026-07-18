@@ -39,13 +39,14 @@ richtig erraten hast, kommen +3 Punkte oben drauf.
 
 ## Rollen & Ablauf pro Runde
 
-1. **Frage-Phase:** Moderator:in sieht Frage + echte Antwort, liest laut vor
-2. **Antwort-Phase:** alle außer Moderator:in tippen eine erfundene Antwort (max. 140 Zeichen)
-3. **Abstimm-Phase:** alle außer Moderator:in sehen alle Antworten gemischt (inkl. der
+1. **Antwort-Phase:** Frage wird direkt allen angezeigt (Moderator:in liest sie laut vor und
+   sieht zusätzlich die echte Antwort); alle außer Moderator:in tippen eine erfundene Antwort
+   (max. 140 Zeichen). Moderator:in sieht live mit, was jede:r gerade eintippt.
+2. **Abstimm-Phase:** alle außer Moderator:in sehen alle Antworten gemischt (inkl. der
    echten) und wählen genau eine aus (mit Bestätigungs-Button, um Verklicken zu vermeiden)
-4. **Auflösung:** echte Antwort wird markiert, wer wen worauf reingelegt hat
-5. **Spielbrett:** animierte Bewegung aller Spielfiguren entsprechend der Punkte
-6. Moderatorrolle wandert zum nächsten Spieler, neue Runde beginnt
+3. **Auflösung:** echte Antwort wird markiert, wer wen worauf reingelegt hat
+4. **Spielbrett:** animierte Bewegung aller Spielfiguren entsprechend der Punkte
+5. Moderatorrolle wandert zum nächsten Spieler, neue Runde beginnt
 
 ## Spieleranzahl
 
@@ -108,6 +109,15 @@ herunterladen und im Repo überschreiben, damit die Änderungen dauerhaft bleibe
 
 ## Änderungsprotokoll
 
+- **18.07.2026:** Erfundene Antworten, die zu ähnlich zur echten Antwort sind (Tippfehler-
+  Varianten, Kernbegriff aus der echten Antwort abgeschrieben, o.ä.), werden beim Absenden
+  automatisch abgelehnt – der Spieler bekommt eine Meldung und kann direkt neu formulieren.
+  Erkennt Ähnlichkeit im Wortlaut, aber keine komplett andersformulierten Sinn-Duplikate
+  (dafür bräuchte es eine KI-basierte Prüfung, aktuell nicht eingebaut).
+- **18.07.2026:** Separate Frage-Phase entfernt – Mitspieler sehen die Frage jetzt direkt in
+  der Antwort-Phase, Moderator:in sieht dort auch schon die echte Antwort. Zusätzlich sieht
+  die/der Moderator:in in Echtzeit, was die anderen gerade eintippen (auch vor dem Absenden),
+  mit "tippt gerade …"-Kennzeichnung, solange noch nichts final abgeschickt wurde.
 - **18.07.2026:** Zweite Kartenkategorie "Schätzen-Karten" hinzugefügt (Zahlen-Schätzung,
   Top-3-Punktevergabe 3/2/1). Türkise Spielbrett-Felder (4/8/12/16) lösen automatisch eine
   Schätzen-Runde statt einer Bluff-Frage aus. Eigene Verwaltung im Admin-Bereich.
