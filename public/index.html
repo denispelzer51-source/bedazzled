@@ -10,6 +10,8 @@
 
 <div id="app">
 
+  <p id="reconnect-banner" class="reconnect-banner hidden">🔄 Verbinde dich wieder mit deinem Raum …</p>
+
   <!-- START SCREEN -->
   <section id="screen-start" class="screen active">
     <div class="brand">
@@ -97,12 +99,13 @@
     <p class="waiting-msg mod-hide">Warte auf den Moderator …</p>
   </section>
 
-  <!-- BOARD SCREEN (full-size, animated) -->
+  <!-- BOARD SCREEN (full-size, animated, rectangular track) -->
   <section id="screen-board" class="screen">
     <div class="phase-tag">Spielbrett</div>
     <h2>Wer zieht wie weit?</h2>
-    <div id="board-large" class="board-large">
-      <div id="board-track-large" class="board-track-large"></div>
+    <div id="board-rect" class="board-rect">
+      <div id="board-fields-large"></div>
+      <div id="board-tokens-large"></div>
     </div>
     <div id="board-legend" class="board-legend"></div>
     <button id="btn-next-round" class="btn btn-primary mod-only">Nächste Runde</button>

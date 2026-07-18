@@ -4,12 +4,52 @@ let myId = null;
 let currentCode = null;
 let lastState = null;
 
+// ---------- SESSION PERSISTENCE (überlebt Seiten-Reload im selben Tab) ----------
+function getOrCreateToken() {
+  let token = sessionStorage.getItem('bedazzled_token');
+  if (!token) {
+    token = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random());
+    sessionStorage.setItem('bedazzled_token', token);
+  }
+  return token;
+}
+const myToken = getOrCreateToken();
+
+function saveSession(code) {
+  sessionStorage.setItem('bedazzled_room', code);
+}
+function clearSession() {
+  sessionStorage.removeItem('bedazzled_room');
+}
+
+socket.on('connect', () => {
+  const savedCode = sessionStorage.getItem('bedazzled_room');
+  if (savedCode) {
+    showReconnecting(true);
+    socket.emit('rejoinRoom', { code: savedCode, token: myToken });
+  }
+});
+
+socket.on('rejoinFailed', () => {
+  clearSession();
+  showReconnecting(false);
+});
+
+function showReconnecting(active) {
+  const el = document.getElementById('reconnect-banner');
+  if (el) el.classList.toggle('hidden', !active);
+}
+
 const AVATAR_CHOICES = [
   { emoji: '🦊', label: 'Fuchs' },
   { emoji: '🐢', label: 'Schildkröte' },
   { emoji: '🦄', label: 'Einhorn' },
+  { emoji: '🦁', label: 'Löwe' },
+  { emoji: '🐼', label: 'Panda' },
+  { emoji: '🦉', label: 'Eule' },
 ];
 let selectedAvatar = AVATAR_CHOICES[0].emoji;
+let takenAvatars = [];
 
 function avatarFor(player) {
   return (player && player.avatar) || '🦊';
@@ -35,23 +75,60 @@ function renderAvatarPicker() {
   const box = document.getElementById('avatar-picker');
   box.innerHTML = '';
   AVATAR_CHOICES.forEach(a => {
+    const isTaken = takenAvatars.includes(a.emoji);
     const div = document.createElement('div');
-    div.className = 'avatar-option' + (a.emoji === selectedAvatar ? ' selected' : '');
-    div.innerHTML = `<span class="emoji">${a.emoji}</span><span class="label">${a.label}</span>`;
-    div.addEventListener('click', () => {
-      selectedAvatar = a.emoji;
-      renderAvatarPicker();
-    });
+    div.className = 'avatar-option'
+      + (a.emoji === selectedAvatar ? ' selected' : '')
+      + (isTaken ? ' taken' : '');
+    div.innerHTML = `<span class="emoji">${a.emoji}</span><span class="label">${isTaken ? 'vergeben' : a.label}</span>`;
+    if (!isTaken) {
+      div.addEventListener('click', () => {
+        selectedAvatar = a.emoji;
+        renderAvatarPicker();
+      });
+    }
     box.appendChild(div);
   });
 }
 renderAvatarPicker();
 
+// Prüft live, welche Figuren im eingegebenen Raum schon vergeben sind
+let avatarCheckTimeout = null;
+document.getElementById('input-code').addEventListener('input', () => {
+  clearTimeout(avatarCheckTimeout);
+  const code = document.getElementById('input-code').value.trim();
+  if (code.length !== 4) {
+    takenAvatars = [];
+    renderAvatarPicker();
+    return;
+  }
+  avatarCheckTimeout = setTimeout(() => {
+    socket.emit('checkTakenAvatars', { code });
+  }, 300);
+});
+
+socket.on('takenAvatars', ({ takenAvatars: taken }) => {
+  takenAvatars = taken || [];
+  if (takenAvatars.includes(selectedAvatar)) {
+    const free = AVATAR_CHOICES.find(a => !takenAvatars.includes(a.emoji));
+    if (free) selectedAvatar = free.emoji;
+  }
+  renderAvatarPicker();
+});
+
+socket.on('avatarTaken', ({ takenAvatars: taken }) => {
+  takenAvatars = taken || [];
+  const free = AVATAR_CHOICES.find(a => !takenAvatars.includes(a.emoji));
+  if (free) selectedAvatar = free.emoji;
+  renderAvatarPicker();
+  showError('Diese Spielfigur wurde gerade von jemand anderem gewählt. Bitte wähle eine andere.');
+});
+
 // ---------- START SCREEN ----------
 document.getElementById('btn-create').addEventListener('click', () => {
   const name = document.getElementById('input-name').value.trim();
   if (!name) return showError('Bitte gib deinen Namen ein.');
-  socket.emit('createRoom', { name, avatar: selectedAvatar });
+  socket.emit('createRoom', { name, avatar: selectedAvatar, token: myToken });
 });
 
 document.getElementById('btn-join').addEventListener('click', () => {
@@ -59,7 +136,7 @@ document.getElementById('btn-join').addEventListener('click', () => {
   const code = document.getElementById('input-code').value.trim();
   if (!name) return showError('Bitte gib deinen Namen ein.');
   if (!code) return showError('Bitte gib einen Raum-Code ein.');
-  socket.emit('joinRoom', { name, code, avatar: selectedAvatar });
+  socket.emit('joinRoom', { name, code, avatar: selectedAvatar, token: myToken });
 });
 
 function showError(msg) {
@@ -71,6 +148,8 @@ socket.on('errorMsg', showError);
 socket.on('joined', ({ code, playerId }) => {
   currentCode = code;
   myId = playerId;
+  saveSession(code);
+  showReconnecting(false);
   document.getElementById('board-bar').classList.remove('hidden');
   showError('');
 });
@@ -162,6 +241,7 @@ function renderBoard(players) {
   for (let i = 0; i <= BOARD_LENGTH; i++) {
     const field = document.createElement('div');
     field.className = 'board-field' + (i === BOARD_LENGTH ? ' finish' : '');
+    field.textContent = i === BOARD_LENGTH ? '🏁' : i;
     const here = players.filter(p => p.position === i);
     here.forEach((p, idx) => {
       const tok = document.createElement('span');
@@ -175,37 +255,74 @@ function renderBoard(players) {
   }
 }
 
-// ---------- BOARD RENDER (large, animated screen) ----------
+// ---------- BOARD RENDER (large, animated, rechteckige Laufbahn) ----------
 const BOARD_LENGTH = 20;
-const FIELD_WIDTH = 42 + 6; // width + gap, matches CSS
+const BOARD_SLOTS = BOARD_LENGTH + 1; // Felder 0..20
+const HOP_MS = 380; // Dauer pro Feld-Hop bei der Animation
 let roundStartPositions = {};
 
+// Verteilt Feld i gleichmäßig entlang des Umfangs eines Rechtecks (Seitenverhältnis 2:1),
+// sodass die Abstände zwischen Feldern optisch gleich groß wirken.
+function fieldPercent(i, totalSlots) {
+  const W = 2, H = 1; // Verhältnis Breite:Höhe des Rechtecks
+  const P = 2 * W + 2 * H;
+  let d = (i / totalSlots) * P;
+  if (d <= W) return { x: (d / W) * 100, y: 0 };                       // obere Kante, links -> rechts
+  d -= W;
+  if (d <= H) return { x: 100, y: (d / H) * 100 };                     // rechte Kante, oben -> unten
+  d -= H;
+  if (d <= W) return { x: 100 - (d / W) * 100, y: 100 };               // untere Kante, rechts -> links
+  d -= W;
+  return { x: 0, y: 100 - (d / H) * 100 };                             // linke Kante, unten -> oben
+}
+
 function renderBoardLarge(players, fromPositions, animate) {
-  const track = document.getElementById('board-track-large');
-  track.innerHTML = '';
-  for (let i = 0; i <= BOARD_LENGTH; i++) {
-    const field = document.createElement('div');
-    field.className = 'board-field-large' + (i === BOARD_LENGTH ? ' finish' : '');
-    field.textContent = i === BOARD_LENGTH ? '🏁' : i;
-    track.appendChild(field);
+  const fieldsBox = document.getElementById('board-fields-large');
+  const tokensBox = document.getElementById('board-tokens-large');
+  fieldsBox.innerHTML = '';
+  for (let i = 0; i < BOARD_SLOTS; i++) {
+    const pos = fieldPercent(i, BOARD_SLOTS);
+    const dot = document.createElement('div');
+    dot.className = 'board-field-dot' + (i === BOARD_LENGTH ? ' finish' : '');
+    dot.style.left = pos.x + '%';
+    dot.style.top = pos.y + '%';
+    dot.textContent = i === BOARD_LENGTH ? '🏁' : i;
+    fieldsBox.appendChild(dot);
   }
+
+  tokensBox.innerHTML = '';
+  const tokenEls = {};
   players.forEach((p, idx) => {
     const tok = document.createElement('span');
-    tok.className = 'board-token-large';
+    tok.className = 'board-token-rect';
     tok.textContent = avatarFor(p);
     tok.title = p.name;
     const startPos = animate ? (fromPositions[p.id] ?? p.position) : p.position;
-    tok.style.top = (idx % 3) * 20 + 'px';
-    tok.style.left = (startPos * FIELD_WIDTH) + 'px';
-    track.appendChild(tok);
-    if (animate) {
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          tok.style.left = (p.position * FIELD_WIDTH) + 'px';
-        });
-      });
-    }
+    const pos = fieldPercent(startPos, BOARD_SLOTS);
+    tok.style.left = pos.x + '%';
+    tok.style.top = pos.y + '%';
+    // leichter Versatz, falls mehrere Figuren auf demselben Feld stehen
+    tok.style.transform = `translate(${(idx % 3) * 9 - 9}px, ${Math.floor(idx / 3) * 9 - 9}px)`;
+    tokensBox.appendChild(tok);
+    tokenEls[p.id] = tok;
   });
+
+  if (animate) {
+    players.forEach(p => {
+      const start = fromPositions[p.id] ?? p.position;
+      const steps = p.position - start;
+      if (steps <= 0) return;
+      for (let s = 1; s <= steps; s++) {
+        setTimeout(() => {
+          const tok = tokenEls[p.id];
+          if (!tok) return;
+          const pos = fieldPercent(start + s, BOARD_SLOTS);
+          tok.style.left = pos.x + '%';
+          tok.style.top = pos.y + '%';
+        }, s * HOP_MS);
+      }
+    });
+  }
 
   const legend = document.getElementById('board-legend');
   legend.innerHTML = '';
@@ -245,7 +362,8 @@ socket.on('state', (state) => {
     state.players.forEach(p => {
       const li = document.createElement('li');
       const isMod = p.id === state.moderatorId;
-      li.innerHTML = `<span>${avatarFor(p)} ${p.name}${p.id === myId ? ' (du)' : ''}</span>`;
+      li.className = p.connected === false ? 'disconnected' : '';
+      li.innerHTML = `<span>${avatarFor(p)} ${p.name}${p.id === myId ? ' (du)' : ''}${p.connected === false ? '<span class="tag-offline">getrennt</span>' : ''}</span>`;
       if (isMod) {
         const tag = document.createElement('span');
         tag.className = 'tag';

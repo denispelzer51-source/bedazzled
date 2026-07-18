@@ -3,6 +3,7 @@ const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
 
 const app = express();
 const server = http.createServer(app);
@@ -12,14 +13,21 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 const QUESTIONS = JSON.parse(fs.readFileSync(path.join(__dirname, 'questions.json'), 'utf8'));
 const BOARD_LENGTH = 20; // Zielfeld
-const POINTS_CORRECT_GUESS = 2;
-const POINTS_PER_FOOLED_PLAYER = 3;
+const POINTS_CORRECT_GUESS = 3;
+const POINTS_PER_FOOLED_PLAYER = 2;
+const DISCONNECT_GRACE_MS = 3 * 60 * 1000; // 3 Minuten, bevor ein getrennter Spieler endgültig entfernt wird
 
-/** rooms: { code: { players: [{id,name,position,socketId}], moderatorIndex, phase,
- *   questionIndex, usedQuestions:[], answers: {playerId: text}, votes: {playerId: chosenAnswerOwnerId},
- *   shuffledAnswers: [{ownerId, text, isReal}] } }
+/** rooms: { code: { players: [{id (=Token, stabil ueber Reconnects), name, avatar, position, socketId}],
+ *   moderatorIndex, phase, usedQuestions:[], answers: {playerId: text}, votes: {playerId: chosenAnswerOwnerId},
+ *   shuffledAnswers: [{ownerId, text, isReal}], removalTimers: {playerId: TimeoutHandle} } }
  */
 const rooms = {};
+
+const AVATAR_SET = ['🦊', '🐢', '🦄', '🦁', '🐼', '🦉'];
+
+function getTakenAvatars(room) {
+  return room.players.map(p => p.avatar);
+}
 
 function genRoomCode() {
   let code;
@@ -35,7 +43,7 @@ function publicRoomState(room, forPlayerId) {
   return {
     code: room.code,
     phase: room.phase,
-    players: room.players.map(p => ({ id: p.id, name: p.name, avatar: p.avatar, position: p.position })),
+    players: room.players.map(p => ({ id: p.id, name: p.name, avatar: p.avatar, position: p.position, connected: !!p.socketId })),
     moderatorId,
     currentQuestion: room.phase !== 'lobby' && room.currentQuestionObj ? room.currentQuestionObj.question : null,
     realAnswer: (isModerator && room.phase === 'question' && room.currentQuestionObj) ? room.currentQuestionObj.answer : null,
@@ -51,7 +59,7 @@ function broadcastState(roomCode) {
   const room = rooms[roomCode];
   if (!room) return;
   room.players.forEach(p => {
-    io.to(p.socketId).emit('state', publicRoomState(room, p.id));
+    if (p.socketId) io.to(p.socketId).emit('state', publicRoomState(room, p.id));
   });
 }
 
@@ -64,10 +72,27 @@ function pickNextQuestion(room) {
   return { index: idx, ...QUESTIONS[idx] };
 }
 
+function removePlayerForGood(roomCode, playerId) {
+  const room = rooms[roomCode];
+  if (!room) return;
+  const idx = room.players.findIndex(p => p.id === playerId);
+  if (idx === -1) return;
+  room.players.splice(idx, 1);
+  if (room.players.length === 0) {
+    delete rooms[roomCode];
+    return;
+  }
+  if (room.moderatorIndex >= room.players.length) room.moderatorIndex = 0;
+  broadcastState(roomCode);
+}
+
 io.on('connection', (socket) => {
-  socket.on('createRoom', ({ name, avatar }) => {
+  socket.on('createRoom', ({ name, avatar, token }) => {
     const code = genRoomCode();
-    const player = { id: socket.id, name: name || 'Spieler', avatar: avatar || '🦊', position: 0, socketId: socket.id };
+    const playerId = token || crypto.randomUUID();
+    socket.data.token = playerId;
+    socket.data.roomCode = code;
+    const player = { id: playerId, name: name || 'Spieler', avatar: avatar || '🦊', position: 0, socketId: socket.id };
     rooms[code] = {
       code,
       players: [player],
@@ -78,13 +103,14 @@ io.on('connection', (socket) => {
       votes: {},
       shuffledAnswers: [],
       currentQuestionObj: null,
+      removalTimers: {},
     };
     socket.join(code);
-    socket.emit('joined', { code, playerId: socket.id });
+    socket.emit('joined', { code, playerId });
     broadcastState(code);
   });
 
-  socket.on('joinRoom', ({ name, code, avatar }) => {
+  socket.on('joinRoom', ({ name, code, avatar, token }) => {
     const room = rooms[code];
     if (!room) {
       socket.emit('errorMsg', 'Raum nicht gefunden. Prüfe den Code.');
@@ -94,9 +120,46 @@ io.on('connection', (socket) => {
       socket.emit('errorMsg', 'Spiel läuft schon. Bitte warte auf die nächste Runde.');
       return;
     }
-    room.players.push({ id: socket.id, name: name || 'Spieler', avatar: avatar || '🦊', position: 0, socketId: socket.id });
+    const taken = getTakenAvatars(room);
+    if (taken.includes(avatar)) {
+      socket.emit('avatarTaken', { takenAvatars: taken });
+      return;
+    }
+    const playerId = token || crypto.randomUUID();
+    socket.data.token = playerId;
+    socket.data.roomCode = code;
+    room.players.push({ id: playerId, name: name || 'Spieler', avatar: avatar || '🦊', position: 0, socketId: socket.id });
     socket.join(code);
-    socket.emit('joined', { code, playerId: socket.id });
+    socket.emit('joined', { code, playerId });
+    broadcastState(code);
+  });
+
+  socket.on('checkTakenAvatars', ({ code }) => {
+    const room = rooms[code];
+    socket.emit('takenAvatars', { takenAvatars: room ? getTakenAvatars(room) : [] });
+  });
+
+  socket.on('rejoinRoom', ({ code, token }) => {
+    const room = rooms[code];
+    if (!room || !token) {
+      socket.emit('rejoinFailed');
+      return;
+    }
+    const player = room.players.find(p => p.id === token);
+    if (!player) {
+      socket.emit('rejoinFailed');
+      return;
+    }
+    // Geplantes Entfernen abbrechen, falls der Spieler rechtzeitig zurückkommt
+    if (room.removalTimers[token]) {
+      clearTimeout(room.removalTimers[token]);
+      delete room.removalTimers[token];
+    }
+    player.socketId = socket.id;
+    socket.data.token = token;
+    socket.data.roomCode = code;
+    socket.join(code);
+    socket.emit('joined', { code, playerId: token });
     broadcastState(code);
   });
 
@@ -124,9 +187,10 @@ io.on('connection', (socket) => {
   socket.on('submitAnswer', ({ code, text }) => {
     const room = rooms[code];
     if (!room || room.phase !== 'answering') return;
+    const myId = socket.data.token;
     const moderatorId = room.players[room.moderatorIndex].id;
-    if (socket.id === moderatorId) return; // Moderator gibt keine Antwort ab
-    room.answers[socket.id] = (text || '').trim().slice(0, 140);
+    if (myId === moderatorId) return; // Moderator gibt keine Antwort ab
+    room.answers[myId] = (text || '').trim().slice(0, 140);
     broadcastState(code);
   });
 
@@ -151,16 +215,16 @@ io.on('connection', (socket) => {
   socket.on('submitVote', ({ code, chosenOwnerId }) => {
     const room = rooms[code];
     if (!room || room.phase !== 'voting') return;
+    const myId = socket.data.token;
     const moderatorId = room.players[room.moderatorIndex].id;
-    if (socket.id === moderatorId) return; // Moderator stimmt nicht ab
-    room.votes[socket.id] = chosenOwnerId;
+    if (myId === moderatorId) return; // Moderator stimmt nicht ab
+    room.votes[myId] = chosenOwnerId;
     broadcastState(code);
   });
 
   socket.on('revealResults', ({ code }) => {
     const room = rooms[code];
     if (!room) return;
-    const moderatorId = room.players[room.moderatorIndex].id;
 
     // Punkte berechnen
     for (const [voterId, chosenOwnerId] of Object.entries(room.votes)) {
@@ -203,19 +267,21 @@ io.on('connection', (socket) => {
   });
 
   socket.on('disconnect', () => {
-    for (const code of Object.keys(rooms)) {
-      const room = rooms[code];
-      const idx = room.players.findIndex(p => p.id === socket.id);
-      if (idx !== -1) {
-        room.players.splice(idx, 1);
-        if (room.players.length === 0) {
-          delete rooms[code];
-        } else {
-          if (room.moderatorIndex >= room.players.length) room.moderatorIndex = 0;
-          broadcastState(code);
-        }
-      }
-    }
+    const code = socket.data.roomCode;
+    const token = socket.data.token;
+    if (!code || !token) return;
+    const room = rooms[code];
+    if (!room) return;
+    const player = room.players.find(p => p.id === token);
+    if (!player || player.socketId !== socket.id) return; // schon durch neuere Verbindung ersetzt
+
+    player.socketId = null; // Spieler bleibt im Raum, gilt aber als "getrennt"
+    broadcastState(code);
+
+    // Nach Karenzzeit endgültig entfernen, falls kein Reconnect erfolgt
+    room.removalTimers[token] = setTimeout(() => {
+      removePlayerForGood(code, token);
+    }, DISCONNECT_GRACE_MS);
   });
 });
 
