@@ -17,6 +17,9 @@
   textarea#bulk-import { min-height: 140px; }
   .count-badge { color: var(--ink-dim); font-size: 13px; margin-bottom: 14px; }
   #login-box { max-width: 360px; margin: 80px auto; }
+  .tabs { display: flex; gap: 8px; margin-bottom: 20px; }
+  .tab-btn { flex: 1; padding: 12px; border-radius: 12px; border: 1.5px solid rgba(255,255,255,0.12); background: var(--night-2); color: var(--ink-dim); font-weight: 700; cursor: pointer; font-family: var(--font-body); font-size: 14px; }
+  .tab-btn.active { border-color: var(--gold); color: var(--gold); background: rgba(242,183,5,0.08); }
 </style>
 </head>
 <body>
@@ -33,20 +36,27 @@
 
   <div id="main-box" class="hidden">
     <h1 style="font-size:26px;">Fragen-Verwaltung</h1>
+
+    <div class="tabs">
+      <button id="tab-bluff" class="tab-btn active">🎭 Bluff-Fragen</button>
+      <button id="tab-estimate" class="tab-btn">🔢 Schätzen-Fragen</button>
+    </div>
+
     <p class="count-badge"><span id="q-count">0</span> Fragen aktuell hinterlegt</p>
 
     <div class="card">
       <h2 class="section-title" style="margin-top:0;">Neue Frage hinzufügen</h2>
       <label>Frage</label>
       <textarea id="new-question" placeholder="z.B. Warum tragen Schweizer Kühe große Glocken?"></textarea>
-      <label>Echte Antwort</label>
+      <label id="new-answer-label">Echte Antwort</label>
       <textarea id="new-answer" placeholder="Die tatsächliche, ungewöhnliche Antwort"></textarea>
+      <input id="new-answer-number" type="number" step="any" class="hidden" placeholder="Die echte Zahl" />
       <button id="btn-add-question" class="btn btn-primary">Frage hinzufügen</button>
     </div>
 
     <h2 class="section-title">Massen-Import</h2>
     <div class="card">
-      <p class="hint" style="margin-top:0;">Ein Eintrag pro Zeile, Frage und Antwort getrennt durch <code>;</code>:<br>
+      <p class="hint" style="margin-top:0;" id="import-format-hint">Ein Eintrag pro Zeile, Frage und Antwort getrennt durch <code>;</code>:<br>
         <code>Frage hier?;Echte Antwort hier</code></p>
       <textarea id="bulk-import" placeholder="Frage 1?;Antwort 1&#10;Frage 2?;Antwort 2"></textarea>
       <button id="btn-import" class="btn btn-secondary">Import starten</button>
@@ -54,7 +64,7 @@
     </div>
 
     <h2 class="section-title">Alle Fragen (<span id="q-count-2">0</span>)</h2>
-    <button id="btn-export" class="btn btn-secondary" style="margin-bottom:16px;">📥 questions.json herunterladen</button>
+    <button id="btn-export" class="btn btn-secondary" style="margin-bottom:16px;">📥 Als Datei herunterladen</button>
     <div id="question-list"></div>
   </div>
 
@@ -63,9 +73,14 @@
 <script>
   let adminKey = sessionStorage.getItem('bedazzled_admin_key') || '';
   let questions = [];
+  let category = 'bluff'; // 'bluff' | 'estimate'
 
   const loginBox = document.getElementById('login-box');
   const mainBox = document.getElementById('main-box');
+
+  function apiBase() {
+    return category === 'estimate' ? '/api/estimate-questions' : '/api/questions';
+  }
 
   async function apiCall(path, options = {}) {
     const url = path + (path.includes('?') ? '&' : '?') + 'key=' + encodeURIComponent(adminKey);
@@ -83,7 +98,7 @@
 
   async function loadQuestions() {
     try {
-      questions = await apiCall('/api/questions');
+      questions = await apiCall(apiBase());
       renderQuestions();
       loginBox.classList.add('hidden');
       mainBox.classList.remove('hidden');
@@ -105,6 +120,21 @@
     loadQuestions();
   });
 
+  function setCategory(cat) {
+    category = cat;
+    document.getElementById('tab-bluff').classList.toggle('active', cat === 'bluff');
+    document.getElementById('tab-estimate').classList.toggle('active', cat === 'estimate');
+    document.getElementById('new-answer-label').textContent = cat === 'estimate' ? 'Echte Zahl' : 'Echte Antwort';
+    document.getElementById('new-answer').classList.toggle('hidden', cat === 'estimate');
+    document.getElementById('new-answer-number').classList.toggle('hidden', cat !== 'estimate');
+    document.getElementById('import-format-hint').innerHTML = cat === 'estimate'
+      ? 'Ein Eintrag pro Zeile, Frage und Zahl getrennt durch <code>;</code>:<br><code>Frage hier?;42</code>'
+      : 'Ein Eintrag pro Zeile, Frage und Antwort getrennt durch <code>;</code>:<br><code>Frage hier?;Echte Antwort hier</code>';
+    if (adminKey) loadQuestions();
+  }
+  document.getElementById('tab-bluff').addEventListener('click', () => setCategory('bluff'));
+  document.getElementById('tab-estimate').addEventListener('click', () => setCategory('estimate'));
+
   function renderQuestions() {
     document.getElementById('q-count').textContent = questions.length;
     document.getElementById('q-count-2').textContent = questions.length;
@@ -115,7 +145,7 @@
       row.className = 'q-row';
       row.innerHTML = `
         <div class="q-text">${escapeHtml(q.question)}</div>
-        <div class="a-text">✔ ${escapeHtml(q.answer)}</div>
+        <div class="a-text">✔ ${escapeHtml(String(q.answer))}</div>
         <div class="row-actions">
           <button class="btn btn-secondary btn-edit">Bearbeiten</button>
           <button class="btn btn-secondary btn-delete">Löschen</button>
@@ -123,7 +153,7 @@
       `;
       row.querySelector('.btn-delete').addEventListener('click', async () => {
         if (!confirm('Diese Frage wirklich löschen?')) return;
-        questions = await apiCall('/api/questions/' + idx, { method: 'DELETE' });
+        questions = await apiCall(apiBase() + '/' + idx, { method: 'DELETE' });
         renderQuestions();
       });
       row.querySelector('.btn-edit').addEventListener('click', () => startEdit(row, q, idx));
@@ -132,9 +162,10 @@
   }
 
   function startEdit(row, q, idx) {
+    const isEstimate = category === 'estimate';
     row.innerHTML = `
       <textarea class="q-text-edit">${escapeHtml(q.question)}</textarea>
-      <textarea class="a-text-edit">${escapeHtml(q.answer)}</textarea>
+      <input class="a-text-edit" type="${isEstimate ? 'number' : 'text'}" step="any" value="${escapeHtml(String(q.answer))}" />
       <div class="row-actions">
         <button class="btn btn-primary btn-save">Speichern</button>
         <button class="btn btn-secondary btn-cancel">Abbrechen</button>
@@ -144,7 +175,7 @@
       const question = row.querySelector('.q-text-edit').value.trim();
       const answer = row.querySelector('.a-text-edit').value.trim();
       if (!question || !answer) return;
-      questions = await apiCall('/api/questions/' + idx, {
+      questions = await apiCall(apiBase() + '/' + idx, {
         method: 'PUT',
         body: JSON.stringify({ question, answer }),
       });
@@ -155,14 +186,17 @@
 
   document.getElementById('btn-add-question').addEventListener('click', async () => {
     const question = document.getElementById('new-question').value.trim();
-    const answer = document.getElementById('new-answer').value.trim();
+    const answer = category === 'estimate'
+      ? document.getElementById('new-answer-number').value.trim()
+      : document.getElementById('new-answer').value.trim();
     if (!question || !answer) return alert('Bitte Frage und Antwort ausfüllen.');
-    questions = await apiCall('/api/questions', {
+    questions = await apiCall(apiBase(), {
       method: 'POST',
       body: JSON.stringify({ question, answer }),
     });
     document.getElementById('new-question').value = '';
     document.getElementById('new-answer').value = '';
+    document.getElementById('new-answer-number').value = '';
     renderQuestions();
   });
 
@@ -180,7 +214,7 @@
       return;
     }
     try {
-      questions = await apiCall('/api/questions/import', {
+      questions = await apiCall(apiBase() + '/import', {
         method: 'POST',
         body: JSON.stringify({ items }),
       });
@@ -193,10 +227,11 @@
   });
 
   document.getElementById('btn-export').addEventListener('click', () => {
+    const filename = category === 'estimate' ? 'estimate_questions.json' : 'questions.json';
     const blob = new Blob([JSON.stringify(questions, null, 2)], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = 'questions.json';
+    a.download = filename;
     a.click();
   });
 

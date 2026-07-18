@@ -171,17 +171,44 @@ document.getElementById('btn-to-answering').addEventListener('click', () => {
 });
 
 // ---------- ANSWERING ----------
+let currentRoundType = 'question';
+
 document.getElementById('btn-submit-answer').addEventListener('click', () => {
+  if (currentRoundType === 'estimate') {
+    const numberInput = document.getElementById('input-answer-number');
+    const value = numberInput.value.trim();
+    if (value === '') return;
+    socket.emit('submitAnswer', { code: currentCode, text: value });
+    numberInput.disabled = true;
+    document.getElementById('btn-submit-answer').disabled = true;
+    document.getElementById('btn-submit-answer').textContent = 'Schätzung abgeschickt ✓';
+    return;
+  }
   const text = document.getElementById('input-answer').value.trim();
   if (!text) return;
   socket.emit('submitAnswer', { code: currentCode, text });
   document.getElementById('input-answer').disabled = true;
   document.getElementById('btn-submit-answer').disabled = true;
-  document.getElementById('btn-submit-answer').textContent = 'Antwort abgeschickt ✓';
+  document.getElementById('btn-submit-answer').textContent = 'Wird geprüft …';
+});
+
+socket.on('answerChecking', () => {
+  document.getElementById('btn-submit-answer').textContent = 'Wird geprüft …';
+});
+
+socket.on('answerCorrected', ({ text, wasChanged }) => {
+  document.getElementById('input-answer').value = text;
+  document.getElementById('btn-submit-answer').textContent = wasChanged
+    ? 'Antwort abgeschickt ✓ (automatisch korrigiert)'
+    : 'Antwort abgeschickt ✓';
 });
 
 document.getElementById('btn-to-voting').addEventListener('click', () => {
   socket.emit('goToVoting', { code: currentCode });
+});
+
+document.getElementById('btn-reveal-estimate').addEventListener('click', () => {
+  socket.emit('revealEstimate', { code: currentCode });
 });
 
 // ---------- VOTING ----------
@@ -240,13 +267,17 @@ document.getElementById('btn-close-winner').addEventListener('click', () => {
 });
 
 // ---------- BOARD RENDER (mini bar, always visible) ----------
+let estimateTriggerFields = [4, 8, 12, 16]; // Standardwert, wird vom Server überschrieben
+
 function renderBoard(players) {
   const track = document.getElementById('board-track');
   const BOARD_LENGTH = 20;
   track.innerHTML = '';
   for (let i = 0; i <= BOARD_LENGTH; i++) {
     const field = document.createElement('div');
-    field.className = 'board-field' + (i === BOARD_LENGTH ? ' finish' : '');
+    let cls = 'board-field' + (i === BOARD_LENGTH ? ' finish' : '');
+    if (estimateTriggerFields.includes(i)) cls += ' estimate-field';
+    field.className = cls;
     field.textContent = i === BOARD_LENGTH ? '🏁' : i;
     const here = players.filter(p => p.position === i);
     here.forEach((p, idx) => {
@@ -289,7 +320,9 @@ function renderBoardLarge(players, fromPositions, animate) {
   for (let i = 0; i < BOARD_SLOTS; i++) {
     const pos = fieldPercent(i, BOARD_SLOTS);
     const dot = document.createElement('div');
-    dot.className = 'board-field-dot' + (i === BOARD_LENGTH ? ' finish' : '');
+    let dotCls = 'board-field-dot' + (i === BOARD_LENGTH ? ' finish' : '');
+    if (estimateTriggerFields.includes(i)) dotCls += ' estimate-field';
+    dot.className = dotCls;
     dot.style.left = pos.x + '%';
     dot.style.top = pos.y + '%';
     dot.textContent = i === BOARD_LENGTH ? '🏁' : i;
@@ -352,8 +385,18 @@ socket.on('state', (state) => {
     state.players.forEach(p => { roundStartPositions[p.id] = p.position; });
   }
   const enteringBoard = state.phase === 'board' && (!lastState || lastState.phase !== 'board');
+  const enteringAnswering = state.phase === 'answering' && (!lastState || lastState.phase !== 'answering');
+  if (enteringAnswering) {
+    const ta = document.getElementById('input-answer');
+    const num = document.getElementById('input-answer-number');
+    ta.value = ''; ta.disabled = false;
+    num.value = ''; num.disabled = false;
+    document.getElementById('btn-submit-answer').disabled = false;
+    document.getElementById('btn-submit-answer').textContent = 'Antwort abschicken';
+  }
 
   lastState = state;
+  if (state.estimateTriggerFields) estimateTriggerFields = state.estimateTriggerFields;
   const iAmModerator = state.moderatorId === myId;
 
   renderBoard(state.players);
@@ -383,11 +426,15 @@ socket.on('state', (state) => {
   }
 
   if (state.phase === 'question') {
+    currentRoundType = state.roundType || 'question';
     document.getElementById('question-text').textContent = state.currentQuestion || '';
+    document.getElementById('answering-phase-tag').textContent = currentRoundType === 'estimate' ? 'Schätz-Frage 🔢' : 'Antwort-Phase';
     if (iAmModerator) {
-      document.getElementById('moderator-banner').textContent = 'Du bist Moderator:in – lies die Frage laut vor!';
+      document.getElementById('moderator-banner').textContent = currentRoundType === 'estimate'
+        ? 'Du bist Moderator:in – lies die Schätzfrage laut vor!'
+        : 'Du bist Moderator:in – lies die Frage laut vor!';
       document.getElementById('real-answer-box').classList.remove('hidden');
-      document.getElementById('real-answer-box').textContent = 'Echte Antwort (nur für dich): ' + (state.realAnswer || '');
+      document.getElementById('real-answer-box').textContent = (currentRoundType === 'estimate' ? 'Echte Zahl (nur für dich): ' : 'Echte Antwort (nur für dich): ') + (state.realAnswer ?? '');
     } else {
       document.getElementById('moderator-banner').textContent = '';
       document.getElementById('real-answer-box').classList.add('hidden');
@@ -396,9 +443,18 @@ socket.on('state', (state) => {
   }
 
   if (state.phase === 'answering') {
+    currentRoundType = state.roundType || 'question';
+    const isEstimate = currentRoundType === 'estimate';
     document.getElementById('question-text-2').textContent = state.currentQuestion || '';
     document.getElementById('answered-count').textContent = state.answeredCount;
     document.getElementById('answering-total').textContent = Math.max(state.players.length - 1, 0);
+    document.getElementById('answer-input-label').textContent = isEstimate
+      ? 'Wie lautet deine Schätzung?'
+      : 'Denk dir eine überzeugende, falsche Antwort aus:';
+    document.getElementById('input-answer').classList.toggle('hidden', isEstimate);
+    document.getElementById('input-answer-number').classList.toggle('hidden', !isEstimate);
+    document.getElementById('btn-to-voting').classList.toggle('hidden', isEstimate);
+    document.getElementById('btn-reveal-estimate').classList.toggle('hidden', !isEstimate);
     if (iAmModerator) {
       document.getElementById('answer-input-box').classList.add('hidden');
       document.getElementById('moderator-wait-box').classList.remove('hidden');
@@ -408,7 +464,7 @@ socket.on('state', (state) => {
       (state.answersPreview || []).forEach(a => {
         const div = document.createElement('div');
         div.className = 'reveal-item';
-        div.innerHTML = `${escapeHtml(a.text)}<span class="owner">${escapeHtml(a.name)}</span>`;
+        div.innerHTML = `${escapeHtml(String(a.text))}<span class="owner">${escapeHtml(a.name)}</span>`;
         previewBox.appendChild(div);
       });
     } else {
@@ -443,18 +499,35 @@ socket.on('state', (state) => {
   if (state.phase === 'reveal') {
     document.getElementById('question-text-4').textContent = state.currentQuestion || '';
     const list = document.getElementById('reveal-list');
+    const realBox = document.getElementById('estimate-real-answer');
     list.innerHTML = '';
-    state.shuffledAnswers.forEach(a => {
-      const div = document.createElement('div');
-      const isMyVote = state.myVote === a.ownerId;
-      let cls = 'reveal-item' + (a.isReal ? ' real' : '');
-      if (isMyVote) cls += a.isReal ? ' my-correct' : ' my-wrong';
-      div.className = cls;
-      const ownerName = a.isReal ? 'Echte Antwort ✔' : (state.players.find(p => p.id === a.ownerId)?.name || '???');
-      const badge = isMyVote ? `<span class="my-vote-badge">${a.isReal ? '✔ Richtig getippt!' : '✗ Reingefallen'}</span>` : '';
-      div.innerHTML = `${escapeHtml(a.text)}<span class="owner">${ownerName}</span>${badge}`;
-      list.appendChild(div);
-    });
+
+    if (state.roundType === 'estimate') {
+      realBox.classList.remove('hidden');
+      realBox.textContent = 'Echte Zahl: ' + state.estimateRealAnswer;
+      const medals = ['🥇', '🥈', '🥉'];
+      (state.estimateResults || []).forEach(r => {
+        const div = document.createElement('div');
+        div.className = 'reveal-item' + (r.points > 0 ? ' real' : '');
+        const medal = medals[r.rank - 1] || `${r.rank}.`;
+        const pointsText = r.points > 0 ? `+${r.points} Punkte` : 'keine Punkte';
+        div.innerHTML = `${medal} ${escapeHtml(r.name)}: <strong>${r.value}</strong><span class="owner">${pointsText}</span>`;
+        list.appendChild(div);
+      });
+    } else {
+      realBox.classList.add('hidden');
+      state.shuffledAnswers.forEach(a => {
+        const div = document.createElement('div');
+        const isMyVote = state.myVote === a.ownerId;
+        let cls = 'reveal-item' + (a.isReal ? ' real' : '');
+        if (isMyVote) cls += a.isReal ? ' my-correct' : ' my-wrong';
+        div.className = cls;
+        const ownerName = a.isReal ? 'Echte Antwort ✔' : (state.players.find(p => p.id === a.ownerId)?.name || '???');
+        const badge = isMyVote ? `<span class="my-vote-badge">${a.isReal ? '✔ Richtig getippt!' : '✗ Reingefallen'}</span>` : '';
+        div.innerHTML = `${escapeHtml(a.text)}<span class="owner">${ownerName}</span>${badge}`;
+        list.appendChild(div);
+      });
+    }
     showScreen('reveal');
   }
 

@@ -63,6 +63,31 @@ Aktuell 6 auswählbare Platzhalter-Symbole, pro Raum ist jede Figur nur einmal v
 
 ---
 
+## Kartenkategorien
+
+Neben den normalen Bluff-Fragen gibt es jetzt eine zweite Kategorie:
+
+**Schätzen-Karten:** Statt eine erfundene Antwort abzugeben, tippt jeder eine **Zahl** als
+Schätzung (z. B. "Wie viele Stufen hat der Eiffelturm?"). Kein Bluffen, kein Voting – wer am
+nächsten an der echten Zahl liegt, gewinnt direkt Punkte:
+
+| Platz | Punkte |
+|---|---|
+| 1. (am nächsten dran) | 3 Punkte |
+| 2. | 2 Punkte |
+| 3. | 1 Punkt |
+| Alle weiteren | 0 Punkte |
+
+**Auslöser:** Türkis markierte Felder auf dem Spielbrett (aktuell Feld 4, 8, 12, 16 von 20).
+Landet nach der Punktevergabe irgendein Spieler exakt auf einem dieser Felder, ist die
+**nächste** Runde automatisch eine Schätzen-Karte statt einer normalen Bluff-Frage – für
+alle Spieler gemeinsam, nicht nur für den, der dort gelandet ist.
+
+Schätzen-Fragen werden getrennt von den Bluff-Fragen verwaltet: `/admin.html` hat dafür
+einen eigenen Tab ("🔢 Schätzen-Fragen"), Daten liegen in `estimate_questions.json`.
+
+*Als Nächstes geplant: Zeichnen-Karten als dritte Kategorie (Pictionary-Stil).*
+
 ## Fragen-Verwaltung
 
 Unter `/admin.html` (z. B. `https://dein-link.onrender.com/admin.html`) gibt es eine separate
@@ -83,6 +108,12 @@ herunterladen und im Repo überschreiben, damit die Änderungen dauerhaft bleibe
 
 ## Änderungsprotokoll
 
+- **18.07.2026:** Zweite Kartenkategorie "Schätzen-Karten" hinzugefügt (Zahlen-Schätzung,
+  Top-3-Punktevergabe 3/2/1). Türkise Spielbrett-Felder (4/8/12/16) lösen automatisch eine
+  Schätzen-Runde statt einer Bluff-Frage aus. Eigene Verwaltung im Admin-Bereich.
+- **18.07.2026:** Eingereichte Antworten werden automatisch auf Rechtschreibung/Grammatik
+  geprüft und korrigiert (LanguageTool-API), bevor sie gespeichert werden – damit Tippfehler
+  nicht verraten, welche Antwort erfunden ist. Bei API-Ausfall wird der Originaltext verwendet.
 - **18.07.2026:** Moderator:in sieht während der Antwort-Phase live alle eingereichten
   Antworten samt Namen; Board-Darstellung nicht mehr abgeschnitten (Ränder korrigiert);
   Auflösung zeigt jedem Spieler grün/rot, ob die eigene Wahl richtig war, samt Autor:in

@@ -46,6 +46,7 @@
     <h2>Wer ist dabei?</h2>
     <ul id="player-list" class="player-list"></ul>
     <p class="hint">Mindestens 3 Spieler nötig. Teile den Code, damit alle beitreten können.</p>
+    <p class="hint">🟢 Türkise Felder lösen eine Schätzen-Karte statt der normalen Frage aus.</p>
     <button id="btn-start-round" class="btn btn-primary">Runde starten</button>
   </section>
 
@@ -63,12 +64,13 @@
 
   <!-- ANSWERING SCREEN -->
   <section id="screen-answering" class="screen">
-    <div class="phase-tag">Antwort-Phase</div>
+    <div class="phase-tag" id="answering-phase-tag">Antwort-Phase</div>
     <p id="question-text-2" class="question-text small"></p>
 
     <div id="answer-input-box">
-      <label>Denk dir eine überzeugende, falsche Antwort aus:</label>
+      <label id="answer-input-label">Denk dir eine überzeugende, falsche Antwort aus:</label>
       <textarea id="input-answer" maxlength="140" placeholder="Deine erfundene Antwort …"></textarea>
+      <input id="input-answer-number" type="number" step="any" class="hidden" placeholder="Deine Schätzung …" />
       <button id="btn-submit-answer" class="btn btn-primary">Antwort abschicken</button>
     </div>
     <p id="moderator-wait-box" class="waiting-msg hidden">Du bist Moderator:in – hier siehst du live, wer was schreibt:</p>
@@ -76,6 +78,7 @@
 
     <p class="progress-text"><span id="answered-count">0</span>/<span id="answering-total">0</span> haben geantwortet</p>
     <button id="btn-to-voting" class="btn btn-secondary mod-only">Weiter zur Abstimmung</button>
+    <button id="btn-reveal-estimate" class="btn btn-secondary mod-only hidden">Auswerten</button>
   </section>
 
   <!-- VOTING SCREEN -->
@@ -95,6 +98,7 @@
   <section id="screen-reveal" class="screen">
     <div class="phase-tag">Auflösung</div>
     <p class="question-text small" id="question-text-4"></p>
+    <p id="estimate-real-answer" class="real-answer-box hidden"></p>
     <div id="reveal-list" class="reveal-list"></div>
     <button id="btn-to-board" class="btn btn-primary mod-only">Weiter zum Spielbrett</button>
     <p class="waiting-msg mod-hide">Warte auf den Moderator …</p>

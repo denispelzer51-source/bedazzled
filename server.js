@@ -14,10 +14,18 @@ app.use(express.json());
 
 const QUESTIONS_PATH = path.join(__dirname, 'questions.json');
 let questionsList = JSON.parse(fs.readFileSync(QUESTIONS_PATH, 'utf8'));
+
+const ESTIMATE_QUESTIONS_PATH = path.join(__dirname, 'estimate_questions.json');
+let estimateQuestionsList = JSON.parse(fs.readFileSync(ESTIMATE_QUESTIONS_PATH, 'utf8'));
+
 const BOARD_LENGTH = 20; // Zielfeld
 const POINTS_CORRECT_GUESS = 3;
 const POINTS_PER_FOOLED_PLAYER = 2;
 const DISCONNECT_GRACE_MS = 3 * 60 * 1000; // 3 Minuten, bevor ein getrennter Spieler endgültig entfernt wird
+
+// Felder, die eine Schätzen-Karte statt der normalen Bluff-Frage auslösen
+const ESTIMATE_TRIGGER_FIELDS = [4, 8, 12, 16];
+const ESTIMATE_POINTS = [3, 2, 1]; // Platz 1, 2, 3 – Rest geht leer aus
 
 // Zugangscode für die Fragen-Verwaltung (/admin.html). Auf Render als Umgebungsvariable
 // ADMIN_KEY setzen, um den Standardwert zu überschreiben.
@@ -36,7 +44,70 @@ function saveQuestions() {
   fs.writeFileSync(QUESTIONS_PATH, JSON.stringify(questionsList, null, 2), 'utf8');
 }
 
-// ---------- Fragen-Verwaltung (Admin-API) ----------
+function saveEstimateQuestions() {
+  fs.writeFileSync(ESTIMATE_QUESTIONS_PATH, JSON.stringify(estimateQuestionsList, null, 2), 'utf8');
+}
+
+// ---------- Fragen-Verwaltung: Schätzen-Karten (Admin-API) ----------
+app.get('/api/estimate-questions', checkAdmin, (req, res) => {
+  res.json(estimateQuestionsList);
+});
+
+app.post('/api/estimate-questions', checkAdmin, (req, res) => {
+  const { question, answer } = req.body || {};
+  const numericAnswer = Number(answer);
+  if (!question || Number.isNaN(numericAnswer)) {
+    res.status(400).json({ error: 'Frage und eine numerische Antwort sind erforderlich.' });
+    return;
+  }
+  estimateQuestionsList.push({ question: question.trim(), answer: numericAnswer });
+  saveEstimateQuestions();
+  res.json(estimateQuestionsList);
+});
+
+app.put('/api/estimate-questions/:index', checkAdmin, (req, res) => {
+  const idx = parseInt(req.params.index, 10);
+  if (!estimateQuestionsList[idx]) {
+    res.status(404).json({ error: 'Frage nicht gefunden.' });
+    return;
+  }
+  const { question, answer } = req.body || {};
+  if (question) estimateQuestionsList[idx].question = question.trim();
+  if (answer !== undefined && !Number.isNaN(Number(answer))) estimateQuestionsList[idx].answer = Number(answer);
+  saveEstimateQuestions();
+  res.json(estimateQuestionsList);
+});
+
+app.delete('/api/estimate-questions/:index', checkAdmin, (req, res) => {
+  const idx = parseInt(req.params.index, 10);
+  if (!estimateQuestionsList[idx]) {
+    res.status(404).json({ error: 'Frage nicht gefunden.' });
+    return;
+  }
+  estimateQuestionsList.splice(idx, 1);
+  saveEstimateQuestions();
+  res.json(estimateQuestionsList);
+});
+
+app.post('/api/estimate-questions/import', checkAdmin, (req, res) => {
+  const { items } = req.body || {};
+  if (!Array.isArray(items)) {
+    res.status(400).json({ error: 'Erwartet ein Array von Fragen.' });
+    return;
+  }
+  const valid = items
+    .filter(i => i && i.question && !Number.isNaN(Number(i.answer)))
+    .map(i => ({ question: String(i.question).trim(), answer: Number(i.answer) }));
+  if (valid.length === 0) {
+    res.status(400).json({ error: 'Keine gültigen Fragen im Import gefunden.' });
+    return;
+  }
+  estimateQuestionsList.push(...valid);
+  saveEstimateQuestions();
+  res.json(estimateQuestionsList);
+});
+
+// ---------- Fragen-Verwaltung: Bluff-Fragen (Admin-API) ----------
 app.get('/api/questions', checkAdmin, (req, res) => {
   res.json(questionsList);
 });
@@ -102,6 +173,39 @@ const rooms = {};
 
 const AVATAR_SET = ['🦊', '🐢', '🦄', '🦁', '🐼', '🦉'];
 
+// Prüft/korrigiert eingereichte Antworten automatisch (Rechtschreibung & Grammatik),
+// damit Tippfehler nicht verraten, welche Antwort erfunden ist. Nutzt die kostenlose
+// LanguageTool-API. Bei Fehlern/Timeout wird einfach der Originaltext verwendet,
+// damit das Spiel nie wegen eines API-Problems blockiert.
+async function autoCorrectGerman(text) {
+  if (!text || !text.trim()) return text;
+  try {
+    const params = new URLSearchParams({ text, language: 'de-DE' });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 4000);
+    const res = await fetch('https://api.languagetool.org/v2/check', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: params,
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+    if (!res.ok) return text;
+    const data = await res.json();
+    const matches = (data.matches || []).slice().sort((a, b) => b.offset - a.offset); // rückwärts anwenden, damit Offsets stabil bleiben
+    let corrected = text;
+    for (const m of matches) {
+      if (m.replacements && m.replacements.length > 0) {
+        const replacement = m.replacements[0].value;
+        corrected = corrected.slice(0, m.offset) + replacement + corrected.slice(m.offset + m.length);
+      }
+    }
+    return corrected;
+  } catch (e) {
+    return text;
+  }
+}
+
 function getTakenAvatars(room) {
   return room.players.map(p => p.avatar);
 }
@@ -120,6 +224,9 @@ function publicRoomState(room, forPlayerId) {
   return {
     code: room.code,
     phase: room.phase,
+    roundType: room.roundType || 'question',
+    pendingRoundType: room.pendingRoundType || 'question',
+    estimateTriggerFields: ESTIMATE_TRIGGER_FIELDS,
     players: room.players.map(p => ({ id: p.id, name: p.name, avatar: p.avatar, position: p.position, connected: !!p.socketId })),
     moderatorId,
     currentQuestion: room.phase !== 'lobby' && room.currentQuestionObj ? room.currentQuestionObj.question : null,
@@ -138,6 +245,11 @@ function publicRoomState(room, forPlayerId) {
     shuffledAnswers: room.phase === 'voting' || room.phase === 'reveal'
       ? room.shuffledAnswers.map(a => room.phase === 'reveal' ? a : { text: a.text, ownerId: a.ownerId })
       : [],
+    // Ranking-Ergebnis für Schätzen-Runden (nur in der Auflösung relevant)
+    estimateResults: room.phase === 'reveal' ? (room.estimateResults || []) : [],
+    estimateRealAnswer: (room.phase === 'reveal' && room.roundType === 'estimate' && room.currentQuestionObj)
+      ? room.currentQuestionObj.answer
+      : null,
   };
 }
 
@@ -149,13 +261,30 @@ function broadcastState(roomCode) {
   });
 }
 
-function pickNextQuestion(room) {
-  const available = questionsList.map((q, i) => i).filter(i => !room.usedQuestions.includes(i));
-  const pool = available.length > 0 ? available : questionsList.map((q, i) => i);
-  if (available.length === 0) room.usedQuestions = [];
-  const idx = pool[Math.floor(Math.random() * pool.length)];
-  room.usedQuestions.push(idx);
-  return { index: idx, ...questionsList[idx] };
+function pickNextQuestion(room, roundType) {
+  const pool = roundType === 'estimate' ? estimateQuestionsList : questionsList;
+  const usedKey = roundType === 'estimate' ? 'usedEstimateQuestions' : 'usedQuestions';
+  if (!room[usedKey]) room[usedKey] = [];
+  const available = pool.map((q, i) => i).filter(i => !room[usedKey].includes(i));
+  const candidates = available.length > 0 ? available : pool.map((q, i) => i);
+  if (available.length === 0) room[usedKey] = [];
+  const idx = candidates[Math.floor(Math.random() * candidates.length)];
+  room[usedKey].push(idx);
+  return { index: idx, ...pool[idx] };
+}
+
+// Prüft, ob jemand nach der Punktevergabe exakt auf einem Schätzen-Feld gelandet ist.
+// Falls ja, wird die nächste Runde automatisch eine Schätzen-Karte statt einer Bluff-Frage.
+function applyEstimateTriggerCheck(room) {
+  const triggered = room.players.some(p => ESTIMATE_TRIGGER_FIELDS.includes(p.position));
+  room.pendingRoundType = triggered ? 'estimate' : 'question';
+}
+
+function checkForWinner(code, room) {
+  const winner = room.players.find(p => p.position >= BOARD_LENGTH);
+  if (winner) {
+    io.to(code).emit('gameOver', { winnerName: winner.name });
+  }
 }
 
 function removePlayerForGood(roomCode, playerId) {
@@ -185,10 +314,13 @@ io.on('connection', (socket) => {
       moderatorIndex: 0,
       phase: 'lobby',
       usedQuestions: [],
+      usedEstimateQuestions: [],
       answers: {},
       votes: {},
       shuffledAnswers: [],
       currentQuestionObj: null,
+      roundType: 'question',
+      pendingRoundType: 'question',
       removalTimers: {},
     };
     socket.join(code);
@@ -255,15 +387,22 @@ io.on('connection', (socket) => {
       socket.emit('errorMsg', 'Mindestens 3 Spieler nötig, um zu starten.');
       return;
     }
-    if (questionsList.length === 0) {
+    const roundType = room.pendingRoundType || 'question';
+    if (roundType === 'estimate' && estimateQuestionsList.length === 0) {
+      socket.emit('errorMsg', 'Es sind keine Schätzen-Fragen hinterlegt. Bitte über /admin.html hinzufügen.');
+      return;
+    }
+    if (roundType === 'question' && questionsList.length === 0) {
       socket.emit('errorMsg', 'Es sind keine Fragen hinterlegt. Bitte über /admin.html Fragen hinzufügen.');
       return;
     }
+    room.roundType = roundType;
+    room.pendingRoundType = 'question';
     room.phase = 'question';
     room.answers = {};
     room.votes = {};
     room.shuffledAnswers = [];
-    room.currentQuestionObj = pickNextQuestion(room);
+    room.currentQuestionObj = pickNextQuestion(room, roundType);
     broadcastState(code);
   });
 
@@ -274,13 +413,31 @@ io.on('connection', (socket) => {
     broadcastState(code);
   });
 
-  socket.on('submitAnswer', ({ code, text }) => {
+  socket.on('submitAnswer', async ({ code, text }) => {
     const room = rooms[code];
     if (!room || room.phase !== 'answering') return;
     const myId = socket.data.token;
     const moderatorId = room.players[room.moderatorIndex].id;
     if (myId === moderatorId) return; // Moderator gibt keine Antwort ab
-    room.answers[myId] = (text || '').trim().slice(0, 140);
+
+    if (room.roundType === 'estimate') {
+      const numericValue = Number(text);
+      if (Number.isNaN(numericValue)) return;
+      room.answers[myId] = numericValue;
+      broadcastState(code);
+      return;
+    }
+
+    const rawText = (text || '').trim().slice(0, 140);
+    socket.emit('answerChecking'); // UI: "wird geprüft ..."
+    const corrected = await autoCorrectGerman(rawText);
+
+    // Falls sich der Raum/die Phase währenddessen geändert hat, nichts mehr speichern
+    const stillRoom = rooms[code];
+    if (!stillRoom || stillRoom.phase !== 'answering') return;
+
+    stillRoom.answers[myId] = corrected;
+    socket.emit('answerCorrected', { text: corrected, wasChanged: corrected !== rawText });
     broadcastState(code);
   });
 
@@ -314,7 +471,7 @@ io.on('connection', (socket) => {
 
   socket.on('revealResults', ({ code }) => {
     const room = rooms[code];
-    if (!room) return;
+    if (!room || room.roundType === 'estimate') return;
 
     // Punkte berechnen
     for (const [voterId, chosenOwnerId] of Object.entries(room.votes)) {
@@ -329,13 +486,45 @@ io.on('connection', (socket) => {
       }
     }
 
+    applyEstimateTriggerCheck(room);
     room.phase = 'reveal';
     broadcastState(code);
+    checkForWinner(code, room);
+  });
 
-    const winner = room.players.find(p => p.position >= BOARD_LENGTH);
-    if (winner) {
-      io.to(code).emit('gameOver', { winnerName: winner.name });
-    }
+  // Für Schätzen-Runden: kein Voting, direkte Auswertung nach Nähe zur echten Zahl
+  socket.on('revealEstimate', ({ code }) => {
+    const room = rooms[code];
+    if (!room || room.roundType !== 'estimate') return;
+
+    const realValue = Number(room.currentQuestionObj.answer);
+    const ranked = Object.entries(room.answers)
+      .map(([playerId, value]) => ({ playerId, value: Number(value), diff: Math.abs(Number(value) - realValue) }))
+      .sort((a, b) => a.diff - b.diff);
+
+    ranked.forEach((entry, i) => {
+      const points = ESTIMATE_POINTS[i] || 0;
+      if (points > 0) {
+        const player = room.players.find(p => p.id === entry.playerId);
+        if (player) player.position = Math.min(BOARD_LENGTH, player.position + points);
+      }
+    });
+
+    // Für die Auflösungs-Anzeige im Client aufbereiten (Rang, Name, Wert, Punkte)
+    room.estimateResults = ranked.map((entry, i) => {
+      const player = room.players.find(p => p.id === entry.playerId);
+      return {
+        rank: i + 1,
+        name: player ? player.name : '???',
+        value: entry.value,
+        points: ESTIMATE_POINTS[i] || 0,
+      };
+    });
+
+    applyEstimateTriggerCheck(room);
+    room.phase = 'reveal';
+    broadcastState(code);
+    checkForWinner(code, room);
   });
 
   socket.on('showBoard', ({ code }) => {

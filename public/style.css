@@ -219,6 +219,7 @@ h2 { font-family: var(--font-display); font-weight: 700; font-size: 24px; text-a
   font-weight: 700;
 }
 .board-field-dot.finish { background: var(--gold); color: var(--night); font-size: 14px; }
+.board-field-dot.estimate-field { background: rgba(63,191,160,0.3); border: 1px solid var(--teal); color: var(--teal); }
 .board-token-rect {
   position: absolute;
   width: 30px; height: 30px;
@@ -253,6 +254,7 @@ h2 { font-family: var(--font-display); font-weight: 700; font-size: 24px; text-a
   font-weight: 700;
 }
 .board-field.finish { background: var(--gold); color: var(--night); }
+.board-field.estimate-field { background: rgba(63,191,160,0.3); border: 1px solid var(--teal); }
 .board-token { font-size: 15px; position: absolute; }
 
 .overlay {
