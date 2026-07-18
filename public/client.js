@@ -5,25 +5,33 @@ let currentCode = null;
 let lastState = null;
 
 // ---------- SESSION PERSISTENCE (überlebt Seiten-Reload im selben Tab) ----------
+// Für den Multiplayer-Simulator (/simulator.html) laufen mehrere Spieler-Instanzen als
+// iframes auf derselben Seite. iframes vom selben Ursprung teilen sich sessionStorage,
+// deshalb bekommt jede Instanz über ?testSlot=N ihren eigenen, getrennten Storage-Schlüssel.
+const urlParams = new URLSearchParams(window.location.search);
+const testSlot = urlParams.get('testSlot');
+const TOKEN_KEY = testSlot ? `bedazzled_token_slot${testSlot}` : 'bedazzled_token';
+const ROOM_KEY = testSlot ? `bedazzled_room_slot${testSlot}` : 'bedazzled_room';
+
 function getOrCreateToken() {
-  let token = sessionStorage.getItem('bedazzled_token');
+  let token = sessionStorage.getItem(TOKEN_KEY);
   if (!token) {
     token = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random());
-    sessionStorage.setItem('bedazzled_token', token);
+    sessionStorage.setItem(TOKEN_KEY, token);
   }
   return token;
 }
 const myToken = getOrCreateToken();
 
 function saveSession(code) {
-  sessionStorage.setItem('bedazzled_room', code);
+  sessionStorage.setItem(ROOM_KEY, code);
 }
 function clearSession() {
-  sessionStorage.removeItem('bedazzled_room');
+  sessionStorage.removeItem(ROOM_KEY);
 }
 
 socket.on('connect', () => {
-  const savedCode = sessionStorage.getItem('bedazzled_room');
+  const savedCode = sessionStorage.getItem(ROOM_KEY);
   if (savedCode) {
     showReconnecting(true);
     socket.emit('rejoinRoom', { code: savedCode, token: myToken });
@@ -90,6 +98,14 @@ function renderAvatarPicker() {
   });
 }
 renderAvatarPicker();
+
+// Simulator-Komfort: Name + Spielfigur automatisch vorausfüllen, wenn als Test-Slot geöffnet
+if (testSlot) {
+  document.getElementById('input-name').value = 'Tester ' + testSlot;
+  const slotIndex = (parseInt(testSlot, 10) - 1) % AVATAR_CHOICES.length;
+  selectedAvatar = AVATAR_CHOICES[slotIndex] ? AVATAR_CHOICES[slotIndex].emoji : selectedAvatar;
+  renderAvatarPicker();
+}
 
 // Prüft live, welche Figuren im eingegebenen Raum schon vergeben sind
 let avatarCheckTimeout = null;

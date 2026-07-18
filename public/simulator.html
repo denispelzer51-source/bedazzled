@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Bedazzled – Test-Simulator</title>
+<link rel="stylesheet" href="style.css" />
+<style>
+  body { padding: 0; }
+  #sim-toolbar {
+    position: sticky; top: 0; z-index: 10;
+    background: var(--night-2);
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    padding: 14px 20px;
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  }
+  #sim-toolbar h1 { font-size: 18px; margin: 0; font-family: var(--font-display); }
+  #sim-toolbar .slot-buttons { display: flex; gap: 6px; }
+  #sim-toolbar button {
+    padding: 8px 14px; border-radius: 10px; border: 1.5px solid rgba(255,255,255,0.14);
+    background: transparent; color: var(--ink-dim); font-weight: 700; cursor: pointer; font-size: 13px;
+  }
+  #sim-toolbar button.active { border-color: var(--gold); color: var(--gold); background: rgba(242,183,5,0.08); }
+  #sim-toolbar .hint-inline { font-size: 12px; color: var(--ink-dim); }
+  #sim-grid {
+    display: grid;
+    gap: 10px;
+    padding: 10px;
+    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  }
+  .sim-panel {
+    background: var(--night-2);
+    border-radius: 14px;
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.08);
+    display: flex; flex-direction: column;
+  }
+  .sim-panel-label {
+    padding: 8px 12px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--ink-dim);
+    background: rgba(255,255,255,0.03);
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .sim-panel iframe {
+    width: 100%;
+    height: 780px;
+    border: none;
+    background: var(--night);
+  }
+  #sim-reset {
+    margin-left: auto;
+  }
+</style>
+</head>
+<body>
+
+<div id="sim-toolbar">
+  <h1>🧪 Test-Simulator</h1>
+  <div class="slot-buttons" id="slot-buttons"></div>
+  <span class="hint-inline">Jedes Fenster ist ein unabhängiger Mitspieler. Raum in Fenster 1 erstellen, Code dann in den anderen Fenstern beitreten.</span>
+  <button id="sim-reset">🔄 Alle zurücksetzen</button>
+</div>
+
+<div id="sim-grid"></div>
+
+<script>
+  let playerCount = 3;
+
+  function renderButtons() {
+    const box = document.getElementById('slot-buttons');
+    box.innerHTML = '';
+    [3, 4, 5, 6].forEach(n => {
+      const btn = document.createElement('button');
+      btn.textContent = n + ' Spieler';
+      btn.className = n === playerCount ? 'active' : '';
+      btn.addEventListener('click', () => { playerCount = n; renderButtons(); renderGrid(); });
+      box.appendChild(btn);
+    });
+  }
+
+  function renderGrid() {
+    const grid = document.getElementById('sim-grid');
+    grid.innerHTML = '';
+    for (let i = 1; i <= playerCount; i++) {
+      const panel = document.createElement('div');
+      panel.className = 'sim-panel';
+      panel.innerHTML = `
+        <div class="sim-panel-label">Spieler-Fenster ${i}</div>
+        <iframe src="index.html?testSlot=${i}"></iframe>
+      `;
+      grid.appendChild(panel);
+    }
+  }
+
+  document.getElementById('sim-reset').addEventListener('click', () => {
+    if (!confirm('Alle simulierten Spieler zurücksetzen? (lädt alle Fenster neu, Sitzungen gehen verloren)')) return;
+    for (let i = 1; i <= 6; i++) {
+      sessionStorage.removeItem('bedazzled_token_slot' + i);
+      sessionStorage.removeItem('bedazzled_room_slot' + i);
+    }
+    renderGrid();
+  });
+
+  renderButtons();
+  renderGrid();
+</script>
+</body>
+</html>

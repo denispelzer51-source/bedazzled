@@ -109,6 +109,10 @@ herunterladen und im Repo überschreiben, damit die Änderungen dauerhaft bleibe
 
 ## Änderungsprotokoll
 
+- **18.07.2026:** Test-Simulator unter `/simulator.html` hinzugefügt – simuliert 3-6
+  Mitspieler nebeneinander in einem Browser-Tab (je ein unabhängiges Fenster), damit neue
+  Funktionen getestet werden können, ohne mehrere echte Geräte offen zu haben.
+- **18.07.2026:** Größeres, zentriertes Eingabefeld für Schätzen-Karten (vorher zu klein/schlecht platziert).
 - **18.07.2026:** Erfundene Antworten, die zu ähnlich zur echten Antwort sind (Tippfehler-
   Varianten, Kernbegriff aus der echten Antwort abgeschrieben, o.ä.), werden beim Absenden
   automatisch abgelehnt – der Spieler bekommt eine Meldung und kann direkt neu formulieren.
