@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Bedazzled</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<div id="app">
+
+  <!-- START SCREEN -->
+  <section id="screen-start" class="screen active">
+    <div class="brand">
+      <span class="brand-mask">🎭</span>
+      <h1>Beda<span class="accent">zzled</span></h1>
+      <p class="tagline">Lüg dich zum Sieg.</p>
+    </div>
+
+    <div class="card">
+      <label>Dein Name</label>
+      <input id="input-name" type="text" maxlength="16" placeholder="z.B. Sascha" />
+
+      <div class="actions">
+        <button id="btn-create" class="btn btn-primary">Neuen Raum erstellen</button>
+        <div class="divider"><span>oder</span></div>
+        <input id="input-code" type="text" maxlength="4" inputmode="numeric" placeholder="Raum-Code" />
+        <button id="btn-join" class="btn btn-secondary">Raum beitreten</button>
+      </div>
+      <p id="error-msg" class="error"></p>
+    </div>
+  </section>
+
+  <!-- LOBBY SCREEN -->
+  <section id="screen-lobby" class="screen">
+    <div class="room-header">
+      <span class="room-label">Raum</span>
+      <span id="room-code-display" class="room-code">----</span>
+    </div>
+    <h2>Wer ist dabei?</h2>
+    <ul id="player-list" class="player-list"></ul>
+    <p class="hint">Mindestens 3 Spieler nötig. Teile den Code, damit alle beitreten können.</p>
+    <button id="btn-start-round" class="btn btn-primary">Runde starten</button>
+  </section>
+
+  <!-- QUESTION SCREEN (moderator sees answer, others wait) -->
+  <section id="screen-question" class="screen">
+    <div class="phase-tag">Frage-Phase</div>
+    <p id="moderator-banner" class="moderator-banner"></p>
+    <div class="question-box">
+      <p id="question-text" class="question-text"></p>
+      <p id="real-answer-box" class="real-answer-box hidden"></p>
+    </div>
+    <button id="btn-to-answering" class="btn btn-primary mod-only">Weiter zur Antwortrunde</button>
+    <p class="waiting-msg mod-hide">Der Moderator liest die Frage vor …</p>
+  </section>
+
+  <!-- ANSWERING SCREEN -->
+  <section id="screen-answering" class="screen">
+    <div class="phase-tag">Antwort-Phase</div>
+    <p id="question-text-2" class="question-text small"></p>
+
+    <div id="answer-input-box">
+      <label>Denk dir eine überzeugende, falsche Antwort aus:</label>
+      <textarea id="input-answer" maxlength="140" placeholder="Deine erfundene Antwort …"></textarea>
+      <button id="btn-submit-answer" class="btn btn-primary">Antwort abschicken</button>
+    </div>
+    <p id="moderator-wait-box" class="waiting-msg hidden">Du bist Moderator:in – lehn dich zurück, während die anderen tippen.</p>
+
+    <p class="progress-text"><span id="answered-count">0</span>/<span id="answering-total">0</span> haben geantwortet</p>
+    <button id="btn-to-voting" class="btn btn-secondary mod-only">Weiter zur Abstimmung</button>
+  </section>
+
+  <!-- VOTING SCREEN -->
+  <section id="screen-voting" class="screen">
+    <div class="phase-tag">Abstimm-Phase</div>
+    <p class="question-text small" id="question-text-3"></p>
+    <p class="hint">Welche Antwort ist die echte?</p>
+    <div id="vote-options" class="vote-options"></div>
+    <p id="moderator-vote-wait" class="waiting-msg hidden">Du bist Moderator:in – du stimmst diese Runde nicht ab.</p>
+    <p class="progress-text"><span id="voted-count">0</span>/<span id="voting-total">0</span> haben abgestimmt</p>
+    <button id="btn-to-reveal" class="btn btn-secondary mod-only">Auflösen</button>
+  </section>
+
+  <!-- REVEAL SCREEN -->
+  <section id="screen-reveal" class="screen">
+    <div class="phase-tag">Auflösung</div>
+    <p class="question-text small" id="question-text-4"></p>
+    <div id="reveal-list" class="reveal-list"></div>
+    <button id="btn-next-round" class="btn btn-primary mod-only">Nächste Runde</button>
+    <p class="waiting-msg mod-hide">Warte auf den Moderator …</p>
+  </section>
+
+  <!-- BOARD (always visible bottom bar once in a room) -->
+  <div id="board-bar" class="board-bar hidden">
+    <div id="board-track" class="board-track"></div>
+  </div>
+
+</div>
+
+<div id="winner-overlay" class="overlay hidden">
+  <div class="overlay-card">
+    <span class="brand-mask big">🏆</span>
+    <h2 id="winner-text"></h2>
+    <button id="btn-close-winner" class="btn btn-primary">Schließen</button>
+  </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="client.js"></script>
+</body>
+</html>
