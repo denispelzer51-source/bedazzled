@@ -147,10 +147,22 @@ h2 { font-family: var(--font-display); font-weight: 700; font-size: 24px; text-a
 .vote-option.selected { border-color: var(--gold); background: rgba(242,183,5,0.1); }
 
 .reveal-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 18px; }
-.reveal-item { border-radius: 12px; padding: 14px 16px; font-size: 15px; background: var(--night-2); border-left: 4px solid transparent; }
+.reveal-item { border-radius: 12px; padding: 14px 16px; font-size: 15px; background: var(--night-2); border-left: 4px solid transparent; border: 1px solid transparent; border-left-width: 4px; }
 .reveal-item.real { border-left-color: var(--teal); }
 .reveal-item .owner { display: block; font-size: 12px; color: var(--ink-dim); margin-top: 4px; }
 .reveal-item .fooled { color: var(--pink); font-weight: 600; }
+.reveal-item.my-correct { border-color: #3FBFA0; background: rgba(63,191,160,0.12); }
+.reveal-item.my-wrong { border-color: var(--pink); background: rgba(232,84,122,0.10); }
+.my-vote-badge {
+  display: inline-block;
+  margin-top: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 20px;
+}
+.reveal-item.my-correct .my-vote-badge { background: var(--teal); color: var(--night); }
+.reveal-item.my-wrong .my-vote-badge { background: var(--pink); color: var(--night); }
 
 .reconnect-banner {
   text-align: center;
@@ -189,7 +201,10 @@ h2 { font-family: var(--font-display); font-weight: 700; font-size: 24px; text-a
   background: var(--night-2);
   border-radius: var(--radius);
   margin-bottom: 18px;
-  overflow: hidden;
+}
+#board-fields-large, #board-tokens-large {
+  position: absolute;
+  top: 24px; left: 24px; right: 24px; bottom: 24px;
 }
 .board-field-dot {
   position: absolute;
@@ -251,4 +266,7 @@ h2 { font-family: var(--font-display); font-weight: 700; font-size: 24px; text-a
 
 @media (max-width: 380px) {
   h1 { font-size: 34px; }
+  #board-fields-large, #board-tokens-large { top: 18px; left: 18px; right: 18px; bottom: 18px; }
+  .board-field-dot { width: 26px; height: 26px; margin: -13px 0 0 -13px; font-size: 9px; }
+  .board-token-rect { width: 26px; height: 26px; margin: -13px 0 0 -13px; font-size: 19px; }
 }

@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Bedazzled – Fragen-Verwaltung</title>
+<link rel="stylesheet" href="style.css" />
+<style>
+  #admin-app { max-width: 720px; margin: 0 auto; padding: 28px 20px 60px; }
+  .q-row { background: var(--night-2); border-radius: 12px; padding: 14px 16px; margin-bottom: 10px; }
+  .q-row .q-text { font-weight: 600; margin-bottom: 6px; }
+  .q-text-edit, .a-text-edit { width: 100%; margin-bottom: 8px; }
+  .q-row .a-text { color: var(--teal); font-size: 14px; }
+  .q-row .row-actions { display: flex; gap: 8px; margin-top: 10px; }
+  .row-actions button { flex: none; width: auto; padding: 8px 14px; font-size: 13px; }
+  .section-title { font-family: var(--font-display); font-size: 20px; margin: 28px 0 12px; }
+  textarea#bulk-import { min-height: 140px; }
+  .count-badge { color: var(--ink-dim); font-size: 13px; margin-bottom: 14px; }
+  #login-box { max-width: 360px; margin: 80px auto; }
+</style>
+</head>
+<body>
+
+<div id="admin-app">
+
+  <div id="login-box" class="card">
+    <h1 style="font-size:24px; margin-bottom:14px;">🔑 Fragen-Verwaltung</h1>
+    <label>Zugangscode</label>
+    <input id="input-key" type="password" placeholder="Zugangscode" />
+    <button id="btn-login" class="btn btn-primary">Anmelden</button>
+    <p id="login-error" class="error"></p>
+  </div>
+
+  <div id="main-box" class="hidden">
+    <h1 style="font-size:26px;">Fragen-Verwaltung</h1>
+    <p class="count-badge"><span id="q-count">0</span> Fragen aktuell hinterlegt</p>
+
+    <div class="card">
+      <h2 class="section-title" style="margin-top:0;">Neue Frage hinzufügen</h2>
+      <label>Frage</label>
+      <textarea id="new-question" placeholder="z.B. Warum tragen Schweizer Kühe große Glocken?"></textarea>
+      <label>Echte Antwort</label>
+      <textarea id="new-answer" placeholder="Die tatsächliche, ungewöhnliche Antwort"></textarea>
+      <button id="btn-add-question" class="btn btn-primary">Frage hinzufügen</button>
+    </div>
+
+    <h2 class="section-title">Massen-Import</h2>
+    <div class="card">
+      <p class="hint" style="margin-top:0;">Ein Eintrag pro Zeile, Frage und Antwort getrennt durch <code>;</code>:<br>
+        <code>Frage hier?;Echte Antwort hier</code></p>
+      <textarea id="bulk-import" placeholder="Frage 1?;Antwort 1&#10;Frage 2?;Antwort 2"></textarea>
+      <button id="btn-import" class="btn btn-secondary">Import starten</button>
+      <p id="import-result" class="hint"></p>
+    </div>
+
+    <h2 class="section-title">Alle Fragen (<span id="q-count-2">0</span>)</h2>
+    <button id="btn-export" class="btn btn-secondary" style="margin-bottom:16px;">📥 questions.json herunterladen</button>
+    <div id="question-list"></div>
+  </div>
+
+</div>
+
+<script>
+  let adminKey = sessionStorage.getItem('bedazzled_admin_key') || '';
+  let questions = [];
+
+  const loginBox = document.getElementById('login-box');
+  const mainBox = document.getElementById('main-box');
+
+  async function apiCall(path, options = {}) {
+    const url = path + (path.includes('?') ? '&' : '?') + 'key=' + encodeURIComponent(adminKey);
+    const res = await fetch(url, {
+      ...options,
+      headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+    });
+    if (res.status === 401) throw new Error('UNAUTHORIZED');
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error || 'Unbekannter Fehler');
+    }
+    return res.json();
+  }
+
+  async function loadQuestions() {
+    try {
+      questions = await apiCall('/api/questions');
+      renderQuestions();
+      loginBox.classList.add('hidden');
+      mainBox.classList.remove('hidden');
+    } catch (e) {
+      if (e.message === 'UNAUTHORIZED') {
+        sessionStorage.removeItem('bedazzled_admin_key');
+        document.getElementById('login-error').textContent = 'Falscher Zugangscode.';
+        loginBox.classList.remove('hidden');
+        mainBox.classList.add('hidden');
+      } else {
+        document.getElementById('login-error').textContent = e.message;
+      }
+    }
+  }
+
+  document.getElementById('btn-login').addEventListener('click', () => {
+    adminKey = document.getElementById('input-key').value.trim();
+    sessionStorage.setItem('bedazzled_admin_key', adminKey);
+    loadQuestions();
+  });
+
+  function renderQuestions() {
+    document.getElementById('q-count').textContent = questions.length;
+    document.getElementById('q-count-2').textContent = questions.length;
+    const box = document.getElementById('question-list');
+    box.innerHTML = '';
+    questions.forEach((q, idx) => {
+      const row = document.createElement('div');
+      row.className = 'q-row';
+      row.innerHTML = `
+        <div class="q-text">${escapeHtml(q.question)}</div>
+        <div class="a-text">✔ ${escapeHtml(q.answer)}</div>
+        <div class="row-actions">
+          <button class="btn btn-secondary btn-edit">Bearbeiten</button>
+          <button class="btn btn-secondary btn-delete">Löschen</button>
+        </div>
+      `;
+      row.querySelector('.btn-delete').addEventListener('click', async () => {
+        if (!confirm('Diese Frage wirklich löschen?')) return;
+        questions = await apiCall('/api/questions/' + idx, { method: 'DELETE' });
+        renderQuestions();
+      });
+      row.querySelector('.btn-edit').addEventListener('click', () => startEdit(row, q, idx));
+      box.appendChild(row);
+    });
+  }
+
+  function startEdit(row, q, idx) {
+    row.innerHTML = `
+      <textarea class="q-text-edit">${escapeHtml(q.question)}</textarea>
+      <textarea class="a-text-edit">${escapeHtml(q.answer)}</textarea>
+      <div class="row-actions">
+        <button class="btn btn-primary btn-save">Speichern</button>
+        <button class="btn btn-secondary btn-cancel">Abbrechen</button>
+      </div>
+    `;
+    row.querySelector('.btn-save').addEventListener('click', async () => {
+      const question = row.querySelector('.q-text-edit').value.trim();
+      const answer = row.querySelector('.a-text-edit').value.trim();
+      if (!question || !answer) return;
+      questions = await apiCall('/api/questions/' + idx, {
+        method: 'PUT',
+        body: JSON.stringify({ question, answer }),
+      });
+      renderQuestions();
+    });
+    row.querySelector('.btn-cancel').addEventListener('click', renderQuestions);
+  }
+
+  document.getElementById('btn-add-question').addEventListener('click', async () => {
+    const question = document.getElementById('new-question').value.trim();
+    const answer = document.getElementById('new-answer').value.trim();
+    if (!question || !answer) return alert('Bitte Frage und Antwort ausfüllen.');
+    questions = await apiCall('/api/questions', {
+      method: 'POST',
+      body: JSON.stringify({ question, answer }),
+    });
+    document.getElementById('new-question').value = '';
+    document.getElementById('new-answer').value = '';
+    renderQuestions();
+  });
+
+  document.getElementById('btn-import').addEventListener('click', async () => {
+    const raw = document.getElementById('bulk-import').value;
+    const lines = raw.split('\n').map(l => l.trim()).filter(Boolean);
+    const items = lines.map(line => {
+      const sepIdx = line.indexOf(';');
+      if (sepIdx === -1) return null;
+      return { question: line.slice(0, sepIdx).trim(), answer: line.slice(sepIdx + 1).trim() };
+    }).filter(Boolean);
+
+    if (items.length === 0) {
+      document.getElementById('import-result').textContent = 'Kein gültiges Format gefunden (Frage;Antwort pro Zeile).';
+      return;
+    }
+    try {
+      questions = await apiCall('/api/questions/import', {
+        method: 'POST',
+        body: JSON.stringify({ items }),
+      });
+      document.getElementById('import-result').textContent = `${items.length} Fragen importiert.`;
+      document.getElementById('bulk-import').value = '';
+      renderQuestions();
+    } catch (e) {
+      document.getElementById('import-result').textContent = 'Fehler: ' + e.message;
+    }
+  });
+
+  document.getElementById('btn-export').addEventListener('click', () => {
+    const blob = new Blob([JSON.stringify(questions, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'questions.json';
+    a.click();
+  });
+
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  if (adminKey) loadQuestions();
+</script>
+</body>
+</html>

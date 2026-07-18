@@ -10,12 +10,89 @@ const server = http.createServer(app);
 const io = new Server(server);
 
 app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.json());
 
-const QUESTIONS = JSON.parse(fs.readFileSync(path.join(__dirname, 'questions.json'), 'utf8'));
+const QUESTIONS_PATH = path.join(__dirname, 'questions.json');
+let questionsList = JSON.parse(fs.readFileSync(QUESTIONS_PATH, 'utf8'));
 const BOARD_LENGTH = 20; // Zielfeld
 const POINTS_CORRECT_GUESS = 3;
 const POINTS_PER_FOOLED_PLAYER = 2;
 const DISCONNECT_GRACE_MS = 3 * 60 * 1000; // 3 Minuten, bevor ein getrennter Spieler endgültig entfernt wird
+
+// Zugangscode für die Fragen-Verwaltung (/admin.html). Auf Render als Umgebungsvariable
+// ADMIN_KEY setzen, um den Standardwert zu überschreiben.
+const ADMIN_KEY = process.env.ADMIN_KEY || 'bedazzled-admin';
+
+function checkAdmin(req, res, next) {
+  const key = req.query.key || req.headers['x-admin-key'];
+  if (key !== ADMIN_KEY) {
+    res.status(401).json({ error: 'Falscher Zugangscode.' });
+    return;
+  }
+  next();
+}
+
+function saveQuestions() {
+  fs.writeFileSync(QUESTIONS_PATH, JSON.stringify(questionsList, null, 2), 'utf8');
+}
+
+// ---------- Fragen-Verwaltung (Admin-API) ----------
+app.get('/api/questions', checkAdmin, (req, res) => {
+  res.json(questionsList);
+});
+
+app.post('/api/questions', checkAdmin, (req, res) => {
+  const { question, answer } = req.body || {};
+  if (!question || !answer) {
+    res.status(400).json({ error: 'Frage und Antwort sind erforderlich.' });
+    return;
+  }
+  questionsList.push({ question: question.trim(), answer: answer.trim() });
+  saveQuestions();
+  res.json(questionsList);
+});
+
+app.put('/api/questions/:index', checkAdmin, (req, res) => {
+  const idx = parseInt(req.params.index, 10);
+  if (!questionsList[idx]) {
+    res.status(404).json({ error: 'Frage nicht gefunden.' });
+    return;
+  }
+  const { question, answer } = req.body || {};
+  if (question) questionsList[idx].question = question.trim();
+  if (answer) questionsList[idx].answer = answer.trim();
+  saveQuestions();
+  res.json(questionsList);
+});
+
+app.delete('/api/questions/:index', checkAdmin, (req, res) => {
+  const idx = parseInt(req.params.index, 10);
+  if (!questionsList[idx]) {
+    res.status(404).json({ error: 'Frage nicht gefunden.' });
+    return;
+  }
+  questionsList.splice(idx, 1);
+  saveQuestions();
+  res.json(questionsList);
+});
+
+app.post('/api/questions/import', checkAdmin, (req, res) => {
+  const { items } = req.body || {};
+  if (!Array.isArray(items)) {
+    res.status(400).json({ error: 'Erwartet ein Array von Fragen.' });
+    return;
+  }
+  const valid = items
+    .filter(i => i && i.question && i.answer)
+    .map(i => ({ question: String(i.question).trim(), answer: String(i.answer).trim() }));
+  if (valid.length === 0) {
+    res.status(400).json({ error: 'Keine gültigen Fragen im Import gefunden.' });
+    return;
+  }
+  questionsList.push(...valid);
+  saveQuestions();
+  res.json(questionsList);
+});
 
 /** rooms: { code: { players: [{id (=Token, stabil ueber Reconnects), name, avatar, position, socketId}],
  *   moderatorIndex, phase, usedQuestions:[], answers: {playerId: text}, votes: {playerId: chosenAnswerOwnerId},
@@ -49,6 +126,15 @@ function publicRoomState(room, forPlayerId) {
     realAnswer: (isModerator && room.phase === 'question' && room.currentQuestionObj) ? room.currentQuestionObj.answer : null,
     answeredCount: Object.keys(room.answers || {}).length,
     votedCount: Object.keys(room.votes || {}).length,
+    // Der/die Moderator:in sieht schon während der Antwort-Phase, wer was geschrieben hat
+    answersPreview: (isModerator && room.phase === 'answering')
+      ? Object.entries(room.answers).map(([pid, text]) => {
+          const author = room.players.find(pp => pp.id === pid);
+          return { name: author ? author.name : '???', text };
+        })
+      : [],
+    // Damit jede:r sofort sieht, ob die eigene Wahl in der Abstimmung richtig war
+    myVote: room.votes[forPlayerId] || null,
     shuffledAnswers: room.phase === 'voting' || room.phase === 'reveal'
       ? room.shuffledAnswers.map(a => room.phase === 'reveal' ? a : { text: a.text, ownerId: a.ownerId })
       : [],
@@ -64,12 +150,12 @@ function broadcastState(roomCode) {
 }
 
 function pickNextQuestion(room) {
-  const available = QUESTIONS.map((q, i) => i).filter(i => !room.usedQuestions.includes(i));
-  const pool = available.length > 0 ? available : QUESTIONS.map((q, i) => i);
+  const available = questionsList.map((q, i) => i).filter(i => !room.usedQuestions.includes(i));
+  const pool = available.length > 0 ? available : questionsList.map((q, i) => i);
   if (available.length === 0) room.usedQuestions = [];
   const idx = pool[Math.floor(Math.random() * pool.length)];
   room.usedQuestions.push(idx);
-  return { index: idx, ...QUESTIONS[idx] };
+  return { index: idx, ...questionsList[idx] };
 }
 
 function removePlayerForGood(roomCode, playerId) {
@@ -167,6 +253,10 @@ io.on('connection', (socket) => {
     const room = rooms[code];
     if (!room || room.players.length < 3) {
       socket.emit('errorMsg', 'Mindestens 3 Spieler nötig, um zu starten.');
+      return;
+    }
+    if (questionsList.length === 0) {
+      socket.emit('errorMsg', 'Es sind keine Fragen hinterlegt. Bitte über /admin.html Fragen hinzufügen.');
       return;
     }
     room.phase = 'question';

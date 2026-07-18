@@ -143,6 +143,12 @@ function showError(msg) {
   document.getElementById('error-msg').textContent = msg;
 }
 
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
 socket.on('errorMsg', showError);
 
 socket.on('joined', ({ code, playerId }) => {
@@ -396,9 +402,19 @@ socket.on('state', (state) => {
     if (iAmModerator) {
       document.getElementById('answer-input-box').classList.add('hidden');
       document.getElementById('moderator-wait-box').classList.remove('hidden');
+      const previewBox = document.getElementById('moderator-answers-preview');
+      previewBox.classList.remove('hidden');
+      previewBox.innerHTML = '';
+      (state.answersPreview || []).forEach(a => {
+        const div = document.createElement('div');
+        div.className = 'reveal-item';
+        div.innerHTML = `${escapeHtml(a.text)}<span class="owner">${escapeHtml(a.name)}</span>`;
+        previewBox.appendChild(div);
+      });
     } else {
       document.getElementById('answer-input-box').classList.remove('hidden');
       document.getElementById('moderator-wait-box').classList.add('hidden');
+      document.getElementById('moderator-answers-preview').classList.add('hidden');
     }
     showScreen('answering');
   }
@@ -430,9 +446,13 @@ socket.on('state', (state) => {
     list.innerHTML = '';
     state.shuffledAnswers.forEach(a => {
       const div = document.createElement('div');
-      div.className = 'reveal-item' + (a.isReal ? ' real' : '');
+      const isMyVote = state.myVote === a.ownerId;
+      let cls = 'reveal-item' + (a.isReal ? ' real' : '');
+      if (isMyVote) cls += a.isReal ? ' my-correct' : ' my-wrong';
+      div.className = cls;
       const ownerName = a.isReal ? 'Echte Antwort ✔' : (state.players.find(p => p.id === a.ownerId)?.name || '???');
-      div.innerHTML = `${a.text}<span class="owner">${ownerName}</span>`;
+      const badge = isMyVote ? `<span class="my-vote-badge">${a.isReal ? '✔ Richtig getippt!' : '✗ Reingefallen'}</span>` : '';
+      div.innerHTML = `${escapeHtml(a.text)}<span class="owner">${ownerName}</span>${badge}`;
       list.appendChild(div);
     });
     showScreen('reveal');

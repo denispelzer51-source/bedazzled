@@ -63,8 +63,31 @@ Aktuell 6 auswählbare Platzhalter-Symbole, pro Raum ist jede Figur nur einmal v
 
 ---
 
+## Fragen-Verwaltung
+
+Unter `/admin.html` (z. B. `https://dein-link.onrender.com/admin.html`) gibt es eine separate
+Verwaltungsseite, getrennt von der Spieler-App:
+
+- **Zugangscode:** Standard ist `bedazzled-admin`. Auf Render änderbar über die Umgebungsvariable
+  `ADMIN_KEY` (Dashboard → Environment). Unbedingt ändern, bevor die App breiter geteilt wird –
+  sonst kann jeder mit dem Link auch Fragen bearbeiten.
+- **Einzeln hinzufügen/bearbeiten/löschen:** direkt über die Oberfläche
+- **Massen-Import:** ein Eintrag pro Zeile im Format `Frage?;Echte Antwort`
+- **Export:** Button lädt die aktuelle `questions.json` herunter
+
+**Wichtig zu wissen:** Änderungen über `/admin.html` werden zwar sofort im laufenden Server
+gespeichert, aber **nicht automatisch ins GitHub-Repo übernommen**. Bei einem neuen Deploy
+(z. B. nach einem Code-Update) wird die Datei wieder auf den Stand im Repo zurückgesetzt.
+Deshalb: Nach größeren Fragen-Updates über den Export-Button die neue `questions.json`
+herunterladen und im Repo überschreiben, damit die Änderungen dauerhaft bleiben.
+
 ## Änderungsprotokoll
 
+- **18.07.2026:** Moderator:in sieht während der Antwort-Phase live alle eingereichten
+  Antworten samt Namen; Board-Darstellung nicht mehr abgeschnitten (Ränder korrigiert);
+  Auflösung zeigt jedem Spieler grün/rot, ob die eigene Wahl richtig war, samt Autor:in
+- **18.07.2026:** Fragen-Verwaltung unter `/admin.html` hinzugefügt (hinzufügen, bearbeiten,
+  löschen, Massen-Import per Textformat, Export als Datei)
 - **18.07.2026:** Punkte angepasst – richtige Antwort erraten: 3 Punkte (vorher 2),
   pro getäuschtem Mitspieler: 2 Punkte (vorher 3)
 - **18.07.2026:** Spielfiguren-Auswahl von 3 auf 6 erweitert, Mehrfachvergabe pro Raum gesperrt
