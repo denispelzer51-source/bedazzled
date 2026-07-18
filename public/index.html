@@ -22,6 +22,9 @@
       <label>Dein Name</label>
       <input id="input-name" type="text" maxlength="16" placeholder="z.B. Sascha" />
 
+      <label>Deine Spielfigur</label>
+      <div id="avatar-picker" class="avatar-picker"></div>
+
       <div class="actions">
         <button id="btn-create" class="btn btn-primary">Neuen Raum erstellen</button>
         <div class="divider"><span>oder</span></div>
@@ -78,6 +81,8 @@
     <p class="question-text small" id="question-text-3"></p>
     <p class="hint">Welche Antwort ist die echte?</p>
     <div id="vote-options" class="vote-options"></div>
+    <button id="btn-submit-vote" class="btn btn-primary" disabled>Auswahl abschicken</button>
+    <p id="vote-submitted-msg" class="waiting-msg hidden">Deine Stimme wurde abgeschickt ✓</p>
     <p id="moderator-vote-wait" class="waiting-msg hidden">Du bist Moderator:in – du stimmst diese Runde nicht ab.</p>
     <p class="progress-text"><span id="voted-count">0</span>/<span id="voting-total">0</span> haben abgestimmt</p>
     <button id="btn-to-reveal" class="btn btn-secondary mod-only">Auflösen</button>
@@ -88,6 +93,18 @@
     <div class="phase-tag">Auflösung</div>
     <p class="question-text small" id="question-text-4"></p>
     <div id="reveal-list" class="reveal-list"></div>
+    <button id="btn-to-board" class="btn btn-primary mod-only">Weiter zum Spielbrett</button>
+    <p class="waiting-msg mod-hide">Warte auf den Moderator …</p>
+  </section>
+
+  <!-- BOARD SCREEN (full-size, animated) -->
+  <section id="screen-board" class="screen">
+    <div class="phase-tag">Spielbrett</div>
+    <h2>Wer zieht wie weit?</h2>
+    <div id="board-large" class="board-large">
+      <div id="board-track-large" class="board-track-large"></div>
+    </div>
+    <div id="board-legend" class="board-legend"></div>
     <button id="btn-next-round" class="btn btn-primary mod-only">Nächste Runde</button>
     <p class="waiting-msg mod-hide">Warte auf den Moderator …</p>
   </section>

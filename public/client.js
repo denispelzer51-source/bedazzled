@@ -4,11 +4,15 @@ let myId = null;
 let currentCode = null;
 let lastState = null;
 
-const AVATARS = ['🦊', '🐸', '🦉', '🐙', '🦁', '🐼', '🦄', '🐢', '🦋', '🐳'];
-function avatarFor(id) {
-  let hash = 0;
-  for (const ch of id) hash = (hash * 31 + ch.charCodeAt(0)) % 1000;
-  return AVATARS[hash % AVATARS.length];
+const AVATAR_CHOICES = [
+  { emoji: '🦊', label: 'Fuchs' },
+  { emoji: '🐢', label: 'Schildkröte' },
+  { emoji: '🦄', label: 'Einhorn' },
+];
+let selectedAvatar = AVATAR_CHOICES[0].emoji;
+
+function avatarFor(player) {
+  return (player && player.avatar) || '🦊';
 }
 
 const screens = {
@@ -18,6 +22,7 @@ const screens = {
   answering: document.getElementById('screen-answering'),
   voting: document.getElementById('screen-voting'),
   reveal: document.getElementById('screen-reveal'),
+  board: document.getElementById('screen-board'),
 };
 
 function showScreen(name) {
@@ -25,11 +30,28 @@ function showScreen(name) {
   screens[name].classList.add('active');
 }
 
+// ---------- AVATAR PICKER ----------
+function renderAvatarPicker() {
+  const box = document.getElementById('avatar-picker');
+  box.innerHTML = '';
+  AVATAR_CHOICES.forEach(a => {
+    const div = document.createElement('div');
+    div.className = 'avatar-option' + (a.emoji === selectedAvatar ? ' selected' : '');
+    div.innerHTML = `<span class="emoji">${a.emoji}</span><span class="label">${a.label}</span>`;
+    div.addEventListener('click', () => {
+      selectedAvatar = a.emoji;
+      renderAvatarPicker();
+    });
+    box.appendChild(div);
+  });
+}
+renderAvatarPicker();
+
 // ---------- START SCREEN ----------
 document.getElementById('btn-create').addEventListener('click', () => {
   const name = document.getElementById('input-name').value.trim();
   if (!name) return showError('Bitte gib deinen Namen ein.');
-  socket.emit('createRoom', { name });
+  socket.emit('createRoom', { name, avatar: selectedAvatar });
 });
 
 document.getElementById('btn-join').addEventListener('click', () => {
@@ -37,7 +59,7 @@ document.getElementById('btn-join').addEventListener('click', () => {
   const code = document.getElementById('input-code').value.trim();
   if (!name) return showError('Bitte gib deinen Namen ein.');
   if (!code) return showError('Bitte gib einen Raum-Code ein.');
-  socket.emit('joinRoom', { name, code });
+  socket.emit('joinRoom', { name, code, avatar: selectedAvatar });
 });
 
 function showError(msg) {
@@ -79,6 +101,8 @@ document.getElementById('btn-to-voting').addEventListener('click', () => {
 
 // ---------- VOTING ----------
 let selectedVote = null;
+let voteSubmitted = false;
+
 function renderVoteOptions(shuffledAnswers) {
   const box = document.getElementById('vote-options');
   box.innerHTML = '';
@@ -87,20 +111,36 @@ function renderVoteOptions(shuffledAnswers) {
     div.className = 'vote-option';
     div.textContent = a.text;
     div.addEventListener('click', () => {
+      if (voteSubmitted) return;
       document.querySelectorAll('.vote-option').forEach(el => el.classList.remove('selected'));
       div.classList.add('selected');
       selectedVote = a.ownerId;
-      socket.emit('submitVote', { code: currentCode, chosenOwnerId: a.ownerId });
+      document.getElementById('btn-submit-vote').disabled = false;
     });
     box.appendChild(div);
   });
 }
+
+document.getElementById('btn-submit-vote').addEventListener('click', () => {
+  if (!selectedVote || voteSubmitted) return;
+  socket.emit('submitVote', { code: currentCode, chosenOwnerId: selectedVote });
+  voteSubmitted = true;
+  document.getElementById('btn-submit-vote').disabled = true;
+  document.getElementById('btn-submit-vote').classList.add('hidden');
+  document.getElementById('vote-submitted-msg').classList.remove('hidden');
+  document.querySelectorAll('.vote-option').forEach(el => el.style.pointerEvents = 'none');
+});
 
 document.getElementById('btn-to-reveal').addEventListener('click', () => {
   socket.emit('revealResults', { code: currentCode });
 });
 
 // ---------- REVEAL ----------
+document.getElementById('btn-to-board').addEventListener('click', () => {
+  socket.emit('showBoard', { code: currentCode });
+});
+
+// ---------- BOARD ----------
 document.getElementById('btn-next-round').addEventListener('click', () => {
   socket.emit('nextRound', { code: currentCode });
 });
@@ -114,7 +154,7 @@ document.getElementById('btn-close-winner').addEventListener('click', () => {
   document.getElementById('winner-overlay').classList.add('hidden');
 });
 
-// ---------- BOARD RENDER ----------
+// ---------- BOARD RENDER (mini bar, always visible) ----------
 function renderBoard(players) {
   const track = document.getElementById('board-track');
   const BOARD_LENGTH = 20;
@@ -127,7 +167,7 @@ function renderBoard(players) {
       const tok = document.createElement('span');
       tok.className = 'board-token';
       tok.style.transform = `translate(${idx * 6 - 4}px, ${idx * -6}px)`;
-      tok.textContent = avatarFor(p.id);
+      tok.textContent = avatarFor(p);
       tok.title = p.name;
       field.appendChild(tok);
     });
@@ -135,8 +175,61 @@ function renderBoard(players) {
   }
 }
 
+// ---------- BOARD RENDER (large, animated screen) ----------
+const BOARD_LENGTH = 20;
+const FIELD_WIDTH = 42 + 6; // width + gap, matches CSS
+let roundStartPositions = {};
+
+function renderBoardLarge(players, fromPositions, animate) {
+  const track = document.getElementById('board-track-large');
+  track.innerHTML = '';
+  for (let i = 0; i <= BOARD_LENGTH; i++) {
+    const field = document.createElement('div');
+    field.className = 'board-field-large' + (i === BOARD_LENGTH ? ' finish' : '');
+    field.textContent = i === BOARD_LENGTH ? '🏁' : i;
+    track.appendChild(field);
+  }
+  players.forEach((p, idx) => {
+    const tok = document.createElement('span');
+    tok.className = 'board-token-large';
+    tok.textContent = avatarFor(p);
+    tok.title = p.name;
+    const startPos = animate ? (fromPositions[p.id] ?? p.position) : p.position;
+    tok.style.top = (idx % 3) * 20 + 'px';
+    tok.style.left = (startPos * FIELD_WIDTH) + 'px';
+    track.appendChild(tok);
+    if (animate) {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          tok.style.left = (p.position * FIELD_WIDTH) + 'px';
+        });
+      });
+    }
+  });
+
+  const legend = document.getElementById('board-legend');
+  legend.innerHTML = '';
+  players.forEach(p => {
+    const span = document.createElement('span');
+    span.textContent = `${avatarFor(p)} ${p.name}: Feld ${p.position}`;
+    legend.appendChild(span);
+  });
+}
+
 // ---------- MAIN STATE HANDLER ----------
 socket.on('state', (state) => {
+  const enteringVoting = state.phase === 'voting' && (!lastState || lastState.phase !== 'voting');
+  if (enteringVoting) {
+    selectedVote = null;
+    voteSubmitted = false;
+  }
+  const enteringQuestion = state.phase === 'question' && (!lastState || lastState.phase !== 'question');
+  if (enteringQuestion) {
+    roundStartPositions = {};
+    state.players.forEach(p => { roundStartPositions[p.id] = p.position; });
+  }
+  const enteringBoard = state.phase === 'board' && (!lastState || lastState.phase !== 'board');
+
   lastState = state;
   const iAmModerator = state.moderatorId === myId;
 
@@ -152,7 +245,7 @@ socket.on('state', (state) => {
     state.players.forEach(p => {
       const li = document.createElement('li');
       const isMod = p.id === state.moderatorId;
-      li.innerHTML = `<span>${avatarFor(p.id)} ${p.name}${p.id === myId ? ' (du)' : ''}</span>`;
+      li.innerHTML = `<span>${avatarFor(p)} ${p.name}${p.id === myId ? ' (du)' : ''}</span>`;
       if (isMod) {
         const tag = document.createElement('span');
         tag.className = 'tag';
@@ -198,11 +291,17 @@ socket.on('state', (state) => {
     document.getElementById('voting-total').textContent = Math.max(state.players.length - 1, 0);
     if (iAmModerator) {
       document.getElementById('vote-options').classList.add('hidden');
+      document.getElementById('btn-submit-vote').classList.add('hidden');
       document.getElementById('moderator-vote-wait').classList.remove('hidden');
     } else {
-      document.getElementById('vote-options').classList.remove('hidden');
       document.getElementById('moderator-vote-wait').classList.add('hidden');
-      renderVoteOptions(state.shuffledAnswers);
+      if (enteringVoting) {
+        document.getElementById('vote-options').classList.remove('hidden');
+        document.getElementById('btn-submit-vote').classList.remove('hidden');
+        document.getElementById('btn-submit-vote').disabled = true;
+        document.getElementById('vote-submitted-msg').classList.add('hidden');
+        renderVoteOptions(state.shuffledAnswers);
+      }
     }
     showScreen('voting');
   }
@@ -219,6 +318,11 @@ socket.on('state', (state) => {
       list.appendChild(div);
     });
     showScreen('reveal');
+  }
+
+  if (state.phase === 'board') {
+    renderBoardLarge(state.players, roundStartPositions, enteringBoard);
+    showScreen('board');
   }
 });
 

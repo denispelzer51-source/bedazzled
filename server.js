@@ -35,7 +35,7 @@ function publicRoomState(room, forPlayerId) {
   return {
     code: room.code,
     phase: room.phase,
-    players: room.players.map(p => ({ id: p.id, name: p.name, position: p.position })),
+    players: room.players.map(p => ({ id: p.id, name: p.name, avatar: p.avatar, position: p.position })),
     moderatorId,
     currentQuestion: room.phase !== 'lobby' && room.currentQuestionObj ? room.currentQuestionObj.question : null,
     realAnswer: (isModerator && room.phase === 'question' && room.currentQuestionObj) ? room.currentQuestionObj.answer : null,
@@ -65,9 +65,9 @@ function pickNextQuestion(room) {
 }
 
 io.on('connection', (socket) => {
-  socket.on('createRoom', ({ name }) => {
+  socket.on('createRoom', ({ name, avatar }) => {
     const code = genRoomCode();
-    const player = { id: socket.id, name: name || 'Spieler', position: 0, socketId: socket.id };
+    const player = { id: socket.id, name: name || 'Spieler', avatar: avatar || '🦊', position: 0, socketId: socket.id };
     rooms[code] = {
       code,
       players: [player],
@@ -84,7 +84,7 @@ io.on('connection', (socket) => {
     broadcastState(code);
   });
 
-  socket.on('joinRoom', ({ name, code }) => {
+  socket.on('joinRoom', ({ name, code, avatar }) => {
     const room = rooms[code];
     if (!room) {
       socket.emit('errorMsg', 'Raum nicht gefunden. Prüfe den Code.');
@@ -94,7 +94,7 @@ io.on('connection', (socket) => {
       socket.emit('errorMsg', 'Spiel läuft schon. Bitte warte auf die nächste Runde.');
       return;
     }
-    room.players.push({ id: socket.id, name: name || 'Spieler', position: 0, socketId: socket.id });
+    room.players.push({ id: socket.id, name: name || 'Spieler', avatar: avatar || '🦊', position: 0, socketId: socket.id });
     socket.join(code);
     socket.emit('joined', { code, playerId: socket.id });
     broadcastState(code);
@@ -182,6 +182,13 @@ io.on('connection', (socket) => {
     if (winner) {
       io.to(code).emit('gameOver', { winnerName: winner.name });
     }
+  });
+
+  socket.on('showBoard', ({ code }) => {
+    const room = rooms[code];
+    if (!room) return;
+    room.phase = 'board';
+    broadcastState(code);
   });
 
   socket.on('nextRound', ({ code }) => {
