@@ -129,6 +129,9 @@ herunterladen und im Repo überschreiben, damit die Änderungen dauerhaft bleibe
 
 ## Änderungsprotokoll
 
+- **19.07.2026:** Alle 40 "Historischer Kontext"-Fragen umformuliert – gleiche Fakten, aber
+  deutlich verspielter und neugieriger im Ton (angelehnt an den echten Nobody-is-Perfect-Stil,
+  keine Frage übernommen), statt trocken-biografischer Wikipedia-Formulierungen.
 - **19.07.2026:** Sechs Verbesserungen: (1) Zurück-Pfeil in der Lobby, um einen versehentlich
   erstellten Raum zu verlassen und stattdessen einem anderen beizutreten. (2) Moderator:in
   sieht jetzt auch bei Schätzen-Karten live, was eingetippt wird (vorher nur bei Bluff-Fragen).
