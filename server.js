@@ -555,6 +555,16 @@ io.on('connection', (socket) => {
     const moderatorId = room.players[room.moderatorIndex].id;
     if (myId === moderatorId) return; // Moderator gibt keine Antwort ab
 
+    const requiredCount = room.players.length - 1; // alle außer Moderator:in
+    const alreadyHadAnswer = room.answers[myId] !== undefined;
+    const currentAnsweredCount = Object.keys(room.answers).length;
+    // Ändern ist erlaubt, solange noch nicht alle abgeschickt haben. Sobald der komplette
+    // Satz an Antworten vorliegt, wird nichts mehr angenommen (auch keine erneute Änderung).
+    if (alreadyHadAnswer && currentAnsweredCount >= requiredCount) {
+      socket.emit('answerLocked', { reason: 'Alle haben schon abgeschickt – Änderungen sind nicht mehr möglich.' });
+      return;
+    }
+
     if (room.roundType === 'estimate') {
       const numericValue = Number(text);
       if (Number.isNaN(numericValue)) return;
@@ -576,6 +586,15 @@ io.on('connection', (socket) => {
     // Falls sich der Raum/die Phase währenddessen geändert hat, nichts mehr speichern
     const stillRoom = rooms[code];
     if (!stillRoom || stillRoom.phase !== 'answering') return;
+
+    // Falls inzwischen (während der Rechtschreibprüfung) alle anderen fertig wurden,
+    // diese späte Änderung nicht mehr übernehmen
+    const stillAlreadyHad = stillRoom.answers[myId] !== undefined;
+    const stillCount = Object.keys(stillRoom.answers).length;
+    if (stillAlreadyHad && stillCount >= requiredCount) {
+      socket.emit('answerLocked', { reason: 'Alle haben schon abgeschickt – Änderungen sind nicht mehr möglich.' });
+      return;
+    }
 
     // Nach der Rechtschreibkorrektur nochmal prüfen: manchmal macht erst die Korrektur
     // den Text verräterisch ähnlich zur echten Antwort

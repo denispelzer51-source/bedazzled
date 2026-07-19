@@ -137,6 +137,14 @@ herunterladen und im Repo überschreiben, damit die Änderungen dauerhaft bleibe
 
 ## Änderungsprotokoll
 
+- **19.07.2026:** Drei weitere Anpassungen: (1) Verbindungsaufbau robuster gemacht – Timeout
+  auf 45 Sekunden erhöht (Render-Kaltstart kann bis zu 50 Sekunden dauern) und sichtbare
+  Fehlermeldung bei Verbindungsproblemen, inkl. Hinweis, den Link ggf. aus dem WhatsApp-
+  eigenen Browser heraus im echten Browser zu öffnen (bekanntes iOS-Problem). (2) Moderator-
+  Text in der Antwort-Phase gekürzt ("Du bist Moderator:in. Hier siehst du live, wer was
+  schreibt:"). (3) Eingereichte Antworten können jetzt geändert werden, solange noch nicht
+  alle Mitspieler abgeschickt haben – sobald der letzte Spieler fertig ist, werden alle
+  Eingabefelder automatisch gesperrt.
 - **19.07.2026:** Drei Feinschliffe: (1) Bei der Auflösung stehen jetzt die konkreten Namen
   der getäuschten Mitspieler dabei, statt nur einer Anzahl ("🎣 Anna, Ben sind darauf
   reingefallen!" statt "2 Mitspieler sind reingefallen"). (2) Spielbrett-Zugsound ersetzt –

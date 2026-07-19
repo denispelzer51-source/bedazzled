@@ -1,4 +1,11 @@
-const socket = io();
+const socket = io({ timeout: 45000, reconnectionAttempts: 15 });
+
+let connectionTroubleShown = false;
+socket.on('connect_error', () => {
+  if (connectionTroubleShown) return;
+  connectionTroubleShown = true;
+  showError('Verbindung dauert länger als erwartet (der Server "wacht" evtl. gerade erst auf, das kann bis zu 50 Sekunden dauern). Falls du den Link direkt aus WhatsApp geöffnet hast: tippe oben rechts auf "..." und wähle "Im Browser öffnen" – der eingebaute WhatsApp-Browser blockiert manchmal die Verbindung, besonders auf iPhones.');
+});
 
 // ---------- SOUNDEFFEKTE (dezent, per Web Audio erzeugt, keine externen Dateien nötig) ----------
 let audioCtx = null;
@@ -118,6 +125,8 @@ function clearSession() {
 }
 
 socket.on('connect', () => {
+  connectionTroubleShown = false;
+  showError('');
   const savedCode = sessionStorage.getItem(ROOM_KEY);
   if (savedCode) {
     showReconnecting(true);
@@ -320,9 +329,7 @@ document.getElementById('btn-submit-answer').addEventListener('click', () => {
     const value = numberInput.value.trim();
     if (value === '') return;
     socket.emit('submitAnswer', { code: currentCode, text: value });
-    numberInput.disabled = true;
-    document.getElementById('btn-submit-answer').disabled = true;
-    document.getElementById('btn-submit-answer').textContent = 'Schätzung abgeschickt ✓';
+    document.getElementById('btn-submit-answer').textContent = 'Schätzung abgeschickt ✓ (Änderung möglich)';
     playSubmitSound();
     return;
   }
@@ -349,10 +356,21 @@ socket.on('answerRejected', ({ reason }) => {
   ta.focus();
 });
 
+socket.on('answerLocked', ({ reason }) => {
+  document.getElementById('input-answer').disabled = true;
+  document.getElementById('input-answer-number').disabled = true;
+  document.getElementById('btn-submit-answer').disabled = true;
+  document.getElementById('btn-submit-answer').textContent = 'Alle fertig – keine Änderung mehr möglich';
+  document.getElementById('answer-reject-msg').textContent = reason;
+  document.getElementById('answer-reject-msg').classList.remove('hidden');
+});
+
 socket.on('answerCorrected', ({ text, wasChanged }) => {
   document.getElementById('input-answer').value = text;
+  document.getElementById('input-answer').disabled = false; // Änderung bleibt möglich, solange nicht alle fertig sind
+  document.getElementById('btn-submit-answer').disabled = false;
   document.getElementById('answer-reject-msg').classList.add('hidden');
-  document.getElementById('btn-submit-answer').textContent = 'Antwort abgeschickt ✓';
+  document.getElementById('btn-submit-answer').textContent = 'Antwort abgeschickt ✓ (Änderung möglich)';
 });
 
 // Live-Tippen: Moderator:in sieht in Echtzeit, was gerade eingetippt wird
@@ -729,7 +747,7 @@ socket.on('state', (state) => {
     document.getElementById('answering-total').textContent = Math.max(state.players.length - 1, 0);
     document.getElementById('answer-input-label').textContent = isEstimate
       ? 'Wie lautet deine Schätzung?'
-      : 'Denk dir eine überzeugende, falsche Antwort aus:';
+      : 'Denk dir eine überzeugende Antwort aus:';
     document.getElementById('input-answer').classList.toggle('hidden', isEstimate);
     document.getElementById('input-answer-number').classList.toggle('hidden', !isEstimate);
     document.getElementById('btn-to-voting').classList.toggle('hidden', isEstimate);
@@ -758,6 +776,15 @@ socket.on('state', (state) => {
       document.getElementById('moderator-wait-box').classList.add('hidden');
       document.getElementById('real-answer-box').classList.add('hidden');
       document.getElementById('moderator-answers-preview').classList.add('hidden');
+
+      // Sobald alle abgeschickt haben, keine weiteren Änderungen mehr zulassen
+      const allAnswered = state.answeredCount >= Math.max(state.players.length - 1, 0);
+      if (allAnswered) {
+        document.getElementById('input-answer').disabled = true;
+        document.getElementById('input-answer-number').disabled = true;
+        document.getElementById('btn-submit-answer').disabled = true;
+        document.getElementById('btn-submit-answer').textContent = 'Alle fertig – keine Änderung mehr möglich';
+      }
     }
     showScreen('answering');
   }
