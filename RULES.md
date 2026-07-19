@@ -137,6 +137,10 @@ herunterladen und im Repo überschreiben, damit die Änderungen dauerhaft bleibe
 
 ## Änderungsprotokoll
 
+- **19.07.2026:** Geteilter Link enthält jetzt den Raum-Code als URL-Parameter
+  (`?room=1234`). Öffnet jemand den Link, wird der Code automatisch ausgefüllt und der
+  Fokus direkt ins Namensfeld gesetzt – nur noch Name eintippen und "Beitreten" klicken,
+  kein manuelles Code-Abtippen mehr nötig.
 - **19.07.2026:** Zwei Teilen-Buttons in der Lobby hinzugefügt: "🔗 Link kopieren" (kopiert
   die Browser-URL in die Zwischenablage) und "💬 Per WhatsApp teilen" (öffnet WhatsApp mit
   vorausgefüllter Nachricht inkl. Raum-Code und Link, Kontakt/Gruppe wird dort ausgewählt).

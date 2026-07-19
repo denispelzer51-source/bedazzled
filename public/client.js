@@ -10,6 +10,7 @@ let lastState = null;
 // deshalb bekommt jede Instanz über ?testSlot=N ihren eigenen, getrennten Storage-Schlüssel.
 const urlParams = new URLSearchParams(window.location.search);
 const testSlot = urlParams.get('testSlot');
+const roomFromLink = urlParams.get('room');
 const TOKEN_KEY = testSlot ? `bedazzled_token_slot${testSlot}` : 'bedazzled_token';
 const ROOM_KEY = testSlot ? `bedazzled_room_slot${testSlot}` : 'bedazzled_room';
 
@@ -107,6 +108,14 @@ if (testSlot) {
   renderAvatarPicker();
 }
 
+// Komfort: Wenn der Link mit einem Raum-Code geöffnet wurde (z.B. per WhatsApp geteilt),
+// Code direkt vorausfüllen, damit nur noch der Name eingetippt werden muss
+if (roomFromLink && /^\d{4}$/.test(roomFromLink)) {
+  document.getElementById('input-code').value = roomFromLink;
+  document.getElementById('input-name').focus();
+  socket.emit('checkTakenAvatars', { code: roomFromLink });
+}
+
 // Prüft live, welche Figuren im eingegebenen Raum schon vergeben sind
 let avatarCheckTimeout = null;
 document.getElementById('input-code').addEventListener('input', () => {
@@ -193,7 +202,7 @@ document.getElementById('btn-leave-room').addEventListener('click', () => {
 });
 
 document.getElementById('btn-copy-link').addEventListener('click', async () => {
-  const link = window.location.origin + '/';
+  const link = `${window.location.origin}/?room=${currentCode}`;
   try {
     await navigator.clipboard.writeText(link);
   } catch (e) {
@@ -211,8 +220,8 @@ document.getElementById('btn-copy-link').addEventListener('click', async () => {
 });
 
 document.getElementById('btn-share-whatsapp').addEventListener('click', () => {
-  const link = window.location.origin + '/';
-  const text = `Spiel mit bei Bedazzled! 🎭 Raum-Code: ${currentCode}\n${link}`;
+  const link = `${window.location.origin}/?room=${currentCode}`;
+  const text = `Spiel mit bei Bedazzled! 🎭\n${link}`;
   window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
 });
 
