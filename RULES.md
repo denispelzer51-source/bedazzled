@@ -89,6 +89,14 @@ einen eigenen Tab ("🔢 Schätzen-Fragen"), Daten liegen in `estimate_questions
 
 *Als Nächstes geplant: Zeichnen-Karten als dritte Kategorie (Pictionary-Stil).*
 
+## Aufholjagd-Bonus
+
+Sobald irgendein Spieler Feld 18 erreicht oder überschreitet, bekommt der/die aktuell
+Letztplatzierte **einmalig pro Spiel** einen automatischen Bonus von **+5 Feldern**
+(bei Gleichstand mehrerer Letzter: alle bekommen den Bonus). Der Bonus ist gedeckelt und
+kann allein nicht zum Sieg führen (max. Feld 25 von 26). Ziel: das Spiel bleibt bis zum
+Schluss spannend, auch wenn jemand früh stark in Führung geht.
+
 ## Fragen-Pool & Kategorien
 
 Aktuell **100 Bluff-Fragen** in 3 komplett eigenen Kategorien (keine einzige Frage aus dem
@@ -129,6 +137,21 @@ herunterladen und im Repo überschreiben, damit die Änderungen dauerhaft bleibe
 
 ## Änderungsprotokoll
 
+- **19.07.2026:** Neues Logo und Farbschema eingebunden – komplette Farbpalette aus dem neuen
+  Logo übernommen (Void Black #04000A, Lila-Töne #330D98/#8C39F7/#AC58F9/#C577FB/#D5A1FB,
+  Weiß #F7F1FA). Logo als Favicon und auf dem Startbildschirm eingebunden. Funktionale
+  Signalfarben (Grün=richtig, Rot/Pink=falsch, Türkis=Schätzen-Feld) bewusst beibehalten,
+  da sie unabhängig vom Marken-Look eine erkennbare Spiellogik-Bedeutung haben.
+- **19.07.2026:** Auflösung zeigt jetzt konkrete Punktezahlen: eigene richtige Antwort mit
+  "+3 Punkte"-Hinweis, und bei jeder erfundenen Antwort ein Hinweis, wie viele Mitspieler
+  darauf reingefallen sind samt der dafür gewonnenen Punkte für den Autor/die Autorin.
+- **19.07.2026:** Zweite Überarbeitung von "Historischer Kontext": nicht mehr nur spielerischer
+  formuliert, sondern komplett andere, wirklich überraschende Fakten (z.B. Einsteins
+  gestohlenes Gehirn, Newtons Nadel im Auge, Napoleons Kaninchen-Attacke) statt bloßer
+  biografischer Zusammenfassungen – Ziel: "Das gibt's doch nicht"-Effekt statt Lexikon-Ton.
+- **19.07.2026:** Neue Aufholjagd-Regel: sobald jemand Feld 18 erreicht/überschreitet,
+  bekommt der/die Letztplatzierte einmalig automatisch +5 Bonusfelder (gedeckelt, kann
+  nicht allein zum Sieg führen). Mit goldenem Banner bei der Auflösung angekündigt.
 - **19.07.2026:** Alle 40 "Historischer Kontext"-Fragen umformuliert – gleiche Fakten, aber
   deutlich verspielter und neugieriger im Ton (angelehnt an den echten Nobody-is-Perfect-Stil,
   keine Frage übernommen), statt trocken-biografischer Wikipedia-Formulierungen.

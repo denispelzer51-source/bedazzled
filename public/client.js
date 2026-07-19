@@ -597,6 +597,14 @@ socket.on('state', (state) => {
   }
 
   if (state.phase === 'reveal') {
+    const catchupBanner = document.getElementById('catchup-banner');
+    if (state.catchUpAnnouncement) {
+      const { names, amount } = state.catchUpAnnouncement;
+      catchupBanner.textContent = `🚀 Aufholjagd! ${names.join(' & ')} bekommt +${amount} Bonus-Felder!`;
+      catchupBanner.classList.remove('hidden');
+    } else {
+      catchupBanner.classList.add('hidden');
+    }
     document.getElementById('question-text-4').textContent = state.currentQuestion || '';
     const list = document.getElementById('reveal-list');
     const realBox = document.getElementById('estimate-real-answer');
@@ -625,8 +633,13 @@ socket.on('state', (state) => {
         if (isMyVote) cls += a.isReal ? ' my-correct' : ' my-wrong';
         div.className = cls;
         const ownerName = a.isReal ? 'Echte Antwort ✔' : (state.players.find(p => p.id === a.ownerId)?.name || '???');
-        const badge = isMyVote ? `<span class="my-vote-badge">${a.isReal ? '✔ Richtig getippt!' : '✗ Reingefallen'}</span>` : '';
-        div.innerHTML = `${escapeHtml(a.text)}<br><span class="owner">${ownerName}</span>${badge}`;
+        const myVoteBadge = isMyVote
+          ? `<span class="my-vote-badge">${a.isReal ? `✔ Richtig getippt! (+${state.pointsCorrectGuess} Punkte)` : '✗ Reingefallen'}</span>`
+          : '';
+        const foolCallout = (!a.isReal && a.foolCount > 0)
+          ? `<span class="fool-callout">🎣 ${a.foolCount} ${a.foolCount === 1 ? 'Mitspieler ist' : 'Mitspieler sind'} darauf reingefallen! ${ownerName} bekommt +${a.foolCount * state.pointsPerFooled} Punkte</span>`
+          : '';
+        div.innerHTML = `${escapeHtml(a.text)}<br><span class="owner">${ownerName}</span>${myVoteBadge}${foolCallout}`;
         list.appendChild(div);
       });
     }

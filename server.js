@@ -27,6 +27,11 @@ const DISCONNECT_GRACE_MS = 3 * 60 * 1000; // 3 Minuten, bevor ein getrennter Sp
 const ESTIMATE_TRIGGER_FIELDS = [5, 8, 13, 18];
 const ESTIMATE_POINTS = [3, 2, 1]; // Platz 1, 2, 3 – Rest geht leer aus
 
+// Aufholjagd: sobald irgendjemand dieses Feld erreicht/überschreitet, bekommt der/die
+// Letztplatzierte einmalig einen Bonus, damit das Spiel spannend bleibt
+const CATCHUP_TRIGGER_FIELD = 18;
+const CATCHUP_BONUS = 5;
+
 // Zugangscode für die Fragen-Verwaltung (/admin.html). Auf Render als Umgebungsvariable
 // ADMIN_KEY setzen, um den Standardwert zu überschreiben.
 const ADMIN_KEY = process.env.ADMIN_KEY || 'bedazzled-admin';
@@ -277,6 +282,8 @@ function publicRoomState(room, forPlayerId) {
     roundType: room.roundType || 'question',
     pendingRoundType: room.pendingRoundType || 'question',
     estimateTriggerFields: ESTIMATE_TRIGGER_FIELDS,
+    pointsCorrectGuess: POINTS_CORRECT_GUESS,
+    pointsPerFooled: POINTS_PER_FOOLED_PLAYER,
     players: room.players.map(p => ({ id: p.id, name: p.name, avatar: p.avatar, position: p.position, connected: !!p.socketId })),
     moderatorId,
     currentQuestion: room.phase !== 'lobby' && room.currentQuestionObj ? room.currentQuestionObj.question : null,
@@ -314,6 +321,7 @@ function publicRoomState(room, forPlayerId) {
     estimateRealAnswer: (room.phase === 'reveal' && room.roundType === 'estimate' && room.currentQuestionObj)
       ? room.currentQuestionObj.answer
       : null,
+    catchUpAnnouncement: room.catchUpAnnouncement || null,
   };
 }
 
@@ -340,6 +348,23 @@ function pickNextQuestion(room, roundType) {
 // Prüft, ob jemand durch die Punktevergabe DIESER Runde neu auf einem Schätzen-Feld
 // gelandet ist (nicht: ob er zufällig schon länger dort steht). Nur ein frischer Zug auf
 // eines der Felder löst die nächste Runde als Schätzen-Karte aus.
+// Aufholjagd: einmalig pro Spiel, sobald jemand das Trigger-Feld erreicht/überschreitet,
+// bekommt der/die Letztplatzierte (bei Gleichstand: alle Letzten) einen Bonus-Vorstoß
+function applyCatchUpBonus(room) {
+  if (room.catchUpBonusGiven) return;
+  const anyoneAhead = room.players.some(p => p.position >= CATCHUP_TRIGGER_FIELD);
+  if (!anyoneAhead) return;
+
+  const minPos = Math.min(...room.players.map(p => p.position));
+  const laggards = room.players.filter(p => p.position === minPos);
+  laggards.forEach(p => {
+    p.position = Math.min(BOARD_LENGTH - 1, p.position + CATCHUP_BONUS);
+  });
+
+  room.catchUpBonusGiven = true;
+  room.catchUpAnnouncement = { names: laggards.map(p => p.name), amount: CATCHUP_BONUS };
+}
+
 function applyEstimateTriggerCheck(room, prevPositions) {
   const triggered = room.players.some(p =>
     ESTIMATE_TRIGGER_FIELDS.includes(p.position) && p.position !== prevPositions[p.id]
@@ -390,6 +415,8 @@ io.on('connection', (socket) => {
       roundType: 'question',
       pendingRoundType: 'question',
       removalTimers: {},
+      catchUpBonusGiven: false,
+      catchUpAnnouncement: null,
     };
     console.log(`[Raum erstellt] Code=${code} von Spieler "${name}". Aktive Räume: ${Object.keys(rooms).join(', ')}`);
     socket.join(code);
@@ -596,9 +623,18 @@ io.on('connection', (socket) => {
       }
     }
 
+    // Für jede erfundene Antwort merken, wie viele Mitspieler darauf reingefallen sind (für die Anzeige)
+    room.shuffledAnswers.forEach(a => {
+      if (!a.isReal) {
+        a.foolCount = Object.values(room.votes).filter(v => v === a.ownerId).length;
+      }
+    });
+
+    applyCatchUpBonus(room);
     applyEstimateTriggerCheck(room, prevPositions);
     room.phase = 'reveal';
     broadcastState(code);
+    room.catchUpAnnouncement = null; // nur einmalig in der Ansage anzeigen
     checkForWinner(code, room);
   });
 
@@ -634,9 +670,11 @@ io.on('connection', (socket) => {
       };
     });
 
+    applyCatchUpBonus(room);
     applyEstimateTriggerCheck(room, prevPositions);
     room.phase = 'reveal';
     broadcastState(code);
+    room.catchUpAnnouncement = null; // nur einmalig in der Ansage anzeigen
     checkForWinner(code, room);
   });
 

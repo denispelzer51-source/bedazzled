@@ -4,6 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <title>Bedazzled</title>
+<link rel="icon" type="image/png" href="logo.png" />
 <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -15,7 +16,7 @@
   <!-- START SCREEN -->
   <section id="screen-start" class="screen active">
     <div class="brand">
-      <span class="brand-mask">🎭</span>
+      <img src="logo.png" alt="Bedazzled Logo" class="brand-logo" />
       <h1>Beda<span class="accent">zzled</span></h1>
       <p class="tagline">Lüg dich zum Sieg.</p>
     </div>
@@ -69,6 +70,11 @@
       <div class="rules-section">
         <h4>Schätzen-Karten 🔢</h4>
         <p>Türkise Felder (5, 8, 13, 18) lösen statt der normalen Frage eine Schätzen-Karte aus: alle tippen eine Zahl, kein Bluffen, kein Voting. Platz 1 = <strong>3 Punkte</strong>, Platz 2 = <strong>2 Punkte</strong>, Platz 3 = <strong>1 Punkt</strong>, der Rest geht leer aus.</p>
+      </div>
+
+      <div class="rules-section">
+        <h4>Aufholjagd 🚀</h4>
+        <p>Sobald jemand Feld 18 erreicht oder überschreitet, bekommt der/die Letzte einmalig pro Spiel automatisch <strong>+5 Bonusfelder</strong>. Damit bleibt es bis zum Schluss spannend.</p>
       </div>
 
       <div class="rules-section">
@@ -134,6 +140,7 @@
   <!-- REVEAL SCREEN -->
   <section id="screen-reveal" class="screen">
     <div class="phase-tag">Auflösung</div>
+    <p id="catchup-banner" class="catchup-banner hidden"></p>
     <p class="question-text small" id="question-text-4"></p>
     <p id="estimate-real-answer" class="real-answer-box hidden"></p>
     <div id="reveal-list" class="reveal-list"></div>
