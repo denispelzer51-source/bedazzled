@@ -192,6 +192,30 @@ document.getElementById('btn-leave-room').addEventListener('click', () => {
   showScreen('start');
 });
 
+document.getElementById('btn-copy-link').addEventListener('click', async () => {
+  const link = window.location.origin + '/';
+  try {
+    await navigator.clipboard.writeText(link);
+  } catch (e) {
+    // Fallback für Browser ohne Clipboard-API-Berechtigung
+    const tempInput = document.createElement('input');
+    tempInput.value = link;
+    document.body.appendChild(tempInput);
+    tempInput.select();
+    document.execCommand('copy');
+    document.body.removeChild(tempInput);
+  }
+  const msg = document.getElementById('copy-link-msg');
+  msg.classList.remove('hidden');
+  setTimeout(() => msg.classList.add('hidden'), 2500);
+});
+
+document.getElementById('btn-share-whatsapp').addEventListener('click', () => {
+  const link = window.location.origin + '/';
+  const text = `Spiel mit bei Bedazzled! 🎭 Raum-Code: ${currentCode}\n${link}`;
+  window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
+});
+
 // ---------- ANSWERING ----------
 let currentRoundType = 'question';
 

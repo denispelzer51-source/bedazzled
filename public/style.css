@@ -392,3 +392,7 @@ h2 { font-family: var(--font-display); font-weight: 700; font-size: 24px; text-a
   padding: 6px 10px;
   border-radius: 8px;
 }
+
+.share-buttons { display: flex; gap: 10px; margin: 16px 0; }
+.btn-share { font-size: 14px; padding: 12px 10px; }
+.copy-link-msg { text-align: center; color: var(--teal); font-size: 13px; font-weight: 600; margin: -8px 0 16px; }

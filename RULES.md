@@ -137,6 +137,9 @@ herunterladen und im Repo überschreiben, damit die Änderungen dauerhaft bleibe
 
 ## Änderungsprotokoll
 
+- **19.07.2026:** Zwei Teilen-Buttons in der Lobby hinzugefügt: "🔗 Link kopieren" (kopiert
+  die Browser-URL in die Zwischenablage) und "💬 Per WhatsApp teilen" (öffnet WhatsApp mit
+  vorausgefüllter Nachricht inkl. Raum-Code und Link, Kontakt/Gruppe wird dort ausgewählt).
 - **19.07.2026:** Großes Kuratieren: Nutzer hat das Fragen-Dokument durchgearbeitet und auf
   37 bestätigte Bluff-Fragen reduziert (14 Kuriositäten, 8 Fremdwörter, 15 Historischer
   Kontext). Alle nicht bestätigten Fragen aus dem Pool entfernt. Erkanntes Muster: bei
