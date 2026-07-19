@@ -115,7 +115,7 @@ function getOrCreateToken() {
   }
   return token;
 }
-const myToken = getOrCreateToken();
+let myToken = getOrCreateToken();
 
 function saveSession(code) {
   sessionStorage.setItem(ROOM_KEY, code);
@@ -273,10 +273,23 @@ socket.on('errorMsg', showError);
 socket.on('joined', ({ code, playerId }) => {
   currentCode = code;
   myId = playerId;
+  myToken = playerId;
+  sessionStorage.setItem(TOKEN_KEY, playerId);
   saveSession(code);
   showReconnecting(false);
   document.getElementById('board-bar').classList.remove('hidden');
   showError('');
+});
+
+// Jemand versucht mitten im Spiel beizutreten und der Name passt zu einem getrennten
+// Spieler - fragen, ob er/sie das ist und den alten Platz (Position, Punkte, Rolle) übernehmen möchte
+socket.on('reclaimAvailable', ({ code, existingPlayerId, existingName }) => {
+  const wantsReclaim = confirm(`Es gibt schon einen getrennten Spieler namens "${existingName}" in diesem Raum. Bist du das und möchtest du an der gleichen Stelle weitermachen (mit deiner bisherigen Position und deinen Punkten)?`);
+  if (wantsReclaim) {
+    socket.emit('confirmReclaim', { code, existingPlayerId });
+  } else {
+    showError('Bitte wähle einen anderen Namen, um als neuer Spieler beizutreten (sofern das Spiel das noch zulässt).');
+  }
 });
 
 // ---------- LOBBY ----------

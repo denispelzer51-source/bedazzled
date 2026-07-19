@@ -137,6 +137,12 @@ herunterladen und im Repo überschreiben, damit die Änderungen dauerhaft bleibe
 
 ## Änderungsprotokoll
 
+- **19.07.2026:** Wiedereinstieg nach Verbindungsverlust ohne gespeicherte Sitzung (z.B. Tab
+  komplett geschlossen, App beendet, neues Gerät): Versucht jemand mitten im laufenden Spiel
+  über "Raum beitreten" mit einem Namen einzusteigen, der zu einem gerade getrennten Spieler
+  passt, fragt die App nach: "Bist du das?" – nach Bestätigung übernimmt die Person exakt
+  deren Platz samt Position, Punkten und Rolle, ganz ohne Neustart. Ein noch aktiv verbundener
+  Spieler kann auf diesem Weg nicht "gekapert" werden (nur getrennte Plätze sind übernehmbar).
 - **19.07.2026:** Drei wichtige Korrekturen: (1) Dopplungs-Auflösung korrigiert – der
   Moderator wählt jetzt tatsächlich zwischen "echte Antwort behalten" (Spieler-Version raus)
   oder "Spieler-Version behalten" (offizielle Antwort raus), sodass exakt einer von beiden

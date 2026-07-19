@@ -475,6 +475,16 @@ io.on('connection', (socket) => {
       return;
     }
     if (room.phase !== 'lobby') {
+      // Spiel läuft schon - prüfen, ob der Name zu einem getrennten Spieler passt,
+      // der sich möglicherweise wieder anmelden möchte (z.B. Tab geschlossen, App beendet)
+      const nameNormalized = (name || '').trim().toLowerCase();
+      const disconnectedMatch = room.players.find(
+        p => !p.socketId && p.name.trim().toLowerCase() === nameNormalized
+      );
+      if (disconnectedMatch) {
+        socket.emit('reclaimAvailable', { code, existingPlayerId: disconnectedMatch.id, existingName: disconnectedMatch.name });
+        return;
+      }
       socket.emit('errorMsg', 'Spiel läuft schon. Bitte warte auf die nächste Runde.');
       return;
     }
@@ -518,6 +528,33 @@ io.on('connection', (socket) => {
     socket.data.roomCode = code;
     socket.join(code);
     socket.emit('joined', { code, playerId: token });
+    broadcastState(code);
+  });
+
+  // Wenn jemand mitten im laufenden Spiel beitreten will und der Name zu einem getrennten
+  // Spieler passt (z.B. Tab geschlossen, App beendet, neues Gerät): nach Bestätigung wird
+  // dessen Platz übernommen, inklusive Position, Punkte und Rolle - kein Neustart nötig
+  socket.on('confirmReclaim', ({ code, existingPlayerId }) => {
+    const room = rooms[code];
+    if (!room) {
+      socket.emit('rejoinFailed');
+      return;
+    }
+    const player = room.players.find(p => p.id === existingPlayerId);
+    if (!player || player.socketId) {
+      // Zwischenzeitlich schon wieder verbunden oder nicht mehr vorhanden
+      socket.emit('errorMsg', 'Dieser Platz ist nicht mehr verfügbar.');
+      return;
+    }
+    if (room.removalTimers[existingPlayerId]) {
+      clearTimeout(room.removalTimers[existingPlayerId]);
+      delete room.removalTimers[existingPlayerId];
+    }
+    player.socketId = socket.id;
+    socket.data.token = existingPlayerId;
+    socket.data.roomCode = code;
+    socket.join(code);
+    socket.emit('joined', { code, playerId: existingPlayerId });
     broadcastState(code);
   });
 
