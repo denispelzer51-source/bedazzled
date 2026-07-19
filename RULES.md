@@ -129,6 +129,14 @@ herunterladen und im Repo überschreiben, damit die Änderungen dauerhaft bleibe
 
 ## Änderungsprotokoll
 
+- **19.07.2026:** Bug behoben: Schätzen-Karten wurden fälschlich in jeder Folgerunde erneut
+  ausgelöst, wenn ein Spieler bereits (aus einer früheren Runde) auf einem türkisen Feld
+  stand, statt nur bei frischer Landung. Wirkte wie ein zufälliges Auslösen.
+- **19.07.2026:** Regelwerk wird jetzt direkt in der App angezeigt (Lobby-Screen, während auf
+  weitere Spieler gewartet wird) – strukturiert nach Grundprinzip, Punkten, Schätzen-Karten,
+  Spielfeld, Rundenablauf.
+- **19.07.2026:** Diagnose-Logging für "Raum nicht gefunden"-Fehler ergänzt (Server-Logs
+  zeigen jetzt aktive Raum-Codes bei jedem Erstellen/fehlgeschlagenen Beitreten).
 - **18.07.2026:** Alle echten Antworten der Bluff-Fragen umformuliert: keine Gedankenstriche,
   Anführungszeichen, Doppelpunkte oder Semikolons mehr – klingen jetzt so, wie ein Mitspieler
   es natürlich ins Handy tippen würde, statt wie ein Lexikon-Eintrag. Grund: Erfundene

@@ -327,10 +327,13 @@ function pickNextQuestion(room, roundType) {
   return { index: idx, ...pool[idx] };
 }
 
-// Prüft, ob jemand nach der Punktevergabe exakt auf einem Schätzen-Feld gelandet ist.
-// Falls ja, wird die nächste Runde automatisch eine Schätzen-Karte statt einer Bluff-Frage.
-function applyEstimateTriggerCheck(room) {
-  const triggered = room.players.some(p => ESTIMATE_TRIGGER_FIELDS.includes(p.position));
+// Prüft, ob jemand durch die Punktevergabe DIESER Runde neu auf einem Schätzen-Feld
+// gelandet ist (nicht: ob er zufällig schon länger dort steht). Nur ein frischer Zug auf
+// eines der Felder löst die nächste Runde als Schätzen-Karte aus.
+function applyEstimateTriggerCheck(room, prevPositions) {
+  const triggered = room.players.some(p =>
+    ESTIMATE_TRIGGER_FIELDS.includes(p.position) && p.position !== prevPositions[p.id]
+  );
   room.pendingRoundType = triggered ? 'estimate' : 'question';
 }
 
@@ -378,6 +381,7 @@ io.on('connection', (socket) => {
       pendingRoundType: 'question',
       removalTimers: {},
     };
+    console.log(`[Raum erstellt] Code=${code} von Spieler "${name}". Aktive Räume: ${Object.keys(rooms).join(', ')}`);
     socket.join(code);
     socket.emit('joined', { code, playerId });
     broadcastState(code);
@@ -386,6 +390,7 @@ io.on('connection', (socket) => {
   socket.on('joinRoom', ({ name, code, avatar, token }) => {
     const room = rooms[code];
     if (!room) {
+      console.log(`[Beitreten fehlgeschlagen] Code="${code}" nicht gefunden. Aktuell bekannte Räume: ${Object.keys(rooms).join(', ') || '(keine)'}`);
       socket.emit('errorMsg', 'Raum nicht gefunden. Prüfe den Code.');
       return;
     }
@@ -547,6 +552,9 @@ io.on('connection', (socket) => {
     const room = rooms[code];
     if (!room || room.roundType === 'estimate') return;
 
+    const prevPositions = {};
+    room.players.forEach(p => { prevPositions[p.id] = p.position; });
+
     // Punkte berechnen
     for (const [voterId, chosenOwnerId] of Object.entries(room.votes)) {
       if (chosenOwnerId === 'REAL') {
@@ -560,7 +568,7 @@ io.on('connection', (socket) => {
       }
     }
 
-    applyEstimateTriggerCheck(room);
+    applyEstimateTriggerCheck(room, prevPositions);
     room.phase = 'reveal';
     broadcastState(code);
     checkForWinner(code, room);
@@ -570,6 +578,9 @@ io.on('connection', (socket) => {
   socket.on('revealEstimate', ({ code }) => {
     const room = rooms[code];
     if (!room || room.roundType !== 'estimate') return;
+
+    const prevPositions = {};
+    room.players.forEach(p => { prevPositions[p.id] = p.position; });
 
     const realValue = Number(room.currentQuestionObj.answer);
     const ranked = Object.entries(room.answers)
@@ -595,7 +606,7 @@ io.on('connection', (socket) => {
       };
     });
 
-    applyEstimateTriggerCheck(room);
+    applyEstimateTriggerCheck(room, prevPositions);
     room.phase = 'reveal';
     broadcastState(code);
     checkForWinner(code, room);
