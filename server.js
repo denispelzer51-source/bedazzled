@@ -18,13 +18,13 @@ let questionsList = JSON.parse(fs.readFileSync(QUESTIONS_PATH, 'utf8'));
 const ESTIMATE_QUESTIONS_PATH = path.join(__dirname, 'estimate_questions.json');
 let estimateQuestionsList = JSON.parse(fs.readFileSync(ESTIMATE_QUESTIONS_PATH, 'utf8'));
 
-const BOARD_LENGTH = 20; // Zielfeld
+const BOARD_LENGTH = 26; // Zielfeld
 const POINTS_CORRECT_GUESS = 3;
 const POINTS_PER_FOOLED_PLAYER = 2;
 const DISCONNECT_GRACE_MS = 3 * 60 * 1000; // 3 Minuten, bevor ein getrennter Spieler endgültig entfernt wird
 
-// Felder, die eine Schätzen-Karte statt der normalen Bluff-Frage auslösen
-const ESTIMATE_TRIGGER_FIELDS = [4, 8, 12, 16];
+// Felder, die eine Schätzen-Karte statt der normalen Bluff-Frage auslösen (bewusst unregelmäßig verteilt)
+const ESTIMATE_TRIGGER_FIELDS = [5, 8, 13, 18];
 const ESTIMATE_POINTS = [3, 2, 1]; // Platz 1, 2, 3 – Rest geht leer aus
 
 // Zugangscode für die Fragen-Verwaltung (/admin.html). Auf Render als Umgebungsvariable
@@ -445,6 +445,11 @@ io.on('connection', (socket) => {
     const room = rooms[code];
     if (!room || room.players.length < 3) {
       socket.emit('errorMsg', 'Mindestens 3 Spieler nötig, um zu starten.');
+      return;
+    }
+    const moderatorId = room.players[room.moderatorIndex].id;
+    if (socket.data.token !== moderatorId) {
+      socket.emit('errorMsg', 'Nur die/der Moderator:in kann die Runde starten.');
       return;
     }
     const roundType = room.pendingRoundType || 'question';

@@ -32,7 +32,7 @@ richtig erraten hast, kommen +3 Punkte oben drauf.
 
 ## Spielfeld
 
-- Spielfeld hat Felder von 0 bis 20 (Zielfeld = 20)
+- Spielfeld hat Felder von 0 bis 26 (Zielfeld = 26)
 - Wer das Zielfeld zuerst erreicht oder überschreitet, gewinnt sofort
 - Nach jeder Runde: Positionen werden auf dem animierten Spielbrett gezeigt, bevor es
   in die nächste Runde geht
@@ -79,7 +79,7 @@ nächsten an der echten Zahl liegt, gewinnt direkt Punkte:
 | 3. | 1 Punkt |
 | Alle weiteren | 0 Punkte |
 
-**Auslöser:** Türkis markierte Felder auf dem Spielbrett (aktuell Feld 4, 8, 12, 16 von 20).
+**Auslöser:** Türkis markierte Felder auf dem Spielbrett (aktuell Feld 5, 8, 13, 18 von 26).
 Landet nach der Punktevergabe irgendein Spieler exakt auf einem dieser Felder, ist die
 **nächste** Runde automatisch eine Schätzen-Karte statt einer normalen Bluff-Frage – für
 alle Spieler gemeinsam, nicht nur für den, der dort gelandet ist.
@@ -91,23 +91,23 @@ einen eigenen Tab ("🔢 Schätzen-Fragen"), Daten liegen in `estimate_questions
 
 ## Fragen-Pool & Kategorien
 
-Recherchiert nach dem Vorbild von Nobody is Perfect (Ravensburger), aber komplett eigene,
-neu geschriebene Fragen – keine einzige Frage wurde aus dem Originalspiel übernommen.
-Struktur orientiert sich an deren drei bewährten Kartentypen:
+Aktuell **100 Bluff-Fragen** in 3 komplett eigenen Kategorien (keine einzige Frage aus dem
+Originalspiel übernommen):
 
-- **Kuriositäten:** Warum-Fragen zu einem ungewöhnlichen Ereignis/Brauch/Phänomen
-- **Fremdwörter:** Was bedeutet ein bestimmtes (selteneres) Wort wirklich?
-- **Wahrheit oder Lüge:** Eine Aussage, auf die man mit "Wahr" oder "Falsch" antwortet
+- **Kuriositäten** (35 Fragen): Warum-Fragen zu einem ungewöhnlichen Ereignis/Brauch/Phänomen
+- **Fremdwörter** (25 Fragen): Was bedeutet ein bestimmtes (selteneres) Wort wirklich?
+- **Historischer Kontext** (40 Fragen): Fragen zu bekannten Personen aus Wissenschaft,
+  Literatur, Musik und Geschichte (z.B. "Warum wurde Schriftsteller X fast hingerichtet?")
 
-Aktuell 38 Bluff-Fragen (verteilt auf diese 3 Kategorien) + 8 Schätzen-Fragen (Kategorie
-"Allgemeinwissen"). Die Kategorie ist rein organisatorisch für die Fragen-Verwaltung – im
-Spiel selbst wird weiterhin zufällig aus dem gesamten Bluff- bzw. Schätzen-Pool gezogen,
-unabhängig von der Kategorie.
+Plus 8 Schätzen-Fragen (Kategorie "Allgemeinwissen"). Die Kategorie ist rein organisatorisch
+für die Fragen-Verwaltung – im Spiel selbst wird zufällig aus dem gesamten jeweiligen Pool
+gezogen, unabhängig von der Kategorie.
 
-Fragen-Verwaltung (`/admin.html`) zeigt Fragen jetzt **nach Kategorie gruppiert und
-aufklappbar** an, statt alle auf einmal untereinander. Beim Hinzufügen/Bearbeiten kann eine
-Kategorie frei vergeben werden (bestehende erscheinen als Vorschlag); der Massen-Import
-unterstützt jetzt das Format `Kategorie;Frage;Antwort` pro Zeile.
+**Rotation:** Jede Frage wird pro Raum nur einmal gezogen (kein Wiederholen), bis der
+komplette Pool einmal durchgespielt wurde – danach startet die Rotation automatisch von
+vorne. Gilt getrennt für Bluff-Fragen und Schätzen-Fragen.
+
+Fragen-Verwaltung (`/admin.html`) zeigt Fragen nach Kategorie gruppiert und aufklappbar an.
 
 ## Fragen-Verwaltung
 
@@ -129,6 +129,22 @@ herunterladen und im Repo überschreiben, damit die Änderungen dauerhaft bleibe
 
 ## Änderungsprotokoll
 
+- **19.07.2026:** Nur die/der Moderator:in kann eine Runde starten (Button vorher fälschlich
+  für alle sichtbar, jetzt auch serverseitig abgesichert). Türkise-Felder-Hinweis über dem
+  Start-Button entfernt (steht bereits im Regelwerk-Panel). Mehr Kontrast zwischen Antwort
+  und Spielername bei der Auflösung (Name jetzt als kleine Pille auf eigener Zeile). Die
+  Mini-Spielbrett-Leiste zeigt neue Positionen jetzt erst, sobald das große animierte
+  Spielbrett angezeigt wird, statt die Bewegung vorher schon zu verraten.
+- **19.07.2026:** Spielfeld auf 26 Felder erweitert (vorher 20). Schätzen-Trigger-Felder auf
+  5/8/13/18 geändert (bewusst unregelmäßiges statt gleichmäßiges Muster). Regelwerk-Text im
+  Grundprinzip korrigiert (auch zufälliges Treffen der echten Antwort möglich, nicht nur
+  Erfinden). Hinweis "automatisch korrigiert" für Mitspieler entfernt (unnötige Information).
+  Alle 100 Antworten nochmal überarbeitet: deutlich kürzer und knackiger, wie ein Mitspieler
+  es tatsächlich eintippen würde, statt ausführlicher Lexikon-Erklärungen.
+- **19.07.2026:** Kategorie "Wahrheit oder Lüge" entfernt (war Namens-Übernahme aus dem
+  Originalspiel), stattdessen neue Kategorie "Historischer Kontext" (Fragen zu bekannten
+  Personen aus Wissenschaft/Literatur/Musik/Geschichte). Fragen-Pool auf 100 Bluff-Fragen
+  aufgestockt (35 Kuriositäten, 25 Fremdwörter, 40 Historischer Kontext).
 - **19.07.2026:** Bug behoben: Schätzen-Karten wurden fälschlich in jeder Folgerunde erneut
   ausgelöst, wenn ein Spieler bereits (aus einer früheren Runde) auf einem türkisen Feld
   stand, statt nur bei frischer Landung. Wirkte wie ein zufälliges Auslösen.

@@ -1,197 +1,104 @@
 [
-  {
-    "category": "Kuriositäten",
-    "question": "Wie nennt man in Bayern traditionell den ersten Schluck Bier, den man vor dem eigentlichen Trinken über den Tisch schüttet?",
-    "answer": "Das nennt man den Antrunk, man schüttet ihn meist weg um dem Bier Glück zu wünschen"
-  },
-  {
-    "category": "Kuriositäten",
-    "question": "Welches Wort benutzten mittelalterliche Seefahrer für den Moment, in dem ein Schiff bei Windstille komplett stillstand?",
-    "answer": "Das nennt man Flaute, kommt aus dem Niederdeutschen und bedeutet sowas wie schlaff oder kraftlos"
-  },
-  {
-    "category": "Kuriositäten",
-    "question": "Wofür wurde früher in ländlichen Regionen Deutschlands ein Kuckucksruf am frühen Morgen als Aberglaube gedeutet?",
-    "answer": "Er sollte vorhersagen wie viele Jahre man noch zu leben hat, ein Ruf zählt für ein Jahr"
-  },
-  {
-    "category": "Kuriositäten",
-    "question": "Wie heißt die Angst davor, dass Knöpfe an der Kleidung eines anderen Menschen zu nah an einem selbst sind?",
-    "answer": "Koumpounophobie"
-  },
-  {
-    "category": "Kuriositäten",
-    "question": "Welchen ungewöhnlichen Beruf übte die erste Person aus, die offiziell als 'Feuerwehrmann' in Rom registriert wurde?",
-    "answer": "Er war eigentlich ein Sklave und gehörte zu einer privaten Löschtruppe, die Brände gegen Bezahlung gelöscht hat"
-  },
-  {
-    "category": "Kuriositäten",
-    "question": "Was ist die ursprüngliche Bedeutung des Wortes 'Roboter', bevor es für Maschinen verwendet wurde?",
-    "answer": "Es kommt vom tschechischen Wort robota, das bedeutet Zwangsarbeit oder Frondienst"
-  },
-  {
-    "category": "Kuriositäten",
-    "question": "Warum tragen Schweizer Kühe im Sommer oft besonders große Glocken um den Hals?",
-    "answer": "Damit Hirten sie auf den Almen anhand des Klangs orten können, auch bei Nebel"
-  },
-  {
-    "category": "Kuriositäten",
-    "question": "Wie lautete der Spitzname, den Astronauten für den ersten Kaffee-Automaten auf der ISS gaben?",
-    "answer": "Das heißt ISSpresso und ist tatsächlich der offizielle Name der Kaffeemaschine, die 2015 installiert wurde"
-  },
-  {
-    "category": "Kuriositäten",
-    "question": "Warum haben Feuerwehrautos in den USA historisch fast immer die Farbe Rot?",
-    "answer": "Weil rote Farbe im frühen 20. Jahrhundert am billigsten in der Herstellung war und zugleich gut auffiel"
-  },
-  {
-    "category": "Kuriositäten",
-    "question": "Warum klopfen manche Menschen vor dem Trinken eines Schnapses mit dem Glas auf den Tisch?",
-    "answer": "Das ist ein alter Aberglaube, es soll dem Getränk symbolisch die bösen Geister austreiben"
-  },
-  {
-    "category": "Kuriositäten",
-    "question": "Warum sind Bananen von Natur aus leicht gebogen?",
-    "answer": "Sie wachsen entgegen der Schwerkraft dem Sonnenlicht entgegen, wodurch sich der Stiel krümmt"
-  },
-  {
-    "category": "Kuriositäten",
-    "question": "Warum wurde die Tastaturbelegung QWERTY ursprünglich so angeordnet, wie sie heute noch verbreitet ist?",
-    "answer": "Damit sich benachbarte Typenhebel mechanischer Schreibmaschinen beim schnellen Tippen seltener verhaken"
-  },
-  {
-    "category": "Kuriositäten",
-    "question": "Warum knistert brennendes Feuerholz im Kamin?",
-    "answer": "Eingeschlossene Wasserdampf und Harztaschen im Holz platzen durch die Hitze"
-  },
-  {
-    "category": "Kuriositäten",
-    "question": "Warum sind Bienenwaben sechseckig geformt?",
-    "answer": "Diese Form braucht am wenigsten Wachs bei gleichzeitig maximaler Speicherfläche"
-  },
-  {
-    "category": "Kuriositäten",
-    "question": "Warum haben Kupplungen von Feuerwehrschläuchen traditionell Messing statt Stahl?",
-    "answer": "Messing rostet nicht und erzeugt keine Funken, das ist wichtig in der Nähe von brennbaren Gasen"
-  },
-  {
-    "category": "Fremdwörter",
-    "question": "Was bedeutet das Wort 'Nepotismus'?",
-    "answer": "Das ist Vetternwirtschaft, also wenn Verwandte oder Freunde bei der Vergabe von Posten bevorzugt werden"
-  },
-  {
-    "category": "Fremdwörter",
-    "question": "Was bedeutet das Wort 'obsolet'?",
-    "answer": "Veraltet, überholt, nicht mehr gebräuchlich"
-  },
-  {
-    "category": "Fremdwörter",
-    "question": "Was bedeutet das Wort 'Akribie'?",
-    "answer": "Äußerste Sorgfalt und Genauigkeit bei einer Tätigkeit"
-  },
-  {
-    "category": "Fremdwörter",
-    "question": "Was bedeutet das Wort 'Eloquenz'?",
-    "answer": "Das bedeutet Redegewandtheit, also die Fähigkeit sich gewandt und überzeugend auszudrücken"
-  },
-  {
-    "category": "Fremdwörter",
-    "question": "Was bedeutet das Wort 'prekär'?",
-    "answer": "Heikel, bedenklich, in einer unsicheren oder schwierigen Lage"
-  },
-  {
-    "category": "Fremdwörter",
-    "question": "Was bedeutet das Wort 'Usurpator'?",
-    "answer": "Jemand, der sich Macht oder ein Amt unrechtmäßig angeeignet hat"
-  },
-  {
-    "category": "Fremdwörter",
-    "question": "Was bedeutet das Wort 'Anachronismus'?",
-    "answer": "Etwas, das zeitlich nicht zur jeweiligen Epoche passt, man könnte auch Zeitfehler dazu sagen"
-  },
-  {
-    "category": "Fremdwörter",
-    "question": "Was bedeutet das Wort 'Kontemplation'?",
-    "answer": "Eine versunkene, nachdenkliche Betrachtung, also eine Art meditatives Nachsinnen"
-  },
-  {
-    "category": "Fremdwörter",
-    "question": "Was bedeutet das Wort 'Idiosynkrasie'?",
-    "answer": "Eine individuelle Eigenart oder besondere Empfindlichkeit gegenüber einer bestimmten Sache"
-  },
-  {
-    "category": "Fremdwörter",
-    "question": "Was bedeutet das Wort 'Sonor' (z.B. eine sonore Stimme)?",
-    "answer": "Wohlklingend, voll und tief im Klang"
-  },
-  {
-    "category": "Fremdwörter",
-    "question": "Was bedeutet das Wort 'Ambivalenz'?",
-    "answer": "Das gleichzeitige Vorhandensein widersprüchlicher Gefühle oder Haltungen gegenüber derselben Sache"
-  },
-  {
-    "category": "Fremdwörter",
-    "question": "Was bedeutet das Wort 'Autark'?",
-    "answer": "Unabhängig, selbstversorgend, auf niemand anderen angewiesen"
-  },
-  {
-    "category": "Wahrheit oder Lüge",
-    "question": "Wahr oder falsch: Honig verdirbt bei richtiger Lagerung praktisch nie.",
-    "answer": "Wahr"
-  },
-  {
-    "category": "Wahrheit oder Lüge",
-    "question": "Wahr oder falsch: Ein Blitz ist im Durchschnitt heißer als die Oberfläche der Sonne.",
-    "answer": "Wahr"
-  },
-  {
-    "category": "Wahrheit oder Lüge",
-    "question": "Wahr oder falsch: Die Chinesische Mauer ist mit bloßem Auge vom Mond aus sichtbar.",
-    "answer": "Falsch"
-  },
-  {
-    "category": "Wahrheit oder Lüge",
-    "question": "Wahr oder falsch: Glas ist bei Zimmertemperatur eine extrem langsam fließende Flüssigkeit.",
-    "answer": "Falsch"
-  },
-  {
-    "category": "Wahrheit oder Lüge",
-    "question": "Wahr oder falsch: Oktopusse haben blaues Blut.",
-    "answer": "Wahr"
-  },
-  {
-    "category": "Wahrheit oder Lüge",
-    "question": "Wahr oder falsch: Napoleon war für seine Zeit ungewöhnlich klein gewachsen.",
-    "answer": "Falsch"
-  },
-  {
-    "category": "Wahrheit oder Lüge",
-    "question": "Wahr oder falsch: Der Mount Everest ist der Berg, dessen Gipfel am weitesten vom Erdmittelpunkt entfernt liegt.",
-    "answer": "Falsch"
-  },
-  {
-    "category": "Wahrheit oder Lüge",
-    "question": "Wahr oder falsch: Der Eiffelturm kann im Hochsommer durch Hitzeausdehnung mehrere Zentimeter höher werden.",
-    "answer": "Wahr"
-  },
-  {
-    "category": "Wahrheit oder Lüge",
-    "question": "Wahr oder falsch: Der Pazifische Ozean ist flächenmäßig größer als die gesamte Landmasse der Erde zusammen.",
-    "answer": "Wahr"
-  },
-  {
-    "category": "Wahrheit oder Lüge",
-    "question": "Wahr oder falsch: Kaugummikauen verbraucht mehr Kalorien, als im Kaugummi selbst enthalten sind.",
-    "answer": "Falsch"
-  },
-  {
-    "category": "Wahrheit oder Lüge",
-    "question": "Wahr oder falsch: Die meisten Menschen träumen ausschließlich in Schwarz-Weiß.",
-    "answer": "Falsch"
-  },
-  {
-    "category": "Wahrheit oder Lüge",
-    "question": "Wahr oder falsch: Ein Tag auf der Venus dauert länger als ein Jahr auf der Venus.",
-    "answer": "Wahr"
-  }
+  { "category": "Kuriositäten", "question": "Wie nennt man in Bayern traditionell den ersten Schluck Bier, den man vor dem eigentlichen Trinken über den Tisch schüttet?", "answer": "Antrunk" },
+  { "category": "Kuriositäten", "question": "Welches Wort benutzten mittelalterliche Seefahrer für den Moment, in dem ein Schiff bei Windstille komplett stillstand?", "answer": "Flaute" },
+  { "category": "Kuriositäten", "question": "Wofür wurde früher in ländlichen Regionen Deutschlands ein Kuckucksruf am frühen Morgen als Aberglaube gedeutet?", "answer": "Er sagt die verbleibenden Lebensjahre voraus" },
+  { "category": "Kuriositäten", "question": "Wie heißt die Angst davor, dass Knöpfe an der Kleidung eines anderen Menschen zu nah an einem selbst sind?", "answer": "Koumpounophobie" },
+  { "category": "Kuriositäten", "question": "Welchen ungewöhnlichen Beruf übte die erste Person aus, die offiziell als Feuerwehrmann in Rom registriert wurde?", "answer": "Er war ein Sklave in einer privaten Löschtruppe" },
+  { "category": "Kuriositäten", "question": "Was ist die ursprüngliche Bedeutung des Wortes Roboter, bevor es für Maschinen verwendet wurde?", "answer": "Kommt von robota, tschechisch für Zwangsarbeit" },
+  { "category": "Kuriositäten", "question": "Warum tragen Schweizer Kühe im Sommer oft besonders große Glocken um den Hals?", "answer": "Damit man sie auch im Nebel hört" },
+  { "category": "Kuriositäten", "question": "Wie lautete der Spitzname, den Astronauten für den ersten Kaffee-Automaten auf der ISS gaben?", "answer": "ISSpresso" },
+  { "category": "Kuriositäten", "question": "Warum haben Feuerwehrautos in den USA historisch fast immer die Farbe Rot?", "answer": "Rot war einfach am billigsten" },
+  { "category": "Kuriositäten", "question": "Warum klopfen manche Menschen vor dem Trinken eines Schnapses mit dem Glas auf den Tisch?", "answer": "Alter Aberglaube gegen böse Geister" },
+  { "category": "Kuriositäten", "question": "Warum sind Bananen von Natur aus leicht gebogen?", "answer": "Sie wachsen dem Sonnenlicht entgegen" },
+  { "category": "Kuriositäten", "question": "Warum wurde die Tastaturbelegung QWERTY ursprünglich so angeordnet, wie sie heute noch verbreitet ist?", "answer": "Damit sich Typenhebel nicht verhaken" },
+  { "category": "Kuriositäten", "question": "Warum knistert brennendes Feuerholz im Kamin?", "answer": "Eingeschlossene Feuchtigkeit platzt in der Hitze" },
+  { "category": "Kuriositäten", "question": "Warum sind Bienenwaben sechseckig geformt?", "answer": "Das spart am meisten Wachs" },
+  { "category": "Kuriositäten", "question": "Warum haben Kupplungen von Feuerwehrschläuchen traditionell Messing statt Stahl?", "answer": "Messing rostet nicht und funkt nicht" },
+  { "category": "Kuriositäten", "question": "Warum wurde die Zahl Null in Europa jahrhundertelang kaum benutzt, obwohl sie in Indien längst bekannt war?", "answer": "Das römische Zahlensystem kannte keine Null" },
+  { "category": "Kuriositäten", "question": "Warum haben Pinguine keine Angst vor Menschen, obwohl sie wild leben?", "answer": "Sie hatten nie natürliche Feinde an Land" },
+  { "category": "Kuriositäten", "question": "Warum riecht Regen so charakteristisch, kurz bevor er fällt?", "answer": "Petrichor" },
+  { "category": "Kuriositäten", "question": "Warum haben manche alte Kirchturmuhren nur einen einzigen Zeiger?", "answer": "Früher zählte nur die volle Stunde" },
+  { "category": "Kuriositäten", "question": "Warum tragen Schachfiguren in westlichen Sets meist Schwarz und Weiß statt anderer Farben?", "answer": "Elfenbein und Ebenholz waren am günstigsten" },
+  { "category": "Kuriositäten", "question": "Warum starben in mittelalterlichen Städten so viele Menschen an vergleichsweise harmlosen Krankheiten?", "answer": "Es fehlte einfach an Hygiene" },
+  { "category": "Kuriositäten", "question": "Warum galt die Tomate in Europa jahrhundertelang als giftig?", "answer": "Sie wurde mit giftigen Nachtschattengewächsen verwechselt" },
+  { "category": "Kuriositäten", "question": "Warum stößt man beim Prost mit Gläsern an?", "answer": "Damit auch das Ohr etwas vom Trinken hat" },
+  { "category": "Kuriositäten", "question": "Warum ist die Zahl Sieben in vielen Kulturen eine Glückszahl?", "answer": "Sie hatte in alten Kulturen eine besondere Bedeutung" },
+  { "category": "Kuriositäten", "question": "Warum haben manche Trillerpfeifen ein kleines Kügelchen im Inneren?", "answer": "Das erzeugt den trillernden Ton" },
+  { "category": "Kuriositäten", "question": "Warum wurde Kaugummi ursprünglich aus dem Saft des Breiapfelbaums hergestellt?", "answer": "Chicle war einfach perfekt kaubar" },
+  { "category": "Kuriositäten", "question": "Warum haben manche alte Landkarten am Rand Seeungeheuer eingezeichnet?", "answer": "So markierten Kartografen gefährliche Gewässer" },
+  { "category": "Kuriositäten", "question": "Warum wurde Salz in vielen Kulturen früher als Zahlungsmittel benutzt?", "answer": "Es war selten und lebensnotwendig" },
+  { "category": "Kuriositäten", "question": "Warum haben Zebras Streifen?", "answer": "Sie verwirren stechende Insekten" },
+  { "category": "Kuriositäten", "question": "Warum klingt ein Sektglas beim Anstoßen oft heller und dünner als ein Bierglas?", "answer": "Dünneres Glas und mehr Kohlensäure" },
+  { "category": "Kuriositäten", "question": "Warum wurde in vielen alten Kulturen ein zerbrochener Spiegel mit Unglück verbunden?", "answer": "Man dachte, das verletzt die Seele" },
+  { "category": "Kuriositäten", "question": "Warum haben Feuerwerkskörper so unterschiedliche Farben?", "answer": "Verschiedene Metallsalze verbrennen unterschiedlich" },
+  { "category": "Kuriositäten", "question": "Warum ist geschluckter Kaugummi ungefährlicher, als viele Menschen glauben?", "answer": "Er wird einfach unverdaut ausgeschieden" },
+  { "category": "Kuriositäten", "question": "Warum galt Linkshändigkeit früher in vielen Kulturen als unerwünscht?", "answer": "Man verband sie abergläubisch mit Unglück" },
+  { "category": "Kuriositäten", "question": "Warum tragen viele alte Brücken kleine steinerne Wasserspeier oder Fratzen?", "answer": "Sie sollten böse Geister fernhalten" },
+
+  { "category": "Fremdwörter", "question": "Was bedeutet das Wort Nepotismus?", "answer": "Vetternwirtschaft" },
+  { "category": "Fremdwörter", "question": "Was bedeutet das Wort obsolet?", "answer": "Veraltet, nicht mehr gebräuchlich" },
+  { "category": "Fremdwörter", "question": "Was bedeutet das Wort Akribie?", "answer": "Extreme Sorgfalt und Genauigkeit" },
+  { "category": "Fremdwörter", "question": "Was bedeutet das Wort Eloquenz?", "answer": "Redegewandtheit" },
+  { "category": "Fremdwörter", "question": "Was bedeutet das Wort prekär?", "answer": "Heikel, in einer schwierigen Lage" },
+  { "category": "Fremdwörter", "question": "Was bedeutet das Wort Usurpator?", "answer": "Jemand, der sich Macht unrechtmäßig aneignet" },
+  { "category": "Fremdwörter", "question": "Was bedeutet das Wort Anachronismus?", "answer": "Ein zeitlicher Fehler, passt nicht in die Epoche" },
+  { "category": "Fremdwörter", "question": "Was bedeutet das Wort Kontemplation?", "answer": "Versunkene, nachdenkliche Betrachtung" },
+  { "category": "Fremdwörter", "question": "Was bedeutet das Wort Idiosynkrasie?", "answer": "Eine besondere persönliche Eigenart" },
+  { "category": "Fremdwörter", "question": "Was bedeutet das Wort Sonor, wie in einer sonoren Stimme?", "answer": "Voll und tief im Klang" },
+  { "category": "Fremdwörter", "question": "Was bedeutet das Wort Ambivalenz?", "answer": "Widersprüchliche Gefühle gleichzeitig" },
+  { "category": "Fremdwörter", "question": "Was bedeutet das Wort Autark?", "answer": "Unabhängig, selbstversorgend" },
+  { "category": "Fremdwörter", "question": "Was bedeutet das Wort Hybris?", "answer": "Übersteigerter Stolz" },
+  { "category": "Fremdwörter", "question": "Was bedeutet das Wort Dogma?", "answer": "Eine nicht hinterfragte Lehrmeinung" },
+  { "category": "Fremdwörter", "question": "Was bedeutet das Wort Paradox?", "answer": "Ein Widerspruch mit wahrem Kern" },
+  { "category": "Fremdwörter", "question": "Was bedeutet das Wort Empathie?", "answer": "Sich in andere hineinversetzen können" },
+  { "category": "Fremdwörter", "question": "Was bedeutet das Wort Rhetorik?", "answer": "Die Kunst der überzeugenden Rede" },
+  { "category": "Fremdwörter", "question": "Was bedeutet das Wort Kompendium?", "answer": "Eine kurze Zusammenfassung" },
+  { "category": "Fremdwörter", "question": "Was bedeutet das Wort Melancholie?", "answer": "Tiefe, grundlose Schwermut" },
+  { "category": "Fremdwörter", "question": "Was bedeutet das Wort Ironie?", "answer": "Das Gegenteil von dem sagen, was man meint" },
+  { "category": "Fremdwörter", "question": "Was bedeutet das Wort Autonomie?", "answer": "Selbstbestimmung" },
+  { "category": "Fremdwörter", "question": "Was bedeutet das Wort Fatalismus?", "answer": "Der Glaube, alles ist vorherbestimmt" },
+  { "category": "Fremdwörter", "question": "Was bedeutet das Wort plausibel?", "answer": "Einleuchtend, glaubwürdig" },
+  { "category": "Fremdwörter", "question": "Was bedeutet das Wort kapriziös?", "answer": "Launisch und unberechenbar" },
+  { "category": "Fremdwörter", "question": "Was bedeutet das Wort divergent?", "answer": "Auseinanderstrebend" },
+
+  { "category": "Historischer Kontext", "question": "Warum unterschrieb Albert Einstein 1905 innerhalb weniger Monate gleich vier bahnbrechende physikalische Arbeiten?", "answer": "Das war sein Wunderjahr als Patentangestellter" },
+  { "category": "Historischer Kontext", "question": "Warum schrieb Albert Einstein 1939 einen Brief an den amerikanischen Präsidenten Roosevelt?", "answer": "Er warnte vor einer deutschen Atombombe" },
+  { "category": "Historischer Kontext", "question": "Warum wurde der Schriftsteller Fjodor Dostojewski 1849 fast hingerichtet?", "answer": "Die Begnadigung kam erst am Richtplatz" },
+  { "category": "Historischer Kontext", "question": "Wodurch wurde Marie Curie zur ersten Person überhaupt, die zwei Nobelpreise in unterschiedlichen Fachrichtungen bekam?", "answer": "Physik und später Chemie" },
+  { "category": "Historischer Kontext", "question": "Warum musste Galileo Galilei 1633 vor der Inquisition seine wissenschaftlichen Erkenntnisse widerrufen?", "answer": "Er behauptete, die Erde kreist um die Sonne" },
+  { "category": "Historischer Kontext", "question": "Welchen Hauptberuf übte der Komponist Alexander Borodin sein Leben lang aus, während er nebenbei Musik schrieb?", "answer": "Er war hauptberuflich Chemiker" },
+  { "category": "Historischer Kontext", "question": "Wieso schrieb die Autorin Mary Shelley schon mit neunzehn Jahren den Roman Frankenstein?", "answer": "Ein Gruselgeschichten-Wettbewerb am Genfersee" },
+  { "category": "Historischer Kontext", "question": "Warum wurden viele Werke des Malers Vincent van Gogh erst nach seinem Tod berühmt?", "answer": "Zu Lebzeiten verkaufte er kaum ein Bild" },
+  { "category": "Historischer Kontext", "question": "Wieso wechselte der Physiker Isaac Newton in seinen späteren Lebensjahren komplett das Fachgebiet?", "answer": "Er leitete später die königliche Münzanstalt" },
+  { "category": "Historischer Kontext", "question": "Warum verbrachte der Schriftsteller Oscar Wilde die letzten Jahre seines Lebens im Gefängnis?", "answer": "Er wurde wegen seiner Homosexualität verurteilt" },
+  { "category": "Historischer Kontext", "question": "Wieso reiste der Naturforscher Charles Darwin fast fünf Jahre lang um die halbe Welt?", "answer": "Er reiste auf dem Vermessungsschiff Beagle" },
+  { "category": "Historischer Kontext", "question": "Warum wurde die Mathematikerin Ada Lovelace schon im neunzehnten Jahrhundert als erste Programmiererin der Geschichte bezeichnet?", "answer": "Ihre Notizen enthielten den ersten Algorithmus" },
+  { "category": "Historischer Kontext", "question": "Wieso musste der Komponist Ludwig van Beethoven einen Großteil seiner späteren Werke komponieren, ohne sie selbst hören zu können?", "answer": "Er erkrankte früh an fortschreitender Taubheit" },
+  { "category": "Historischer Kontext", "question": "Warum wurde die Schriftstellerin Jane Austen zu Lebzeiten nur anonym veröffentlicht?", "answer": "Frauen durften damals nicht offiziell als Autorin gelten" },
+  { "category": "Historischer Kontext", "question": "Wieso reiste Christoph Kolumbus 1492 in Richtung Westen, obwohl er eigentlich Indien erreichen wollte?", "answer": "Er unterschätzte den Erdumfang stark" },
+  { "category": "Historischer Kontext", "question": "Warum wurde der Physiker Nikola Tesla zu Lebzeiten oft von seinem Konkurrenten Thomas Edison überschattet?", "answer": "Edison gewann den sogenannten Stromkrieg" },
+  { "category": "Historischer Kontext", "question": "Wieso wurde Königin Marie Antoinette von Frankreich 1793 hingerichtet?", "answer": "Sie wurde des Verrats am Volk angeklagt" },
+  { "category": "Historischer Kontext", "question": "Warum gilt der Universalgelehrte Leonardo da Vinci als typisches Beispiel für einen Menschen mit extrem vielseitigen Talenten?", "answer": "Maler, Erfinder, Anatom und Ingenieur zugleich" },
+  { "category": "Historischer Kontext", "question": "Wieso konnte der Komponist Wolfgang Amadeus Mozart schon als kleines Kind vor europäischen Königshäusern auftreten?", "answer": "Sein Vater reiste mit ihm durch Europa" },
+  { "category": "Historischer Kontext", "question": "Warum wird der Physiker Stephen Hawking trotz einer schweren Erkrankung als eine der einflussreichsten Persönlichkeiten der modernen Wissenschaft gesehen?", "answer": "Trotz ALS erforschte er Schwarze Löcher" },
+  { "category": "Historischer Kontext", "question": "Wieso schrieb der Schriftsteller George Orwell den Roman 1984 kurz nach dem Zweiten Weltkrieg?", "answer": "Er warnte vor totalitären Überwachungsstaaten" },
+  { "category": "Historischer Kontext", "question": "Warum gilt die Entdeckung des Penicillins durch Alexander Fleming als Zufallsfund?", "answer": "Ein Schimmelpilz tötete zufällig Bakterien in einer Petrischale" },
+  { "category": "Historischer Kontext", "question": "Wieso musste der Komponist Johann Sebastian Bach zu Lebzeiten oft als Kirchenangestellter mehrere Kantaten pro Woche liefern?", "answer": "Das gehörte zu seinen Pflichten als Kantor" },
+  { "category": "Historischer Kontext", "question": "Warum gilt die Physikerin Lise Meitner als eine der übergangenen Nobelpreisträgerinnen der Geschichte?", "answer": "Nur ihr Kollege bekam den Nobelpreis" },
+  { "category": "Historischer Kontext", "question": "Wieso wurde der Feldherr Hannibal für seinen Alpenübergang mit Kriegselefanten berühmt?", "answer": "Er wollte Rom von Norden überraschen" },
+  { "category": "Historischer Kontext", "question": "Warum wird der Philosoph Sokrates vor allem durch die Schriften seines Schülers Platon bekannt, obwohl er selbst nichts schriftlich hinterließ?", "answer": "Er lehrte nur im Gespräch, nie schriftlich" },
+  { "category": "Historischer Kontext", "question": "Wieso musste der Komponist Richard Wagner zeitweise vor seinen eigenen Gläubigern aus mehreren Ländern fliehen?", "answer": "Er lebte weit über seine Verhältnisse" },
+  { "category": "Historischer Kontext", "question": "Warum gilt Kleopatra bis heute als eine der bekanntesten Herrscherinnen der Antike?", "answer": "Letzte Pharaonin Ägyptens" },
+  { "category": "Historischer Kontext", "question": "Wieso wurde der Erfinder Johannes Gutenberg für die Entwicklung des Buchdrucks so bedeutend?", "answer": "Bewegliche Lettern für den Buchdruck" },
+  { "category": "Historischer Kontext", "question": "Warum wird der Naturforscher Alexander von Humboldt oft als Vorreiter der modernen Umweltwissenschaft bezeichnet?", "answer": "Er erkannte früh Klima und Ökosysteme als System" },
+  { "category": "Historischer Kontext", "question": "Wieso wurde die Regentschaft von Königin Elisabeth der Ersten von England als goldenes Zeitalter bezeichnet?", "answer": "Handel, Seefahrt und Theater blühten auf" },
+  { "category": "Historischer Kontext", "question": "Warum gilt der Fall der Berliner Mauer 1989 als eines der einschneidendsten Ereignisse des zwanzigsten Jahrhunderts?", "answer": "Ende der deutschen Teilung" },
+  { "category": "Historischer Kontext", "question": "Wieso wird der Komponist Franz Schubert oft als tragische Figur der Musikgeschichte beschrieben?", "answer": "Er starb mit einunddreißig Jahren" },
+  { "category": "Historischer Kontext", "question": "Warum reiste der Entdecker Marco Polo im dreizehnten Jahrhundert bis nach China?", "answer": "Eine Handelsreise entlang der Seidenstraße" },
+  { "category": "Historischer Kontext", "question": "Wieso wird die Erfindung des Telefons oft zwei verschiedenen Erfindern gleichzeitig zugeschrieben?", "answer": "Bell und Gray reichten am selben Tag ein Patent ein" },
+  { "category": "Historischer Kontext", "question": "Wieso wird der Mathematiker Pythagoras vor allem mit einem einzigen geometrischen Satz in Verbindung gebracht, obwohl er noch viel mehr erforscht hat?", "answer": "Der Satz über rechtwinklige Dreiecke" },
+  { "category": "Historischer Kontext", "question": "Warum musste der Komponist Wolfgang Amadeus Mozart trotz großen Ruhms zeitlebens finanziell kämpfen?", "answer": "Er hatte keine feste, gut bezahlte Anstellung" },
+  { "category": "Historischer Kontext", "question": "Wieso gilt die Landung der Apollo 11 Mission 1969 als einer der bedeutendsten Momente der Menschheitsgeschichte?", "answer": "Erste Menschen auf einem anderen Himmelskörper" },
+  { "category": "Historischer Kontext", "question": "Warum wurde der Philosoph Immanuel Kant zeitlebens für seine extrem geregelten Tagesabläufe bekannt?", "answer": "Er hielt fast minutengenaue Tagesabläufe ein" },
+  { "category": "Historischer Kontext", "question": "Wieso gilt die Erfindung des World Wide Web durch Tim Berners-Lee als einer der größten technischen Umbrüche der jüngeren Geschichte?", "answer": "Er erfand die Grundlage des World Wide Web" }
 ]

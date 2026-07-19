@@ -219,9 +219,7 @@ socket.on('answerRejected', ({ reason }) => {
 socket.on('answerCorrected', ({ text, wasChanged }) => {
   document.getElementById('input-answer').value = text;
   document.getElementById('answer-reject-msg').classList.add('hidden');
-  document.getElementById('btn-submit-answer').textContent = wasChanged
-    ? 'Antwort abgeschickt ✓ (automatisch korrigiert)'
-    : 'Antwort abgeschickt ✓';
+  document.getElementById('btn-submit-answer').textContent = 'Antwort abgeschickt ✓';
 });
 
 // Live-Tippen: Moderator:in sieht in Echtzeit, was gerade eingetippt wird
@@ -298,11 +296,11 @@ document.getElementById('btn-close-winner').addEventListener('click', () => {
 });
 
 // ---------- BOARD RENDER (mini bar, always visible) ----------
-let estimateTriggerFields = [4, 8, 12, 16]; // Standardwert, wird vom Server überschrieben
+let estimateTriggerFields = [5, 8, 13, 18]; // Standardwert, wird vom Server überschrieben
 
-function renderBoard(players) {
+function renderBoard(players, positionsOverride) {
   const track = document.getElementById('board-track');
-  const BOARD_LENGTH = 20;
+  const BOARD_LENGTH = 26;
   track.innerHTML = '';
   for (let i = 0; i <= BOARD_LENGTH; i++) {
     const field = document.createElement('div');
@@ -310,7 +308,7 @@ function renderBoard(players) {
     if (estimateTriggerFields.includes(i)) cls += ' estimate-field';
     field.className = cls;
     field.textContent = i === BOARD_LENGTH ? '🏁' : i;
-    const here = players.filter(p => p.position === i);
+    const here = players.filter(p => (positionsOverride ? positionsOverride[p.id] : p.position) === i);
     here.forEach((p, idx) => {
       const tok = document.createElement('span');
       tok.className = 'board-token';
@@ -324,10 +322,11 @@ function renderBoard(players) {
 }
 
 // ---------- BOARD RENDER (large, animated, rechteckige Laufbahn) ----------
-const BOARD_LENGTH = 20;
+const BOARD_LENGTH = 26;
 const BOARD_SLOTS = BOARD_LENGTH + 1; // Felder 0..20
 const HOP_MS = 380; // Dauer pro Feld-Hop bei der Animation
 let roundStartPositions = {};
+let miniBarShowsLive = true; // Mini-Leiste zeigt neue Positionen erst, sobald das große Spielbrett sie enthüllt
 
 // Verteilt Feld i gleichmäßig entlang des Umfangs eines Rechtecks (Seitenverhältnis 2:1),
 // sodass die Abstände zwischen Feldern optisch gleich groß wirken.
@@ -413,6 +412,7 @@ socket.on('state', (state) => {
   const enteringAnswering = state.phase === 'answering' && (!lastState || lastState.phase !== 'answering');
   const enteringBoard = state.phase === 'board' && (!lastState || lastState.phase !== 'board');
   if (enteringAnswering) {
+    miniBarShowsLive = false;
     roundStartPositions = {};
     state.players.forEach(p => { roundStartPositions[p.id] = p.position; });
     const ta = document.getElementById('input-answer');
@@ -423,12 +423,15 @@ socket.on('state', (state) => {
     document.getElementById('btn-submit-answer').textContent = 'Antwort abschicken';
     document.getElementById('answer-reject-msg').classList.add('hidden');
   }
+  if (enteringBoard) {
+    miniBarShowsLive = true;
+  }
 
   lastState = state;
   if (state.estimateTriggerFields) estimateTriggerFields = state.estimateTriggerFields;
   const iAmModerator = state.moderatorId === myId;
 
-  renderBoard(state.players);
+  renderBoard(state.players, miniBarShowsLive ? null : roundStartPositions);
 
   document.querySelectorAll('.mod-only').forEach(el => el.style.display = iAmModerator ? 'block' : 'none');
   document.querySelectorAll('.mod-hide').forEach(el => el.style.display = iAmModerator ? 'none' : 'block');
@@ -450,7 +453,7 @@ socket.on('state', (state) => {
       }
       list.appendChild(li);
     });
-    document.getElementById('btn-start-round').style.display = state.players.length >= 3 ? 'block' : 'none';
+    document.getElementById('btn-start-round').style.display = (state.players.length >= 3 && iAmModerator) ? 'block' : 'none';
     showScreen('lobby');
   }
 
@@ -484,7 +487,7 @@ socket.on('state', (state) => {
           ? ''
           : `<span class="typing-tag">${a.text ? 'tippt gerade …' : 'noch nichts eingegeben'}</span>`;
         const shownText = a.text ? escapeHtml(String(a.text)) : '<span class="placeholder-text">…</span>';
-        div.innerHTML = `${shownText}${statusTag}<span class="owner">${escapeHtml(a.name)}</span>`;
+        div.innerHTML = `${shownText}${statusTag}<br><span class="owner">${escapeHtml(a.name)}</span>`;
         previewBox.appendChild(div);
       });
     } else {
@@ -532,7 +535,7 @@ socket.on('state', (state) => {
         div.className = 'reveal-item' + (r.points > 0 ? ' real' : '');
         const medal = medals[r.rank - 1] || `${r.rank}.`;
         const pointsText = r.points > 0 ? `+${r.points} Punkte` : 'keine Punkte';
-        div.innerHTML = `${medal} ${escapeHtml(r.name)}: <strong>${r.value}</strong><span class="owner">${pointsText}</span>`;
+        div.innerHTML = `${medal} ${escapeHtml(r.name)}: <strong>${r.value}</strong><br><span class="owner">${pointsText}</span>`;
         list.appendChild(div);
       });
     } else {
@@ -545,7 +548,7 @@ socket.on('state', (state) => {
         div.className = cls;
         const ownerName = a.isReal ? 'Echte Antwort ✔' : (state.players.find(p => p.id === a.ownerId)?.name || '???');
         const badge = isMyVote ? `<span class="my-vote-badge">${a.isReal ? '✔ Richtig getippt!' : '✗ Reingefallen'}</span>` : '';
-        div.innerHTML = `${escapeHtml(a.text)}<span class="owner">${ownerName}</span>${badge}`;
+        div.innerHTML = `${escapeHtml(a.text)}<br><span class="owner">${ownerName}</span>${badge}`;
         list.appendChild(div);
       });
     }
