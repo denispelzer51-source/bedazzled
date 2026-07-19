@@ -180,6 +180,18 @@ document.getElementById('btn-start-round').addEventListener('click', () => {
   socket.emit('startRound', { code: currentCode });
 });
 
+document.getElementById('btn-leave-room').addEventListener('click', () => {
+  if (currentCode) socket.emit('leaveRoom', { code: currentCode });
+  clearSession();
+  currentCode = null;
+  myId = null;
+  lastState = null;
+  document.getElementById('board-bar').classList.add('hidden');
+  document.getElementById('input-code').value = '';
+  showError('');
+  showScreen('start');
+});
+
 // ---------- ANSWERING ----------
 let currentRoundType = 'question';
 
@@ -231,6 +243,13 @@ document.getElementById('input-answer').addEventListener('input', (e) => {
     socket.emit('typingAnswer', { code: currentCode, text });
   }, 250);
 });
+document.getElementById('input-answer-number').addEventListener('input', (e) => {
+  clearTimeout(typingDebounce);
+  const text = e.target.value;
+  typingDebounce = setTimeout(() => {
+    socket.emit('typingAnswer', { code: currentCode, text });
+  }, 250);
+});
 
 document.getElementById('btn-to-voting').addEventListener('click', () => {
   socket.emit('goToVoting', { code: currentCode });
@@ -257,6 +276,7 @@ function renderVoteOptions(shuffledAnswers) {
       div.classList.add('selected');
       selectedVote = a.ownerId;
       document.getElementById('btn-submit-vote').disabled = false;
+      socket.emit('previewVote', { code: currentCode, chosenOwnerId: a.ownerId });
     });
     box.appendChild(div);
   });
@@ -343,6 +363,27 @@ function fieldPercent(i, totalSlots) {
   return { x: 0, y: 100 - (d / H) * 100 };                             // linke Kante, unten -> oben
 }
 
+// Berechnet für jede Figur einen Versatz: allein auf dem Feld -> Mitte, mehrere -> aufgefächert
+function computeTokenOffsets(players, positionsMap) {
+  const groups = {};
+  players.forEach(p => {
+    const pos = positionsMap[p.id];
+    if (!groups[pos]) groups[pos] = [];
+    groups[pos].push(p.id);
+  });
+  const offsets = {};
+  Object.values(groups).forEach(ids => {
+    if (ids.length === 1) {
+      offsets[ids[0]] = { dx: 0, dy: 0 };
+    } else {
+      ids.forEach((id, idx) => {
+        offsets[id] = { dx: (idx % 3) * 9 - 9, dy: Math.floor(idx / 3) * 9 - 9 };
+      });
+    }
+  });
+  return offsets;
+}
+
 function renderBoardLarge(players, fromPositions, animate) {
   const fieldsBox = document.getElementById('board-fields-large');
   const tokensBox = document.getElementById('board-tokens-large');
@@ -361,35 +402,57 @@ function renderBoardLarge(players, fromPositions, animate) {
 
   tokensBox.innerHTML = '';
   const tokenEls = {};
-  players.forEach((p, idx) => {
+  const startPositionsMap = {};
+  players.forEach(p => { startPositionsMap[p.id] = animate ? (fromPositions[p.id] ?? p.position) : p.position; });
+  const startOffsets = computeTokenOffsets(players, startPositionsMap);
+
+  players.forEach(p => {
     const tok = document.createElement('span');
     tok.className = 'board-token-rect';
     tok.textContent = avatarFor(p);
     tok.title = p.name;
-    const startPos = animate ? (fromPositions[p.id] ?? p.position) : p.position;
+    const startPos = startPositionsMap[p.id];
     const pos = fieldPercent(startPos, BOARD_SLOTS);
     tok.style.left = pos.x + '%';
     tok.style.top = pos.y + '%';
-    // leichter Versatz, falls mehrere Figuren auf demselben Feld stehen
-    tok.style.transform = `translate(${(idx % 3) * 9 - 9}px, ${Math.floor(idx / 3) * 9 - 9}px)`;
+    const off = startOffsets[p.id] || { dx: 0, dy: 0 };
+    tok.style.transform = `translate(${off.dx}px, ${off.dy}px)`;
     tokensBox.appendChild(tok);
     tokenEls[p.id] = tok;
   });
 
   if (animate) {
-    players.forEach(p => {
-      const start = fromPositions[p.id] ?? p.position;
-      const steps = p.position - start;
-      if (steps <= 0) return;
+    // Figuren ziehen nacheinander, nicht gleichzeitig - macht jede Bewegung einzeln sichtbar
+    const movers = players
+      .map(p => ({ p, start: fromPositions[p.id] ?? p.position, steps: p.position - (fromPositions[p.id] ?? p.position) }))
+      .filter(m => m.steps > 0);
+
+    const currentDisplayPositions = { ...startPositionsMap };
+    let cumulativeDelay = 0;
+    const PAUSE_BETWEEN_PLAYERS = 250;
+
+    function applyAllTokenPositions() {
+      const offs = computeTokenOffsets(players, currentDisplayPositions);
+      players.forEach(pp => {
+        const tok = tokenEls[pp.id];
+        if (!tok) return;
+        const pos = fieldPercent(currentDisplayPositions[pp.id], BOARD_SLOTS);
+        tok.style.left = pos.x + '%';
+        tok.style.top = pos.y + '%';
+        const off = offs[pp.id] || { dx: 0, dy: 0 };
+        tok.style.transform = `translate(${off.dx}px, ${off.dy}px)`;
+      });
+    }
+
+    movers.forEach(({ p, start, steps }) => {
       for (let s = 1; s <= steps; s++) {
+        const delay = cumulativeDelay + s * HOP_MS;
         setTimeout(() => {
-          const tok = tokenEls[p.id];
-          if (!tok) return;
-          const pos = fieldPercent(start + s, BOARD_SLOTS);
-          tok.style.left = pos.x + '%';
-          tok.style.top = pos.y + '%';
-        }, s * HOP_MS);
+          currentDisplayPositions[p.id] = start + s;
+          applyAllTokenPositions();
+        }, delay);
       }
+      cumulativeDelay += steps * HOP_MS + PAUSE_BETWEEN_PLAYERS;
     });
   }
 
@@ -507,8 +570,21 @@ socket.on('state', (state) => {
       document.getElementById('vote-options').classList.add('hidden');
       document.getElementById('btn-submit-vote').classList.add('hidden');
       document.getElementById('moderator-vote-wait').classList.remove('hidden');
+      const previewBox = document.getElementById('moderator-vote-preview');
+      previewBox.classList.remove('hidden');
+      previewBox.innerHTML = '';
+      (state.votePreview || []).forEach(v => {
+        const chosenAnswer = state.shuffledAnswers.find(a => a.ownerId === v.chosenOwnerId);
+        const div = document.createElement('div');
+        div.className = 'reveal-item' + (v.submitted ? '' : ' typing-preview');
+        const text = chosenAnswer ? escapeHtml(chosenAnswer.text) : '<span class="placeholder-text">noch keine Auswahl</span>';
+        const statusTag = v.submitted ? '' : (chosenAnswer ? '<span class="typing-tag">tippt gerade drauf …</span>' : '');
+        div.innerHTML = `${text}${statusTag}<br><span class="owner">${escapeHtml(v.name)}</span>`;
+        previewBox.appendChild(div);
+      });
     } else {
       document.getElementById('moderator-vote-wait').classList.add('hidden');
+      document.getElementById('moderator-vote-preview').classList.add('hidden');
       if (enteringVoting) {
         document.getElementById('vote-options').classList.remove('hidden');
         document.getElementById('btn-submit-vote').classList.remove('hidden');
@@ -530,12 +606,14 @@ socket.on('state', (state) => {
       realBox.classList.remove('hidden');
       realBox.textContent = 'Echte Zahl: ' + state.estimateRealAnswer;
       const medals = ['🥇', '🥈', '🥉'];
+      const closenessCallouts = ['🎯 Am nächsten dran!', '👏 Ziemlich nah dran', '👍 Auch nicht schlecht'];
       (state.estimateResults || []).forEach(r => {
         const div = document.createElement('div');
         div.className = 'reveal-item' + (r.points > 0 ? ' real' : '');
         const medal = medals[r.rank - 1] || `${r.rank}.`;
+        const callout = r.points > 0 ? (closenessCallouts[r.rank - 1] || '') : '';
         const pointsText = r.points > 0 ? `+${r.points} Punkte` : 'keine Punkte';
-        div.innerHTML = `${medal} ${escapeHtml(r.name)}: <strong>${r.value}</strong><br><span class="owner">${pointsText}</span>`;
+        div.innerHTML = `${medal} ${escapeHtml(r.name)}: <strong>${r.value}</strong>${callout ? ` <span class="closeness-tag">${callout}</span>` : ''}<br><span class="owner">${pointsText}</span>`;
         list.appendChild(div);
       });
     } else {

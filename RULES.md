@@ -129,6 +129,15 @@ herunterladen und im Repo überschreiben, damit die Änderungen dauerhaft bleibe
 
 ## Änderungsprotokoll
 
+- **19.07.2026:** Sechs Verbesserungen: (1) Zurück-Pfeil in der Lobby, um einen versehentlich
+  erstellten Raum zu verlassen und stattdessen einem anderen beizutreten. (2) Moderator:in
+  sieht jetzt auch bei Schätzen-Karten live, was eingetippt wird (vorher nur bei Bluff-Fragen).
+  (3) Auflösung bei Schätzen-Karten zeigt jetzt "🎯 Am nächsten dran!" beim besten Tipp.
+  (4) Beim Spielbrett ziehen mehrere Spielfiguren jetzt nacheinander statt gleichzeitig.
+  (5) Eine allein auf einem Feld stehende Spielfigur wird jetzt zentriert statt versetzt
+  dargestellt, nur bei mehreren Figuren auf einem Feld gibt es einen Versatz. (6) Moderator:in
+  sieht bei der Abstimmung jetzt live, welche Antwort ein Spieler gerade antippt, bevor final
+  abgeschickt wurde.
 - **19.07.2026:** Nur die/der Moderator:in kann eine Runde starten (Button vorher fälschlich
   für alle sichtbar, jetzt auch serverseitig abgesichert). Türkise-Felder-Hinweis über dem
   Start-Button entfernt (steht bereits im Regelwerk-Panel). Mehr Kontrast zwischen Antwort

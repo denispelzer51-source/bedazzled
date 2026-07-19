@@ -321,3 +321,21 @@ h2 { font-family: var(--font-display); font-weight: 700; font-size: 24px; text-a
 .rules-section p { font-size: 14px; color: var(--ink-dim); line-height: 1.5; margin: 0; }
 .rules-section ul, .rules-section ol { margin: 4px 0 0; padding-left: 20px; font-size: 14px; color: var(--ink-dim); line-height: 1.6; }
 .rules-section li strong { color: var(--ink); }
+
+.btn-back {
+  position: absolute;
+  top: 20px; left: 20px;
+  width: 38px; height: 38px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255,255,255,0.15);
+  background: var(--night-2);
+  color: var(--ink);
+  font-size: 18px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  z-index: 5;
+}
+.btn-back:hover { border-color: var(--gold); color: var(--gold); }
+#screen-lobby { position: relative; }
+
+.closeness-tag { font-size: 13px; font-weight: 700; color: var(--gold); }

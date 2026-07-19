@@ -285,7 +285,7 @@ function publicRoomState(room, forPlayerId) {
     votedCount: Object.keys(room.votes || {}).length,
     // Der/die Moderator:in sieht schon während der Antwort-Phase live, wer was schreibt
     // (auch bevor abgeschickt wurde), inkl. Kennzeichnung ob final abgeschickt.
-    answersPreview: (isModerator && room.phase === 'answering' && room.roundType !== 'estimate')
+    answersPreview: (isModerator && room.phase === 'answering')
       ? room.players
           .filter(p => p.id !== moderatorId)
           .map(p => {
@@ -298,6 +298,16 @@ function publicRoomState(room, forPlayerId) {
     myVote: room.votes[forPlayerId] || null,
     shuffledAnswers: room.phase === 'voting' || room.phase === 'reveal'
       ? room.shuffledAnswers.map(a => room.phase === 'reveal' ? a : { text: a.text, ownerId: a.ownerId })
+      : [],
+    // Moderator:in sieht schon während der Abstimm-Phase, welche Antwort gerade angetippt wurde
+    votePreview: (isModerator && room.phase === 'voting')
+      ? room.players
+          .filter(p => p.id !== moderatorId)
+          .map(p => ({
+            name: p.name,
+            chosenOwnerId: (room.votePreview && room.votePreview[p.id]) || null,
+            submitted: room.votes[p.id] !== undefined,
+          }))
       : [],
     // Ranking-Ergebnis für Schätzen-Runden (nur in der Auflösung relevant)
     estimateResults: room.phase === 'reveal' ? (room.estimateResults || []) : [],
@@ -474,7 +484,7 @@ io.on('connection', (socket) => {
 
   socket.on('typingAnswer', ({ code, text }) => {
     const room = rooms[code];
-    if (!room || room.phase !== 'answering' || room.roundType === 'estimate') return;
+    if (!room || room.phase !== 'answering') return;
     const myId = socket.data.token;
     const moderatorId = room.players[room.moderatorIndex].id;
     if (myId === moderatorId) return;
@@ -539,7 +549,20 @@ io.on('connection', (socket) => {
       [combined[i], combined[j]] = [combined[j], combined[i]];
     }
     room.shuffledAnswers = combined;
+    room.votePreview = {};
     room.phase = 'voting';
+    broadcastState(code);
+  });
+
+  // Zeigt der Moderation schon vor dem Abschicken, welche Antwort ein Spieler gerade antippt
+  socket.on('previewVote', ({ code, chosenOwnerId }) => {
+    const room = rooms[code];
+    if (!room || room.phase !== 'voting') return;
+    const myId = socket.data.token;
+    const moderatorId = room.players[room.moderatorIndex].id;
+    if (myId === moderatorId) return;
+    if (!room.votePreview) room.votePreview = {};
+    room.votePreview[myId] = chosenOwnerId;
     broadcastState(code);
   });
 
@@ -634,6 +657,15 @@ io.on('connection', (socket) => {
     room.shuffledAnswers = [];
     room.phase = 'lobby';
     broadcastState(code);
+  });
+
+  socket.on('leaveRoom', ({ code }) => {
+    const token = socket.data.token;
+    if (!code || !token) return;
+    removePlayerForGood(code, token);
+    socket.leave(code);
+    socket.data.token = null;
+    socket.data.roomCode = null;
   });
 
   socket.on('disconnect', () => {

@@ -39,6 +39,7 @@
 
   <!-- LOBBY SCREEN -->
   <section id="screen-lobby" class="screen">
+    <button id="btn-leave-room" class="btn-back" title="Raum verlassen">←</button>
     <div class="room-header">
       <span class="room-label">Raum</span>
       <span id="room-code-display" class="room-code">----</span>
@@ -124,7 +125,8 @@
     <div id="vote-options" class="vote-options"></div>
     <button id="btn-submit-vote" class="btn btn-primary" disabled>Auswahl abschicken</button>
     <p id="vote-submitted-msg" class="waiting-msg hidden">Deine Stimme wurde abgeschickt ✓</p>
-    <p id="moderator-vote-wait" class="waiting-msg hidden">Du bist Moderator:in – du stimmst diese Runde nicht ab.</p>
+    <p id="moderator-vote-wait" class="waiting-msg hidden">Du bist Moderator:in – du stimmst diese Runde nicht ab. Hier siehst du live, wer worauf tippt:</p>
+    <div id="moderator-vote-preview" class="reveal-list hidden"></div>
     <p class="progress-text"><span id="voted-count">0</span>/<span id="voting-total">0</span> haben abgestimmt</p>
     <button id="btn-to-reveal" class="btn btn-secondary mod-only">Auflösen</button>
   </section>
