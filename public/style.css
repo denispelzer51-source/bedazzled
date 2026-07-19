@@ -396,3 +396,19 @@ h2 { font-family: var(--font-display); font-weight: 700; font-size: 24px; text-a
 .share-buttons { display: flex; gap: 10px; margin: 16px 0; }
 .btn-share { font-size: 14px; padding: 12px 10px; }
 .copy-link-msg { text-align: center; color: var(--teal); font-size: 13px; font-weight: 600; margin: -8px 0 16px; }
+
+.input-code-prominent {
+  border: 2px solid rgba(172,88,249,0.45);
+  background: rgba(172,88,249,0.08);
+  font-size: 20px;
+  text-align: center;
+  letter-spacing: 0.12em;
+  font-weight: 700;
+}
+.input-code-prominent:focus { outline: none; border-color: var(--gold); background: rgba(172,88,249,0.14); }
+.btn-join-prominent {
+  background: var(--primary);
+  color: var(--ink);
+  box-shadow: 0 6px 20px rgba(140,57,247,0.35);
+}
+.btn-join-prominent:hover { filter: brightness(1.1); }

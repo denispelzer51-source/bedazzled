@@ -137,6 +137,10 @@ herunterladen und im Repo überschreiben, damit die Änderungen dauerhaft bleibe
 
 ## Änderungsprotokoll
 
+- **19.07.2026:** Startbildschirm umsortiert: "Raum beitreten" steht jetzt oben und wirkt
+  optisch auffälliger (dickerer lila Rahmen, gefülltes Feld), "Neuen Raum erstellen" steht
+  darunter und dezenter – da die meisten Spieler einem Raum beitreten statt selbst einen zu
+  erstellen.
 - **19.07.2026:** Geteilter Link enthält jetzt den Raum-Code als URL-Parameter
   (`?room=1234`). Öffnet jemand den Link, wird der Code automatisch ausgefüllt und der
   Fokus direkt ins Namensfeld gesetzt – nur noch Name eintippen und "Beitreten" klicken,
