@@ -501,3 +501,24 @@ h2 { font-family: var(--font-display); font-weight: 700; font-size: 24px; text-a
   border-radius: 12px;
   margin-bottom: 14px;
 }
+
+.duplicate-conflict-box {
+  background: rgba(232,84,122,0.1);
+  border: 1.5px solid rgba(232,84,122,0.4);
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+.duplicate-conflict-box h4 { color: var(--pink); margin: 0 0 10px; font-size: 15px; }
+.duplicate-conflict-box .dc-text { font-size: 14px; margin-bottom: 10px; }
+.duplicate-conflict-box .dc-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.duplicate-conflict-box button {
+  font-size: 13px;
+  font-weight: 700;
+  padding: 9px 14px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+}
+.btn-dc-remove { background: var(--pink); color: var(--void); }
+.btn-dc-keep { background: rgba(255,255,255,0.1); color: var(--ink); }

@@ -137,6 +137,16 @@ herunterladen und im Repo überschreiben, damit die Änderungen dauerhaft bleibe
 
 ## Änderungsprotokoll
 
+- **19.07.2026:** Drei größere Anpassungen an Antwort- und Abstimm-Phase: (1) Bei Bluff-Runden
+  geht's jetzt automatisch zur Abstimmung über, sobald alle Mitspieler geantwortet haben –
+  kein manueller Klick des Moderators mehr nötig. (2) Der Moderator sieht während der
+  Abstimmung jetzt durchgehend die vollständige Liste aller Antwortmöglichkeiten, nicht nur
+  wer schon abgestimmt hat. (3) Antworten, die (fast) identisch mit der echten Antwort sind,
+  werden nicht mehr automatisch abgelehnt – der Spieler kann sie ganz normal einreichen.
+  Stattdessen bekommt der Moderator eine Auflösungs-Ansicht mit zwei Optionen: die Antwort
+  löschen (Spieler muss neu schreiben) oder behalten (zählt beim Abstimmen als Treffer auf
+  die echte Antwort, ohne Bluff-Bonus für den Autor). Der automatische Rundenwechsel wartet,
+  bis diese Entscheidung getroffen wurde.
 - **19.07.2026:** Drei weitere Anpassungen: (1) Verbindungsaufbau robuster gemacht – Timeout
   auf 45 Sekunden erhöht (Render-Kaltstart kann bis zu 50 Sekunden dauern) und sichtbare
   Fehlermeldung bei Verbindungsproblemen, inkl. Hinweis, den Link ggf. aus dem WhatsApp-

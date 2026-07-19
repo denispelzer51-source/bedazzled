@@ -126,6 +126,7 @@
       <p id="answer-reject-msg" class="error hidden"></p>
     </div>
     <p id="moderator-wait-box" class="waiting-msg hidden">Du bist Moderator:in. Hier siehst du live, wer was schreibt:</p>
+    <div id="duplicate-conflict-box" class="duplicate-conflict-box hidden"></div>
     <div id="moderator-answers-preview" class="reveal-list hidden"></div>
 
     <p class="progress-text"><span id="answered-count">0</span>/<span id="answering-total">0</span> haben geantwortet</p>
@@ -141,7 +142,10 @@
     <div id="vote-options" class="vote-options"></div>
     <button id="btn-submit-vote" class="btn btn-primary" disabled>Auswahl abschicken</button>
     <p id="vote-submitted-msg" class="waiting-msg hidden">Deine Stimme wurde abgeschickt ✓</p>
-    <p id="moderator-vote-wait" class="waiting-msg hidden">Du bist Moderator:in – du stimmst diese Runde nicht ab. Hier siehst du live, wer worauf tippt:</p>
+    <p id="moderator-vote-wait" class="waiting-msg hidden">Du bist Moderator:in – du stimmst diese Runde nicht ab.</p>
+    <p class="hint mod-only">Antwortmöglichkeiten:</p>
+    <div id="moderator-answer-options" class="reveal-list hidden"></div>
+    <p class="hint mod-only" style="margin-top:14px;">Live-Übersicht, wer worauf tippt:</p>
     <div id="moderator-vote-preview" class="reveal-list hidden"></div>
     <p class="progress-text"><span id="voted-count">0</span>/<span id="voting-total">0</span> haben abgestimmt</p>
     <button id="btn-to-reveal" class="btn btn-secondary mod-only">Auflösen</button>

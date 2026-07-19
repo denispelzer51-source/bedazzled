@@ -750,7 +750,7 @@ socket.on('state', (state) => {
       : 'Denk dir eine überzeugende Antwort aus:';
     document.getElementById('input-answer').classList.toggle('hidden', isEstimate);
     document.getElementById('input-answer-number').classList.toggle('hidden', !isEstimate);
-    document.getElementById('btn-to-voting').classList.toggle('hidden', isEstimate);
+    document.getElementById('btn-to-voting').classList.add('hidden');
     document.getElementById('btn-reveal-estimate').classList.toggle('hidden', !isEstimate);
 
     if (iAmModerator) {
@@ -771,11 +771,38 @@ socket.on('state', (state) => {
         div.innerHTML = `${shownText}${statusTag}<br><span class="owner">${escapeHtml(a.name)}</span>`;
         previewBox.appendChild(div);
       });
+
+      const dcBox = document.getElementById('duplicate-conflict-box');
+      if ((state.duplicateConflicts || []).length > 0) {
+        dcBox.classList.remove('hidden');
+        dcBox.innerHTML = '';
+        state.duplicateConflicts.forEach(c => {
+          const div = document.createElement('div');
+          div.innerHTML = `
+            <h4>⚠️ Dopplung: ${escapeHtml(c.name)}s Antwort ist fast identisch mit der echten Antwort</h4>
+            <p class="dc-text">"${escapeHtml(String(c.answerText))}"</p>
+            <div class="dc-actions">
+              <button class="btn-dc-remove">Löschen, ${escapeHtml(c.name)} muss neu schreiben</button>
+              <button class="btn-dc-keep">Trotzdem behalten (zählt als Treffer, kein Bluff-Bonus)</button>
+            </div>
+          `;
+          div.querySelector('.btn-dc-remove').addEventListener('click', () => {
+            socket.emit('resolveDuplicate', { code: currentCode, playerId: c.playerId, action: 'remove' });
+          });
+          div.querySelector('.btn-dc-keep').addEventListener('click', () => {
+            socket.emit('resolveDuplicate', { code: currentCode, playerId: c.playerId, action: 'keep' });
+          });
+          dcBox.appendChild(div);
+        });
+      } else {
+        dcBox.classList.add('hidden');
+      }
     } else {
       document.getElementById('answer-input-box').classList.remove('hidden');
       document.getElementById('moderator-wait-box').classList.add('hidden');
       document.getElementById('real-answer-box').classList.add('hidden');
       document.getElementById('moderator-answers-preview').classList.add('hidden');
+      document.getElementById('duplicate-conflict-box').classList.add('hidden');
 
       // Sobald alle abgeschickt haben, keine weiteren Änderungen mehr zulassen
       const allAnswered = state.answeredCount >= Math.max(state.players.length - 1, 0);
@@ -797,6 +824,17 @@ socket.on('state', (state) => {
       document.getElementById('vote-options').classList.add('hidden');
       document.getElementById('btn-submit-vote').classList.add('hidden');
       document.getElementById('moderator-vote-wait').classList.remove('hidden');
+
+      const optionsBox = document.getElementById('moderator-answer-options');
+      optionsBox.classList.remove('hidden');
+      optionsBox.innerHTML = '';
+      (state.shuffledAnswers || []).forEach(a => {
+        const div = document.createElement('div');
+        div.className = 'reveal-item';
+        div.textContent = a.text;
+        optionsBox.appendChild(div);
+      });
+
       const previewBox = document.getElementById('moderator-vote-preview');
       previewBox.classList.remove('hidden');
       previewBox.innerHTML = '';
@@ -811,6 +849,7 @@ socket.on('state', (state) => {
       });
     } else {
       document.getElementById('moderator-vote-wait').classList.add('hidden');
+      document.getElementById('moderator-answer-options').classList.add('hidden');
       document.getElementById('moderator-vote-preview').classList.add('hidden');
       if (enteringVoting) {
         document.getElementById('vote-options').classList.remove('hidden');

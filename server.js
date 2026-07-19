@@ -302,6 +302,14 @@ function publicRoomState(room, forPlayerId) {
             return { name: p.name, text, submitted };
           })
       : [],
+    // Nur für die Moderation: Fälle, in denen eine eingereichte Antwort praktisch identisch
+    // mit der echten Antwort ist und manuell aufgelöst werden muss, bevor es weitergeht
+    duplicateConflicts: (isModerator && room.phase === 'answering')
+      ? (room.duplicateConflicts || []).map(pid => {
+          const p = room.players.find(pp => pp.id === pid);
+          return { playerId: pid, name: p ? p.name : '???', answerText: room.answers[pid] };
+        })
+      : [],
     // Damit jede:r sofort sieht, ob die eigene Wahl in der Abstimmung richtig war
     myVote: room.votes[forPlayerId] || null,
     shuffledAnswers: room.phase === 'voting' || room.phase === 'reveal'
@@ -430,6 +438,8 @@ io.on('connection', (socket) => {
       code,
       hostId: playerId,
       stats: {},
+      duplicateConflicts: [],
+      mergedRealPlayerIds: [],
       players: [player],
       moderatorIndex: 0,
       phase: 'lobby',
@@ -533,6 +543,8 @@ io.on('connection', (socket) => {
     room.votes = {};
     room.liveTyping = {};
     room.shuffledAnswers = [];
+    room.duplicateConflicts = [];
+    room.mergedRealPlayerIds = [];
     room.currentQuestionObj = pickNextQuestion(room, roundType);
     broadcastState(code);
   });
@@ -574,12 +586,6 @@ io.on('connection', (socket) => {
     }
 
     const rawText = (text || '').trim().slice(0, 140);
-
-    if (isTooSimilarToRealAnswer(rawText, room.currentQuestionObj.answer)) {
-      socket.emit('answerRejected', { reason: 'Das ist zu ähnlich zur echten Antwort – bitte anders formulieren.' });
-      return;
-    }
-
     socket.emit('answerChecking'); // UI: "wird geprüft ..."
     const corrected = await autoCorrectGerman(rawText);
 
@@ -596,26 +602,48 @@ io.on('connection', (socket) => {
       return;
     }
 
-    // Nach der Rechtschreibkorrektur nochmal prüfen: manchmal macht erst die Korrektur
-    // den Text verräterisch ähnlich zur echten Antwort
-    if (isTooSimilarToRealAnswer(corrected, stillRoom.currentQuestionObj.answer)) {
-      socket.emit('answerRejected', { reason: 'Das ist zu ähnlich zur echten Antwort – bitte anders formulieren.' });
-      return;
-    }
-
     stillRoom.answers[myId] = corrected;
     if (stillRoom.liveTyping) delete stillRoom.liveTyping[myId];
+
+    // Statt die Antwort abzulehnen: erlauben, aber dem Moderator zur Auflösung vorlegen,
+    // falls sie (zufällig oder absichtlich) mit der echten Antwort praktisch identisch ist
+    if (!stillRoom.duplicateConflicts) stillRoom.duplicateConflicts = [];
+    stillRoom.duplicateConflicts = stillRoom.duplicateConflicts.filter(id => id !== myId);
+    if (isTooSimilarToRealAnswer(corrected, stillRoom.currentQuestionObj.answer)) {
+      stillRoom.duplicateConflicts.push(myId);
+    }
+
     socket.emit('answerCorrected', { text: corrected, wasChanged: corrected !== rawText });
     broadcastState(code);
+    maybeAutoAdvanceToVoting(stillRoom, code);
   });
 
-  socket.on('goToVoting', ({ code }) => {
+  socket.on('resolveDuplicate', ({ code, playerId, action }) => {
     const room = rooms[code];
     if (!room) return;
+    const moderatorId = room.players[room.moderatorIndex].id;
+    if (socket.data.token !== moderatorId) return;
+    if (!room.duplicateConflicts || !room.duplicateConflicts.includes(playerId)) return;
+
+    room.duplicateConflicts = room.duplicateConflicts.filter(id => id !== playerId);
+
+    if (action === 'remove') {
+      delete room.answers[playerId];
+    } else if (action === 'keep') {
+      if (!room.mergedRealPlayerIds) room.mergedRealPlayerIds = [];
+      if (!room.mergedRealPlayerIds.includes(playerId)) room.mergedRealPlayerIds.push(playerId);
+    }
+
+    broadcastState(code);
+    maybeAutoAdvanceToVoting(room, code);
+  });
+
+  function startVotingPhase(room, code) {
     const moderator = room.players[room.moderatorIndex];
+    const merged = room.mergedRealPlayerIds || [];
     const real = { ownerId: 'REAL', text: room.currentQuestionObj.answer, isReal: true };
     const fake = room.players
-      .filter(p => p.id !== moderator.id && room.answers[p.id])
+      .filter(p => p.id !== moderator.id && room.answers[p.id] && !merged.includes(p.id))
       .map(p => ({ ownerId: p.id, text: room.answers[p.id], isReal: false }));
     const combined = [real, ...fake];
     for (let i = combined.length - 1; i > 0; i--) {
@@ -626,6 +654,24 @@ io.on('connection', (socket) => {
     room.votePreview = {};
     room.phase = 'voting';
     broadcastState(code);
+  }
+
+  // Geht automatisch zur Abstimmung über, sobald alle geantwortet haben und keine
+  // offenen Dopplungs-Konflikte mehr auf eine Moderator-Entscheidung warten
+  function maybeAutoAdvanceToVoting(room, code) {
+    if (room.phase !== 'answering' || room.roundType === 'estimate') return;
+    const requiredCount = room.players.length - 1;
+    const answeredCount = Object.keys(room.answers).length;
+    const hasOpenConflicts = room.duplicateConflicts && room.duplicateConflicts.length > 0;
+    if (answeredCount >= requiredCount && !hasOpenConflicts) {
+      startVotingPhase(room, code);
+    }
+  }
+
+  socket.on('goToVoting', ({ code }) => {
+    const room = rooms[code];
+    if (!room) return;
+    startVotingPhase(room, code);
   });
 
   // Zeigt der Moderation schon vor dem Abschicken, welche Antwort ein Spieler gerade antippt
