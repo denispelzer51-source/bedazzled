@@ -6,11 +6,6 @@
   },
   {
     "category": "Kuriositäten",
-    "question": "Welches Wort benutzten mittelalterliche Seefahrer für den Moment, in dem ein Schiff bei Windstille komplett stillstand?",
-    "answer": "Flaute"
-  },
-  {
-    "category": "Kuriositäten",
     "question": "Wofür wurde früher in ländlichen Regionen Deutschlands ein Kuckucksruf am frühen Morgen als Aberglaube gedeutet?",
     "answer": "Er sagt die verbleibenden Lebensjahre voraus"
   },
@@ -18,11 +13,6 @@
     "category": "Kuriositäten",
     "question": "Wie heißt die Angst davor, dass Knöpfe an der Kleidung eines anderen Menschen zu nah an einem selbst sind?",
     "answer": "Koumpounophobie"
-  },
-  {
-    "category": "Kuriositäten",
-    "question": "Welchen ungewöhnlichen Beruf übte die erste Person aus, die offiziell als Feuerwehrmann in Rom registriert wurde?",
-    "answer": "Er war ein Sklave in einer privaten Löschtruppe"
   },
   {
     "category": "Kuriositäten",
@@ -51,48 +41,8 @@
   },
   {
     "category": "Kuriositäten",
-    "question": "Warum sind Bananen von Natur aus leicht gebogen?",
-    "answer": "Sie wachsen dem Sonnenlicht entgegen"
-  },
-  {
-    "category": "Kuriositäten",
-    "question": "Warum wurde die Tastaturbelegung QWERTY ursprünglich so angeordnet, wie sie heute noch verbreitet ist?",
-    "answer": "Damit sich Typenhebel nicht verhaken"
-  },
-  {
-    "category": "Kuriositäten",
-    "question": "Warum knistert brennendes Feuerholz im Kamin?",
-    "answer": "Eingeschlossene Feuchtigkeit platzt in der Hitze"
-  },
-  {
-    "category": "Kuriositäten",
     "question": "Warum sind Bienenwaben sechseckig geformt?",
     "answer": "Das spart am meisten Wachs"
-  },
-  {
-    "category": "Kuriositäten",
-    "question": "Warum haben Kupplungen von Feuerwehrschläuchen traditionell Messing statt Stahl?",
-    "answer": "Messing rostet nicht und funkt nicht"
-  },
-  {
-    "category": "Kuriositäten",
-    "question": "Warum wurde die Zahl Null in Europa jahrhundertelang kaum benutzt, obwohl sie in Indien längst bekannt war?",
-    "answer": "Das römische Zahlensystem kannte keine Null"
-  },
-  {
-    "category": "Kuriositäten",
-    "question": "Warum haben Pinguine keine Angst vor Menschen, obwohl sie wild leben?",
-    "answer": "Sie hatten nie natürliche Feinde an Land"
-  },
-  {
-    "category": "Kuriositäten",
-    "question": "Warum riecht Regen so charakteristisch, kurz bevor er fällt?",
-    "answer": "Petrichor"
-  },
-  {
-    "category": "Kuriositäten",
-    "question": "Warum haben manche alte Kirchturmuhren nur einen einzigen Zeiger?",
-    "answer": "Früher zählte nur die volle Stunde"
   },
   {
     "category": "Kuriositäten",
@@ -101,33 +51,8 @@
   },
   {
     "category": "Kuriositäten",
-    "question": "Warum starben in mittelalterlichen Städten so viele Menschen an vergleichsweise harmlosen Krankheiten?",
-    "answer": "Es fehlte einfach an Hygiene"
-  },
-  {
-    "category": "Kuriositäten",
-    "question": "Warum galt die Tomate in Europa jahrhundertelang als giftig?",
-    "answer": "Sie wurde mit giftigen Nachtschattengewächsen verwechselt"
-  },
-  {
-    "category": "Kuriositäten",
     "question": "Warum stößt man beim Prost mit Gläsern an?",
     "answer": "Damit auch das Ohr etwas vom Trinken hat"
-  },
-  {
-    "category": "Kuriositäten",
-    "question": "Warum ist die Zahl Sieben in vielen Kulturen eine Glückszahl?",
-    "answer": "Sie hatte in alten Kulturen eine besondere Bedeutung"
-  },
-  {
-    "category": "Kuriositäten",
-    "question": "Warum haben manche Trillerpfeifen ein kleines Kügelchen im Inneren?",
-    "answer": "Das erzeugt den trillernden Ton"
-  },
-  {
-    "category": "Kuriositäten",
-    "question": "Warum wurde Kaugummi ursprünglich aus dem Saft des Breiapfelbaums hergestellt?",
-    "answer": "Chicle war einfach perfekt kaubar"
   },
   {
     "category": "Kuriositäten",
@@ -136,68 +61,13 @@
   },
   {
     "category": "Kuriositäten",
-    "question": "Warum wurde Salz in vielen Kulturen früher als Zahlungsmittel benutzt?",
-    "answer": "Es war selten und lebensnotwendig"
-  },
-  {
-    "category": "Kuriositäten",
     "question": "Warum haben Zebras Streifen?",
-    "answer": "Sie verwirren stechende Insekten"
-  },
-  {
-    "category": "Kuriositäten",
-    "question": "Warum klingt ein Sektglas beim Anstoßen oft heller und dünner als ein Bierglas?",
-    "answer": "Dünneres Glas und mehr Kohlensäure"
+    "answer": "Sie verwirren mit den Streifen stechende Insekten"
   },
   {
     "category": "Kuriositäten",
     "question": "Warum wurde in vielen alten Kulturen ein zerbrochener Spiegel mit Unglück verbunden?",
     "answer": "Man dachte, das verletzt die Seele"
-  },
-  {
-    "category": "Kuriositäten",
-    "question": "Warum haben Feuerwerkskörper so unterschiedliche Farben?",
-    "answer": "Verschiedene Metallsalze verbrennen unterschiedlich"
-  },
-  {
-    "category": "Kuriositäten",
-    "question": "Warum ist geschluckter Kaugummi ungefährlicher, als viele Menschen glauben?",
-    "answer": "Er wird einfach unverdaut ausgeschieden"
-  },
-  {
-    "category": "Kuriositäten",
-    "question": "Warum galt Linkshändigkeit früher in vielen Kulturen als unerwünscht?",
-    "answer": "Man verband sie abergläubisch mit Unglück"
-  },
-  {
-    "category": "Kuriositäten",
-    "question": "Warum tragen viele alte Brücken kleine steinerne Wasserspeier oder Fratzen?",
-    "answer": "Sie sollten böse Geister fernhalten"
-  },
-  {
-    "category": "Fremdwörter",
-    "question": "Was bedeutet das Wort Nepotismus?",
-    "answer": "Vetternwirtschaft"
-  },
-  {
-    "category": "Fremdwörter",
-    "question": "Was bedeutet das Wort obsolet?",
-    "answer": "Veraltet, nicht mehr gebräuchlich"
-  },
-  {
-    "category": "Fremdwörter",
-    "question": "Was bedeutet das Wort Akribie?",
-    "answer": "Extreme Sorgfalt und Genauigkeit"
-  },
-  {
-    "category": "Fremdwörter",
-    "question": "Was bedeutet das Wort Eloquenz?",
-    "answer": "Redegewandtheit"
-  },
-  {
-    "category": "Fremdwörter",
-    "question": "Was bedeutet das Wort prekär?",
-    "answer": "Heikel, in einer schwierigen Lage"
   },
   {
     "category": "Fremdwörter",
@@ -221,73 +91,13 @@
   },
   {
     "category": "Fremdwörter",
-    "question": "Was bedeutet das Wort Sonor, wie in einer sonoren Stimme?",
-    "answer": "Voll und tief im Klang"
-  },
-  {
-    "category": "Fremdwörter",
-    "question": "Was bedeutet das Wort Ambivalenz?",
-    "answer": "Widersprüchliche Gefühle gleichzeitig"
-  },
-  {
-    "category": "Fremdwörter",
-    "question": "Was bedeutet das Wort Autark?",
-    "answer": "Unabhängig, selbstversorgend"
-  },
-  {
-    "category": "Fremdwörter",
-    "question": "Was bedeutet das Wort Hybris?",
-    "answer": "Übersteigerter Stolz"
-  },
-  {
-    "category": "Fremdwörter",
     "question": "Was bedeutet das Wort Dogma?",
     "answer": "Eine nicht hinterfragte Lehrmeinung"
   },
   {
     "category": "Fremdwörter",
-    "question": "Was bedeutet das Wort Paradox?",
-    "answer": "Ein Widerspruch mit wahrem Kern"
-  },
-  {
-    "category": "Fremdwörter",
-    "question": "Was bedeutet das Wort Empathie?",
-    "answer": "Sich in andere hineinversetzen können"
-  },
-  {
-    "category": "Fremdwörter",
-    "question": "Was bedeutet das Wort Rhetorik?",
-    "answer": "Die Kunst der überzeugenden Rede"
-  },
-  {
-    "category": "Fremdwörter",
     "question": "Was bedeutet das Wort Kompendium?",
     "answer": "Eine kurze Zusammenfassung"
-  },
-  {
-    "category": "Fremdwörter",
-    "question": "Was bedeutet das Wort Melancholie?",
-    "answer": "Tiefe, grundlose Schwermut"
-  },
-  {
-    "category": "Fremdwörter",
-    "question": "Was bedeutet das Wort Ironie?",
-    "answer": "Das Gegenteil von dem sagen, was man meint"
-  },
-  {
-    "category": "Fremdwörter",
-    "question": "Was bedeutet das Wort Autonomie?",
-    "answer": "Selbstbestimmung"
-  },
-  {
-    "category": "Fremdwörter",
-    "question": "Was bedeutet das Wort Fatalismus?",
-    "answer": "Der Glaube, alles ist vorherbestimmt"
-  },
-  {
-    "category": "Fremdwörter",
-    "question": "Was bedeutet das Wort plausibel?",
-    "answer": "Einleuchtend, glaubwürdig"
   },
   {
     "category": "Fremdwörter",
@@ -301,18 +111,8 @@
   },
   {
     "category": "Historischer Kontext",
-    "question": "Wieso landete das Gehirn von Albert Einstein nach seinem Tod jahrzehntelang in Einweckgläsern in einer Abstellkammer?",
-    "answer": "Der Pathologe hat es einfach heimlich gestohlen"
-  },
-  {
-    "category": "Historischer Kontext",
     "question": "Wieso musste sich Napoleon Bonaparte bei einer eigens organisierten Hasenjagd plötzlich zurückziehen?",
     "answer": "Hunderte Kaninchen griffen ihn völlig unerwartet an"
-  },
-  {
-    "category": "Historischer Kontext",
-    "question": "Warum weigerte sich der geniale Erfinder Nikola Tesla, Frauen mit Perlenschmuck überhaupt die Hand zu geben?",
-    "answer": "Er hatte eine ausgeprägte Phobie vor Perlen"
   },
   {
     "category": "Historischer Kontext",
@@ -321,43 +121,8 @@
   },
   {
     "category": "Historischer Kontext",
-    "question": "Wieso schüttelte der britische König Georg der Dritte angeblich einmal ganz selbstverständlich die Hand eines Baumes?",
-    "answer": "Er hielt ihn für den König von Preußen"
-  },
-  {
-    "category": "Historischer Kontext",
-    "question": "Welche Droge empfahl der berühmte Psychoanalytiker Sigmund Freud jahrelang guten Gewissens als Wundermittel?",
-    "answer": "Kokain"
-  },
-  {
-    "category": "Historischer Kontext",
-    "question": "Was schnitt sich der Maler Vincent van Gogh in einem Anfall von Verzweiflung selbst ab?",
-    "answer": "Sein eigenes Ohr"
-  },
-  {
-    "category": "Historischer Kontext",
-    "question": "Wie viele Kaffeebohnen zählte der Komponist Ludwig van Beethoven angeblich akribisch für jede einzelne Tasse ab?",
-    "answer": "Genau sechzig Bohnen"
-  },
-  {
-    "category": "Historischer Kontext",
-    "question": "Wie viele Männer auf der Welt tragen laut Genforschern angeblich noch heute das Erbgut von Dschingis Khan in sich?",
-    "answer": "Etwa jeder zweihundertste Mann"
-  },
-  {
-    "category": "Historischer Kontext",
-    "question": "Was versprach der junge Julius Cäsar seinen eigenen Piraten-Entführern scherzhaft, bevor er es später tatsächlich wahr machte?",
-    "answer": "Er würde sie alle kreuzigen lassen"
-  },
-  {
-    "category": "Historischer Kontext",
     "question": "Wie überzeugte Christoph Kolumbus verzweifelte Ureinwohner, ihm dringend benötigte Vorräte zu geben?",
     "answer": "Er drohte, den Mond verschwinden zu lassen"
-  },
-  {
-    "category": "Historischer Kontext",
-    "question": "Welchen völlig untypischen Nebenjob übte der spätere US-Präsident Abraham Lincoln in jungen Jahren aus?",
-    "answer": "Er betrieb eine eigene Bar"
   },
   {
     "category": "Historischer Kontext",
@@ -366,63 +131,8 @@
   },
   {
     "category": "Historischer Kontext",
-    "question": "Wie oft überlebte der russische Mönch Rasputin angeblich Mordanschläge, bevor er schließlich starb?",
-    "answer": "Mehrere Giftanschläge und Schüsse"
-  },
-  {
-    "category": "Historischer Kontext",
-    "question": "Welches Tier schlug Benjamin Franklin tatsächlich lieber als Wappentier der USA vor, statt des Weißkopfseeadlers?",
-    "answer": "Den Truthahn"
-  },
-  {
-    "category": "Historischer Kontext",
-    "question": "Was aß der Naturforscher Charles Darwin tatsächlich regelmäßig, obwohl er sie eigentlich wissenschaftlich untersuchen sollte?",
-    "answer": "Die exotischen Tiere, die er entdeckte"
-  },
-  {
-    "category": "Historischer Kontext",
-    "question": "Was hatte der britische Premierminister Winston Churchill angeblich fast immer griffbereit, sogar während wichtiger Kriegskonferenzen?",
-    "answer": "Ein Glas Champagner oder Whisky"
-  },
-  {
-    "category": "Historischer Kontext",
-    "question": "Wie schlief der Künstler Michelangelo angeblich oft während der monatelangen Arbeit an der Sixtinischen Kapelle?",
-    "answer": "Mit den Stiefeln noch an den Füßen"
-  },
-  {
-    "category": "Historischer Kontext",
-    "question": "Welches ungewöhnliche Haustier hielt sich US-Präsident Thomas Jefferson kurzzeitig im Weißen Haus?",
-    "answer": "Einen Grizzlybären"
-  },
-  {
-    "category": "Historischer Kontext",
-    "question": "Wonach benannte Alexander der Große tatsächlich eine ganze Stadt, die er gegründet hatte?",
-    "answer": "Nach seinem eigenen Pferd"
-  },
-  {
-    "category": "Historischer Kontext",
-    "question": "Was ließ ein cleverer russischer Fürst angeblich eigens für einen Besuch der Zarin Katharina der Großen aufbauen?",
-    "answer": "Gefälschte Kulissen-Dörfer"
-  },
-  {
-    "category": "Historischer Kontext",
-    "question": "Was sagte der Schriftsteller Mark Twain treffend über seinen eigenen Tod voraus, bezogen auf einen Kometen?",
-    "answer": "Er werde sterben, wenn der Halleysche Komet wiederkehrt"
-  },
-  {
-    "category": "Historischer Kontext",
-    "question": "Wie viele Stunden Schlaf brauchte der Erfinder Nikola Tesla angeblich pro Nacht?",
-    "answer": "Nur etwa zwei Stunden"
-  },
-  {
-    "category": "Historischer Kontext",
-    "question": "Woran starb der gefürchtete Hunnenkönig Attila angeblich ausgerechnet in seiner Hochzeitsnacht?",
-    "answer": "An einem heftigen Nasenbluten"
-  },
-  {
-    "category": "Historischer Kontext",
-    "question": "Wie starb der bayerische König Ludwig der Zweite unter bis heute ungeklärten Umständen?",
-    "answer": "Er ertrank im Starnberger See"
+    "question": "Welche Speise führte sich der Naturforscher Charles Darwin tatsächlich regelmäßig zu?",
+    "answer": "Die exotischen Tiere, die er entdeckte und untersuchen sollte"
   },
   {
     "category": "Historischer Kontext",
@@ -431,38 +141,8 @@
   },
   {
     "category": "Historischer Kontext",
-    "question": "Was wollte der Schriftsteller Franz Kafka eigentlich nach seinem Tod mit all seinen unveröffentlichten Werken geschehen lassen?",
-    "answer": "Sie sollten komplett verbrannt werden"
-  },
-  {
-    "category": "Historischer Kontext",
-    "question": "Wie schrieb Leonardo da Vinci viele seiner privaten Notizen, sodass man sie nur mit einem Spiegel lesen kann?",
+    "question": "Wie schrieb Leonardo da Vinci viele seiner privaten Notizen, sodass man sie nur erschwert lesen konnte?",
     "answer": "Spiegelverkehrt, von rechts nach links"
-  },
-  {
-    "category": "Historischer Kontext",
-    "question": "Wie schnitt der Filmstar Charlie Chaplin angeblich bei einem Chaplin-Doppelgänger-Wettbewerb ab, an dem er heimlich selbst teilnahm?",
-    "answer": "Er landete nur auf einem hinteren Platz"
-  },
-  {
-    "category": "Historischer Kontext",
-    "question": "Wie viele Tassen Kaffee soll der Philosoph Voltaire angeblich täglich getrunken haben?",
-    "answer": "Bis zu fünfzig Tassen"
-  },
-  {
-    "category": "Historischer Kontext",
-    "question": "Womit beschäftigte sich der ernstzunehmende Physiker Isaac Newton heimlich noch viel intensiver als mit der Schwerkraft?",
-    "answer": "Mit Alchemie und der Suche nach dem Stein der Weisen"
-  },
-  {
-    "category": "Historischer Kontext",
-    "question": "Welchen handfesten Job übte die junge Prinzessin Elisabeth, die spätere Queen, während des Zweiten Weltkriegs tatsächlich aus?",
-    "answer": "Sie reparierte als Mechanikerin Militärfahrzeuge"
-  },
-  {
-    "category": "Historischer Kontext",
-    "question": "Was taten Wikinger-Krieger angeblich, um sich vor einer Schlacht in einen wilden Rausch zu versetzen?",
-    "answer": "Sie aßen halluzinogene Pilze"
   },
   {
     "category": "Historischer Kontext",
@@ -471,32 +151,37 @@
   },
   {
     "category": "Historischer Kontext",
-    "question": "Welches kuriose Amt bekleidete in vielen europäischen Königshäusern jahrhundertelang der sogenannte Hofnarr wirklich?",
-    "answer": "Er durfte als einziger den König offen kritisieren"
+    "question": "Was machte Nikola Tesla, nachdem ihn ein Hotel wegen unbezahlter Rechnungen hinausgeworfen hatte?",
+    "answer": "Er bezahlte mit einer Kiste voll einer angeblich revolutionären Erfindung. Sie war leer"
   },
   {
     "category": "Historischer Kontext",
-    "question": "Wie reagierte Komponist Ludwig van Beethoven angeblich, wenn ihm das Essen im Restaurant nicht schmeckte?",
-    "answer": "Er warf dem Kellner den Teller an den Kopf"
+    "question": "Welchen ungewöhnlichen Trick nutzte Victor Hugo, als er unbedingt seinen Roman fertig schreiben wollte?",
+    "answer": "Er ließ fast seine gesamte Kleidung wegschließen, damit er das Haus nicht verlassen konnte"
   },
   {
     "category": "Historischer Kontext",
-    "question": "Was verlangte der exzentrische Komponist Richard Wagner angeblich zwingend für seinen kreativen Schreibprozess?",
-    "answer": "Er musste dabei rosa Seidenunterwäsche tragen"
+    "question": "Was machte Salvador Dalí, wenn ihm besonders gute Ideen im Halbschlaf einfielen?",
+    "answer": "Er hielt einen Löffel in der Hand, fiel er herunter, wachte er sofort auf"
   },
   {
     "category": "Historischer Kontext",
-    "question": "Wodurch verdiente sich Zar Peter der Große von Russland eine besonders schräge Auszeichnung unter Europas Herrschern?",
-    "answer": "Er arbeitete monatelang inkognito als einfacher Schiffszimmermann"
+    "question": "Was tat der griechische Redner Demosthenes beim Üben seiner Reden?",
+    "answer": "Er steckte sich Kieselsteine in den Mund und sprach gegen das Meeresrauschen"
   },
   {
     "category": "Historischer Kontext",
-    "question": "Was ließ sich Königin Elisabeth die Erste von England angeblich regelmäßig ins Gesicht auftragen, mit fatalen Langzeitfolgen?",
-    "answer": "Eine bleihaltige, giftige Bleichcreme"
+    "question": "Welches Tier diente dem polnischen Militär im Zweiten Weltkrieg offiziell als Soldat?",
+    "answer": "Ein Braunbär namens Wojtek"
   },
   {
     "category": "Historischer Kontext",
-    "question": "Wie brachte der geniale Erfinder Thomas Alva Edison es tatsächlich auf über tausend patentierte Erfindungen?",
-    "answer": "Er ließ in seinem eigenen Labor Teams für sich arbeiten"
+    "question": "Was glaubte der Schriftsteller Charles Dickens über die Ausrichtung seines Bettes?",
+    "answer": "Mit dem Kopf nach Norden würde er besser schlafen"
+  },
+  {
+    "category": "Historischer Kontext",
+    "question": "Was tat der römische Kaiser Augustus angeblich jedes Mal, wenn ein Gewitter aufzog?",
+    "answer": "Er versteckte sich unter seinem Bett"
   }
 ]

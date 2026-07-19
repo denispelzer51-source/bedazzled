@@ -137,6 +137,18 @@ herunterladen und im Repo überschreiben, damit die Änderungen dauerhaft bleibe
 
 ## Änderungsprotokoll
 
+- **19.07.2026:** Großes Kuratieren: Nutzer hat das Fragen-Dokument durchgearbeitet und auf
+  37 bestätigte Bluff-Fragen reduziert (14 Kuriositäten, 8 Fremdwörter, 15 Historischer
+  Kontext). Alle nicht bestätigten Fragen aus dem Pool entfernt. Erkanntes Muster: bei
+  Fremdwörtern werden nur wirklich seltene/unbekannte Begriffe akzeptiert (keine
+  alltagsgeläufigen wie Empathie/Ironie/Rhetorik mehr); bei Kuriositäten/Geschichte werden
+  konkrete, bildhafte Einzelszenen bevorzugt gegenüber abstrakten Fakten. Zwei versehentliche
+  Fast-Dopplungen bereinigt (Darwin, da Vinci).
+- **19.07.2026:** 7 neue Fragen aus vom Nutzer geliefertem Dokument integriert (Historischer
+  Kontext: Tesla/leere Kiste, Victor Hugo/weggeschlossene Kleidung, Dalí/Löffel-Technik,
+  Demosthenes/Kieselsteine, Bär Wojtek, Dickens/Bettausrichtung, Augustus/Gewitterangst).
+  Eine gelieferte Frage (Beethoven/60 Kaffeebohnen) war bereits im Pool vorhanden und wurde
+  nicht doppelt aufgenommen. Pool jetzt bei 107 Bluff-Fragen.
 - **19.07.2026:** Spielfiguren an das Spielthema angepasst: statt zufälliger Tiere jetzt
   💎 Diamant, 🎭 Maske, 🔮 Kristallkugel, 🃏 Joker, 👑 Krone, ⭐ Stern (passt besser zu
   Bluff/Glitzer-Thema als die bisherigen Platzhalter-Tiere).
