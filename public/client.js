@@ -49,18 +49,18 @@ function showReconnecting(active) {
 }
 
 const AVATAR_CHOICES = [
-  { emoji: '🦊', label: 'Fuchs' },
-  { emoji: '🐢', label: 'Schildkröte' },
-  { emoji: '🦄', label: 'Einhorn' },
-  { emoji: '🦁', label: 'Löwe' },
-  { emoji: '🐼', label: 'Panda' },
-  { emoji: '🦉', label: 'Eule' },
+  { emoji: '💎', label: 'Diamant' },
+  { emoji: '🎭', label: 'Maske' },
+  { emoji: '🔮', label: 'Kristallkugel' },
+  { emoji: '🃏', label: 'Joker' },
+  { emoji: '👑', label: 'Krone' },
+  { emoji: '⭐', label: 'Stern' },
 ];
 let selectedAvatar = AVATAR_CHOICES[0].emoji;
 let takenAvatars = [];
 
 function avatarFor(player) {
-  return (player && player.avatar) || '🦊';
+  return (player && player.avatar) || '💎';
 }
 
 const screens = {
@@ -507,7 +507,7 @@ socket.on('state', (state) => {
       const li = document.createElement('li');
       const isMod = p.id === state.moderatorId;
       li.className = p.connected === false ? 'disconnected' : '';
-      li.innerHTML = `<span>${avatarFor(p)} ${p.name}${p.id === myId ? ' (du)' : ''}${p.connected === false ? '<span class="tag-offline">getrennt</span>' : ''}</span>`;
+      li.innerHTML = `<span><span class="player-avatar">${avatarFor(p)}</span><span class="player-name">${escapeHtml(p.name)}${p.id === myId ? ' (du)' : ''}</span>${p.connected === false ? '<span class="tag-offline">getrennt</span>' : ''}</span>`;
       if (isMod) {
         const tag = document.createElement('span');
         tag.className = 'tag';

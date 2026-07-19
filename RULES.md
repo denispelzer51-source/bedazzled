@@ -58,7 +58,7 @@ richtig erraten hast, kommen +3 Punkte oben drauf.
 
 Aktuell 6 auswählbare Platzhalter-Symbole, pro Raum ist jede Figur nur einmal vergebbar:
 
-🦊 Fuchs · 🐢 Schildkröte · 🦄 Einhorn · 🦁 Löwe · 🐼 Panda · 🦉 Eule
+💎 Diamant · 🎭 Maske · 🔮 Kristallkugel · 🃏 Joker · 👑 Krone · ⭐ Stern
 
 *(Platzhalter – finale Symbole/Design folgen später)*
 
@@ -137,6 +137,13 @@ herunterladen und im Repo überschreiben, damit die Änderungen dauerhaft bleibe
 
 ## Änderungsprotokoll
 
+- **19.07.2026:** Spielfiguren an das Spielthema angepasst: statt zufälliger Tiere jetzt
+  💎 Diamant, 🎭 Maske, 🔮 Kristallkugel, 🃏 Joker, 👑 Krone, ⭐ Stern (passt besser zu
+  Bluff/Glitzer-Thema als die bisherigen Platzhalter-Tiere).
+- **19.07.2026:** Lobby überarbeitet: Regelwerk ist jetzt ein aufklappbares Dropdown
+  ("📖 Regelwerk anzeigen"), standardmäßig eingeklappt, damit die Spielerliste mehr Platz
+  bekommt. Spielerliste selbst deutlich hervorgehoben (größere Schrift, größere Spielfigur,
+  dezenter Lila-Rahmen um jede Zeile).
 - **19.07.2026:** Neues Logo und Farbschema eingebunden – komplette Farbpalette aus dem neuen
   Logo übernommen (Void Black #04000A, Lila-Töne #330D98/#8C39F7/#AC58F9/#C577FB/#D5A1FB,
   Weiß #F7F1FA). Logo als Favicon und auf dem Startbildschirm eingebunden. Funktionale

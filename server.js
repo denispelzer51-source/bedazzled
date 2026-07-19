@@ -178,7 +178,7 @@ app.post('/api/questions/import', checkAdmin, (req, res) => {
  */
 const rooms = {};
 
-const AVATAR_SET = ['🦊', '🐢', '🦄', '🦁', '🐼', '🦉'];
+const AVATAR_SET = ['💎', '🎭', '🔮', '🃏', '👑', '⭐'];
 
 // Prüft/korrigiert eingereichte Antworten automatisch (Rechtschreibung & Grammatik),
 // damit Tippfehler nicht verraten, welche Antwort erfunden ist. Nutzt die kostenlose
@@ -399,7 +399,7 @@ io.on('connection', (socket) => {
     const playerId = token || crypto.randomUUID();
     socket.data.token = playerId;
     socket.data.roomCode = code;
-    const player = { id: playerId, name: name || 'Spieler', avatar: avatar || '🦊', position: 0, socketId: socket.id };
+    const player = { id: playerId, name: name || 'Spieler', avatar: avatar || '💎', position: 0, socketId: socket.id };
     rooms[code] = {
       code,
       players: [player],
@@ -443,7 +443,7 @@ io.on('connection', (socket) => {
     const playerId = token || crypto.randomUUID();
     socket.data.token = playerId;
     socket.data.roomCode = code;
-    room.players.push({ id: playerId, name: name || 'Spieler', avatar: avatar || '🦊', position: 0, socketId: socket.id });
+    room.players.push({ id: playerId, name: name || 'Spieler', avatar: avatar || '💎', position: 0, socketId: socket.id });
     socket.join(code);
     socket.emit('joined', { code, playerId });
     broadcastState(code);
