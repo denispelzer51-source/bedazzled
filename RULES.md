@@ -89,6 +89,26 @@ einen eigenen Tab ("🔢 Schätzen-Fragen"), Daten liegen in `estimate_questions
 
 *Als Nächstes geplant: Zeichnen-Karten als dritte Kategorie (Pictionary-Stil).*
 
+## Fragen-Pool & Kategorien
+
+Recherchiert nach dem Vorbild von Nobody is Perfect (Ravensburger), aber komplett eigene,
+neu geschriebene Fragen – keine einzige Frage wurde aus dem Originalspiel übernommen.
+Struktur orientiert sich an deren drei bewährten Kartentypen:
+
+- **Kuriositäten:** Warum-Fragen zu einem ungewöhnlichen Ereignis/Brauch/Phänomen
+- **Fremdwörter:** Was bedeutet ein bestimmtes (selteneres) Wort wirklich?
+- **Wahrheit oder Lüge:** Eine Aussage, auf die man mit "Wahr" oder "Falsch" antwortet
+
+Aktuell 38 Bluff-Fragen (verteilt auf diese 3 Kategorien) + 8 Schätzen-Fragen (Kategorie
+"Allgemeinwissen"). Die Kategorie ist rein organisatorisch für die Fragen-Verwaltung – im
+Spiel selbst wird weiterhin zufällig aus dem gesamten Bluff- bzw. Schätzen-Pool gezogen,
+unabhängig von der Kategorie.
+
+Fragen-Verwaltung (`/admin.html`) zeigt Fragen jetzt **nach Kategorie gruppiert und
+aufklappbar** an, statt alle auf einmal untereinander. Beim Hinzufügen/Bearbeiten kann eine
+Kategorie frei vergeben werden (bestehende erscheinen als Vorschlag); der Massen-Import
+unterstützt jetzt das Format `Kategorie;Frage;Antwort` pro Zeile.
+
 ## Fragen-Verwaltung
 
 Unter `/admin.html` (z. B. `https://dein-link.onrender.com/admin.html`) gibt es eine separate
@@ -98,7 +118,7 @@ Verwaltungsseite, getrennt von der Spieler-App:
   `ADMIN_KEY` (Dashboard → Environment). Unbedingt ändern, bevor die App breiter geteilt wird –
   sonst kann jeder mit dem Link auch Fragen bearbeiten.
 - **Einzeln hinzufügen/bearbeiten/löschen:** direkt über die Oberfläche
-- **Massen-Import:** ein Eintrag pro Zeile im Format `Frage?;Echte Antwort`
+- **Massen-Import:** ein Eintrag pro Zeile im Format `Kategorie;Frage?;Echte Antwort`
 - **Export:** Button lädt die aktuelle `questions.json` herunter
 
 **Wichtig zu wissen:** Änderungen über `/admin.html` werden zwar sofort im laufenden Server
@@ -109,6 +129,13 @@ herunterladen und im Repo überschreiben, damit die Änderungen dauerhaft bleibe
 
 ## Änderungsprotokoll
 
+- **18.07.2026:** Alle echten Antworten der Bluff-Fragen umformuliert: keine Gedankenstriche,
+  Anführungszeichen, Doppelpunkte oder Semikolons mehr – klingen jetzt so, wie ein Mitspieler
+  es natürlich ins Handy tippen würde, statt wie ein Lexikon-Eintrag. Grund: Erfundene
+  Antworten sollen sich vom Stil her nicht mehr von der echten Antwort unterscheiden lassen.
+- **18.07.2026:** Fragen-Pool massiv erweitert (38 Bluff-Fragen in 3 Kategorien nach
+  Ravensburger-Vorbild: Kuriositäten/Fremdwörter/Wahrheit-oder-Lüge, alle komplett neu
+  geschrieben). Admin-Bereich zeigt Fragen jetzt nach Kategorie gruppiert und aufklappbar an.
 - **18.07.2026:** Test-Simulator unter `/simulator.html` hinzugefügt – simuliert 3-6
   Mitspieler nebeneinander in einem Browser-Tab (je ein unabhängiges Fenster), damit neue
   Funktionen getestet werden können, ohne mehrere echte Geräte offen zu haben.

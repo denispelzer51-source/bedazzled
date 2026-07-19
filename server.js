@@ -54,13 +54,13 @@ app.get('/api/estimate-questions', checkAdmin, (req, res) => {
 });
 
 app.post('/api/estimate-questions', checkAdmin, (req, res) => {
-  const { question, answer } = req.body || {};
+  const { question, answer, category } = req.body || {};
   const numericAnswer = Number(answer);
   if (!question || Number.isNaN(numericAnswer)) {
     res.status(400).json({ error: 'Frage und eine numerische Antwort sind erforderlich.' });
     return;
   }
-  estimateQuestionsList.push({ question: question.trim(), answer: numericAnswer });
+  estimateQuestionsList.push({ category: (category || 'Sonstige').trim(), question: question.trim(), answer: numericAnswer });
   saveEstimateQuestions();
   res.json(estimateQuestionsList);
 });
@@ -71,9 +71,10 @@ app.put('/api/estimate-questions/:index', checkAdmin, (req, res) => {
     res.status(404).json({ error: 'Frage nicht gefunden.' });
     return;
   }
-  const { question, answer } = req.body || {};
+  const { question, answer, category } = req.body || {};
   if (question) estimateQuestionsList[idx].question = question.trim();
   if (answer !== undefined && !Number.isNaN(Number(answer))) estimateQuestionsList[idx].answer = Number(answer);
+  if (category) estimateQuestionsList[idx].category = category.trim();
   saveEstimateQuestions();
   res.json(estimateQuestionsList);
 });
@@ -97,7 +98,7 @@ app.post('/api/estimate-questions/import', checkAdmin, (req, res) => {
   }
   const valid = items
     .filter(i => i && i.question && !Number.isNaN(Number(i.answer)))
-    .map(i => ({ question: String(i.question).trim(), answer: Number(i.answer) }));
+    .map(i => ({ category: (i.category || 'Sonstige').toString().trim(), question: String(i.question).trim(), answer: Number(i.answer) }));
   if (valid.length === 0) {
     res.status(400).json({ error: 'Keine gültigen Fragen im Import gefunden.' });
     return;
@@ -113,12 +114,12 @@ app.get('/api/questions', checkAdmin, (req, res) => {
 });
 
 app.post('/api/questions', checkAdmin, (req, res) => {
-  const { question, answer } = req.body || {};
+  const { question, answer, category } = req.body || {};
   if (!question || !answer) {
     res.status(400).json({ error: 'Frage und Antwort sind erforderlich.' });
     return;
   }
-  questionsList.push({ question: question.trim(), answer: answer.trim() });
+  questionsList.push({ category: (category || 'Sonstige').trim(), question: question.trim(), answer: answer.trim() });
   saveQuestions();
   res.json(questionsList);
 });
@@ -129,9 +130,10 @@ app.put('/api/questions/:index', checkAdmin, (req, res) => {
     res.status(404).json({ error: 'Frage nicht gefunden.' });
     return;
   }
-  const { question, answer } = req.body || {};
+  const { question, answer, category } = req.body || {};
   if (question) questionsList[idx].question = question.trim();
   if (answer) questionsList[idx].answer = answer.trim();
+  if (category) questionsList[idx].category = category.trim();
   saveQuestions();
   res.json(questionsList);
 });
@@ -155,7 +157,7 @@ app.post('/api/questions/import', checkAdmin, (req, res) => {
   }
   const valid = items
     .filter(i => i && i.question && i.answer)
-    .map(i => ({ question: String(i.question).trim(), answer: String(i.answer).trim() }));
+    .map(i => ({ category: (i.category || 'Sonstige').toString().trim(), question: String(i.question).trim(), answer: String(i.answer).trim() }));
   if (valid.length === 0) {
     res.status(400).json({ error: 'Keine gültigen Fragen im Import gefunden.' });
     return;

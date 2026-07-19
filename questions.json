@@ -1,34 +1,197 @@
 [
   {
+    "category": "Kuriositäten",
     "question": "Wie nennt man in Bayern traditionell den ersten Schluck Bier, den man vor dem eigentlichen Trinken über den Tisch schüttet?",
-    "answer": "Der 'Antrunk' – wird meist verschüttet, um dem Bier Glück zu wünschen"
+    "answer": "Das nennt man den Antrunk, man schüttet ihn meist weg um dem Bier Glück zu wünschen"
   },
   {
+    "category": "Kuriositäten",
     "question": "Welches Wort benutzten mittelalterliche Seefahrer für den Moment, in dem ein Schiff bei Windstille komplett stillstand?",
-    "answer": "Die 'Flaute' (aus dem Niederdeutschen für 'schlaff, kraftlos')"
+    "answer": "Das nennt man Flaute, kommt aus dem Niederdeutschen und bedeutet sowas wie schlaff oder kraftlos"
   },
   {
+    "category": "Kuriositäten",
     "question": "Wofür wurde früher in ländlichen Regionen Deutschlands ein Kuckucksruf am frühen Morgen als Aberglaube gedeutet?",
-    "answer": "Er sollte vorhersagen, wie viele Jahre man noch zu leben hat (ein Ruf pro Jahr)"
+    "answer": "Er sollte vorhersagen wie viele Jahre man noch zu leben hat, ein Ruf zählt für ein Jahr"
   },
   {
+    "category": "Kuriositäten",
     "question": "Wie heißt die Angst davor, dass Knöpfe an der Kleidung eines anderen Menschen zu nah an einem selbst sind?",
     "answer": "Koumpounophobie"
   },
   {
+    "category": "Kuriositäten",
     "question": "Welchen ungewöhnlichen Beruf übte die erste Person aus, die offiziell als 'Feuerwehrmann' in Rom registriert wurde?",
-    "answer": "Er war eigentlich Sklave und Teil einer privaten Löschtruppe, die Brände gegen Bezahlung löschte"
+    "answer": "Er war eigentlich ein Sklave und gehörte zu einer privaten Löschtruppe, die Brände gegen Bezahlung gelöscht hat"
   },
   {
+    "category": "Kuriositäten",
     "question": "Was ist die ursprüngliche Bedeutung des Wortes 'Roboter', bevor es für Maschinen verwendet wurde?",
-    "answer": "Es stammt vom tschechischen Wort 'robota' für 'Zwangsarbeit/Frondienst'"
+    "answer": "Es kommt vom tschechischen Wort robota, das bedeutet Zwangsarbeit oder Frondienst"
   },
   {
+    "category": "Kuriositäten",
     "question": "Warum tragen Schweizer Kühe im Sommer oft besonders große Glocken um den Hals?",
     "answer": "Damit Hirten sie auf den Almen anhand des Klangs orten können, auch bei Nebel"
   },
   {
+    "category": "Kuriositäten",
     "question": "Wie lautete der Spitzname, den Astronauten für den ersten Kaffee-Automaten auf der ISS gaben?",
-    "answer": "'ISSpresso' – tatsächlich der offizielle Name der 2015 installierten Kaffeemaschine"
+    "answer": "Das heißt ISSpresso und ist tatsächlich der offizielle Name der Kaffeemaschine, die 2015 installiert wurde"
+  },
+  {
+    "category": "Kuriositäten",
+    "question": "Warum haben Feuerwehrautos in den USA historisch fast immer die Farbe Rot?",
+    "answer": "Weil rote Farbe im frühen 20. Jahrhundert am billigsten in der Herstellung war und zugleich gut auffiel"
+  },
+  {
+    "category": "Kuriositäten",
+    "question": "Warum klopfen manche Menschen vor dem Trinken eines Schnapses mit dem Glas auf den Tisch?",
+    "answer": "Das ist ein alter Aberglaube, es soll dem Getränk symbolisch die bösen Geister austreiben"
+  },
+  {
+    "category": "Kuriositäten",
+    "question": "Warum sind Bananen von Natur aus leicht gebogen?",
+    "answer": "Sie wachsen entgegen der Schwerkraft dem Sonnenlicht entgegen, wodurch sich der Stiel krümmt"
+  },
+  {
+    "category": "Kuriositäten",
+    "question": "Warum wurde die Tastaturbelegung QWERTY ursprünglich so angeordnet, wie sie heute noch verbreitet ist?",
+    "answer": "Damit sich benachbarte Typenhebel mechanischer Schreibmaschinen beim schnellen Tippen seltener verhaken"
+  },
+  {
+    "category": "Kuriositäten",
+    "question": "Warum knistert brennendes Feuerholz im Kamin?",
+    "answer": "Eingeschlossene Wasserdampf und Harztaschen im Holz platzen durch die Hitze"
+  },
+  {
+    "category": "Kuriositäten",
+    "question": "Warum sind Bienenwaben sechseckig geformt?",
+    "answer": "Diese Form braucht am wenigsten Wachs bei gleichzeitig maximaler Speicherfläche"
+  },
+  {
+    "category": "Kuriositäten",
+    "question": "Warum haben Kupplungen von Feuerwehrschläuchen traditionell Messing statt Stahl?",
+    "answer": "Messing rostet nicht und erzeugt keine Funken, das ist wichtig in der Nähe von brennbaren Gasen"
+  },
+  {
+    "category": "Fremdwörter",
+    "question": "Was bedeutet das Wort 'Nepotismus'?",
+    "answer": "Das ist Vetternwirtschaft, also wenn Verwandte oder Freunde bei der Vergabe von Posten bevorzugt werden"
+  },
+  {
+    "category": "Fremdwörter",
+    "question": "Was bedeutet das Wort 'obsolet'?",
+    "answer": "Veraltet, überholt, nicht mehr gebräuchlich"
+  },
+  {
+    "category": "Fremdwörter",
+    "question": "Was bedeutet das Wort 'Akribie'?",
+    "answer": "Äußerste Sorgfalt und Genauigkeit bei einer Tätigkeit"
+  },
+  {
+    "category": "Fremdwörter",
+    "question": "Was bedeutet das Wort 'Eloquenz'?",
+    "answer": "Das bedeutet Redegewandtheit, also die Fähigkeit sich gewandt und überzeugend auszudrücken"
+  },
+  {
+    "category": "Fremdwörter",
+    "question": "Was bedeutet das Wort 'prekär'?",
+    "answer": "Heikel, bedenklich, in einer unsicheren oder schwierigen Lage"
+  },
+  {
+    "category": "Fremdwörter",
+    "question": "Was bedeutet das Wort 'Usurpator'?",
+    "answer": "Jemand, der sich Macht oder ein Amt unrechtmäßig angeeignet hat"
+  },
+  {
+    "category": "Fremdwörter",
+    "question": "Was bedeutet das Wort 'Anachronismus'?",
+    "answer": "Etwas, das zeitlich nicht zur jeweiligen Epoche passt, man könnte auch Zeitfehler dazu sagen"
+  },
+  {
+    "category": "Fremdwörter",
+    "question": "Was bedeutet das Wort 'Kontemplation'?",
+    "answer": "Eine versunkene, nachdenkliche Betrachtung, also eine Art meditatives Nachsinnen"
+  },
+  {
+    "category": "Fremdwörter",
+    "question": "Was bedeutet das Wort 'Idiosynkrasie'?",
+    "answer": "Eine individuelle Eigenart oder besondere Empfindlichkeit gegenüber einer bestimmten Sache"
+  },
+  {
+    "category": "Fremdwörter",
+    "question": "Was bedeutet das Wort 'Sonor' (z.B. eine sonore Stimme)?",
+    "answer": "Wohlklingend, voll und tief im Klang"
+  },
+  {
+    "category": "Fremdwörter",
+    "question": "Was bedeutet das Wort 'Ambivalenz'?",
+    "answer": "Das gleichzeitige Vorhandensein widersprüchlicher Gefühle oder Haltungen gegenüber derselben Sache"
+  },
+  {
+    "category": "Fremdwörter",
+    "question": "Was bedeutet das Wort 'Autark'?",
+    "answer": "Unabhängig, selbstversorgend, auf niemand anderen angewiesen"
+  },
+  {
+    "category": "Wahrheit oder Lüge",
+    "question": "Wahr oder falsch: Honig verdirbt bei richtiger Lagerung praktisch nie.",
+    "answer": "Wahr"
+  },
+  {
+    "category": "Wahrheit oder Lüge",
+    "question": "Wahr oder falsch: Ein Blitz ist im Durchschnitt heißer als die Oberfläche der Sonne.",
+    "answer": "Wahr"
+  },
+  {
+    "category": "Wahrheit oder Lüge",
+    "question": "Wahr oder falsch: Die Chinesische Mauer ist mit bloßem Auge vom Mond aus sichtbar.",
+    "answer": "Falsch"
+  },
+  {
+    "category": "Wahrheit oder Lüge",
+    "question": "Wahr oder falsch: Glas ist bei Zimmertemperatur eine extrem langsam fließende Flüssigkeit.",
+    "answer": "Falsch"
+  },
+  {
+    "category": "Wahrheit oder Lüge",
+    "question": "Wahr oder falsch: Oktopusse haben blaues Blut.",
+    "answer": "Wahr"
+  },
+  {
+    "category": "Wahrheit oder Lüge",
+    "question": "Wahr oder falsch: Napoleon war für seine Zeit ungewöhnlich klein gewachsen.",
+    "answer": "Falsch"
+  },
+  {
+    "category": "Wahrheit oder Lüge",
+    "question": "Wahr oder falsch: Der Mount Everest ist der Berg, dessen Gipfel am weitesten vom Erdmittelpunkt entfernt liegt.",
+    "answer": "Falsch"
+  },
+  {
+    "category": "Wahrheit oder Lüge",
+    "question": "Wahr oder falsch: Der Eiffelturm kann im Hochsommer durch Hitzeausdehnung mehrere Zentimeter höher werden.",
+    "answer": "Wahr"
+  },
+  {
+    "category": "Wahrheit oder Lüge",
+    "question": "Wahr oder falsch: Der Pazifische Ozean ist flächenmäßig größer als die gesamte Landmasse der Erde zusammen.",
+    "answer": "Wahr"
+  },
+  {
+    "category": "Wahrheit oder Lüge",
+    "question": "Wahr oder falsch: Kaugummikauen verbraucht mehr Kalorien, als im Kaugummi selbst enthalten sind.",
+    "answer": "Falsch"
+  },
+  {
+    "category": "Wahrheit oder Lüge",
+    "question": "Wahr oder falsch: Die meisten Menschen träumen ausschließlich in Schwarz-Weiß.",
+    "answer": "Falsch"
+  },
+  {
+    "category": "Wahrheit oder Lüge",
+    "question": "Wahr oder falsch: Ein Tag auf der Venus dauert länger als ein Jahr auf der Venus.",
+    "answer": "Wahr"
   }
 ]
