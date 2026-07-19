@@ -137,6 +137,8 @@ herunterladen und im Repo überschreiben, damit die Änderungen dauerhaft bleibe
 
 ## Änderungsprotokoll
 
+- **19.07.2026:** Logo auf dem Startbildschirm zeigte fälschlich eine eckige Box um das
+  eigentlich runde Logo (fehlende Abrundung im CSS) – behoben, sitzt jetzt sauber als Kreis.
 - **19.07.2026:** Wiedereinstieg nach Verbindungsverlust ohne gespeicherte Sitzung (z.B. Tab
   komplett geschlossen, App beendet, neues Gerät): Versucht jemand mitten im laufenden Spiel
   über "Raum beitreten" mit einem Namen einzusteigen, der zu einem gerade getrennten Spieler
