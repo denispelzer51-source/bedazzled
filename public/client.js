@@ -1,5 +1,49 @@
 const socket = io();
 
+// ---------- SOUNDEFFEKTE (dezent, per Web Audio erzeugt, keine externen Dateien nötig) ----------
+let audioCtx = null;
+function getAudioCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+function beep(freq, duration, volume, type) {
+  try {
+    const ctx = getAudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = type || 'sine';
+    osc.frequency.value = freq;
+    gain.gain.value = volume;
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + duration);
+    osc.stop(ctx.currentTime + duration);
+  } catch (e) { /* Audio nicht verfügbar, einfach stumm weitermachen */ }
+}
+function playSubmitSound() { beep(600, 0.1, 0.06, 'sine'); }
+function playRevealSound() {
+  beep(500, 0.14, 0.06, 'sine');
+  setTimeout(() => beep(760, 0.16, 0.06, 'sine'), 90);
+}
+function playHopSound() { beep(320, 0.06, 0.045, 'square'); }
+function playWinSound() {
+  [523, 659, 784].forEach((f, i) => setTimeout(() => beep(f, 0.22, 0.07, 'triangle'), i * 110));
+}
+
+// ---------- DARK/LIGHT THEME ----------
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  document.getElementById('theme-toggle').textContent = theme === 'light' ? '☀️' : '🌙';
+  localStorage.setItem('bedazzled_theme', theme);
+}
+const savedTheme = localStorage.getItem('bedazzled_theme') || 'dark';
+applyTheme(savedTheme);
+document.getElementById('theme-toggle').addEventListener('click', () => {
+  const current = document.documentElement.getAttribute('data-theme');
+  applyTheme(current === 'light' ? 'dark' : 'light');
+});
+
 let myId = null;
 let currentCode = null;
 let lastState = null;
@@ -237,6 +281,7 @@ document.getElementById('btn-submit-answer').addEventListener('click', () => {
     numberInput.disabled = true;
     document.getElementById('btn-submit-answer').disabled = true;
     document.getElementById('btn-submit-answer').textContent = 'Schätzung abgeschickt ✓';
+    playSubmitSound();
     return;
   }
   const text = document.getElementById('input-answer').value.trim();
@@ -245,6 +290,7 @@ document.getElementById('btn-submit-answer').addEventListener('click', () => {
   document.getElementById('input-answer').disabled = true;
   document.getElementById('btn-submit-answer').disabled = true;
   document.getElementById('btn-submit-answer').textContent = 'Wird geprüft …';
+  playSubmitSound();
 });
 
 socket.on('answerChecking', () => {
@@ -323,6 +369,7 @@ document.getElementById('btn-submit-vote').addEventListener('click', () => {
   document.getElementById('btn-submit-vote').classList.add('hidden');
   document.getElementById('vote-submitted-msg').classList.remove('hidden');
   document.querySelectorAll('.vote-option').forEach(el => el.style.pointerEvents = 'none');
+  playSubmitSound();
 });
 
 document.getElementById('btn-to-reveal').addEventListener('click', () => {
@@ -340,9 +387,18 @@ document.getElementById('btn-next-round').addEventListener('click', () => {
 });
 
 // ---------- WINNER OVERLAY ----------
-socket.on('gameOver', ({ winnerName }) => {
+socket.on('gameOver', ({ winnerName, awards }) => {
   document.getElementById('winner-text').textContent = `${winnerName} hat gewonnen! 🎉`;
+  const awardsBox = document.getElementById('awards-list');
+  awardsBox.innerHTML = '';
+  (awards || []).forEach(a => {
+    const div = document.createElement('div');
+    div.className = 'award-item';
+    div.innerHTML = `<span class="award-title">${escapeHtml(a.title)}</span><span class="award-names">${a.names.map(escapeHtml).join(' & ')}</span>`;
+    awardsBox.appendChild(div);
+  });
   document.getElementById('winner-overlay').classList.remove('hidden');
+  playWinSound();
 });
 document.getElementById('btn-close-winner').addEventListener('click', () => {
   document.getElementById('winner-overlay').classList.add('hidden');
@@ -482,6 +538,7 @@ function renderBoardLarge(players, fromPositions, animate) {
         const delay = cumulativeDelay + s * HOP_MS;
         setTimeout(() => {
           currentDisplayPositions[p.id] = start + s;
+          playHopSound();
           applyAllTokenPositions();
         }, delay);
       }
@@ -498,6 +555,85 @@ function renderBoardLarge(players, fromPositions, animate) {
   });
 }
 
+// ---------- LOBBY PLAYER LIST (mit Host-Kick-Funktion) ----------
+let pendingKickId = null;
+let lastLobbyState = null;
+
+function renderLobbyPlayerList(state) {
+  lastLobbyState = state;
+  const isHost = state.hostId === myId;
+  const list = document.getElementById('player-list');
+  list.innerHTML = '';
+
+  state.players.forEach(p => {
+    const li = document.createElement('li');
+    const isMod = p.id === state.moderatorId;
+    li.className = p.connected === false ? 'disconnected' : '';
+
+    if (pendingKickId === p.id) {
+      li.innerHTML = `
+        <span class="kick-confirm-text">${escapeHtml(p.name)} wirklich entfernen?</span>
+        <span class="kick-confirm-actions">
+          <button class="btn-kick-yes">Ja, entfernen</button>
+          <button class="btn-kick-no">Abbrechen</button>
+        </span>
+      `;
+      li.querySelector('.btn-kick-yes').addEventListener('click', () => {
+        socket.emit('kickPlayer', { code: currentCode, targetPlayerId: p.id });
+        pendingKickId = null;
+      });
+      li.querySelector('.btn-kick-no').addEventListener('click', () => {
+        pendingKickId = null;
+        renderLobbyPlayerList(lastLobbyState);
+      });
+      list.appendChild(li);
+      return;
+    }
+
+    li.innerHTML = `<span><span class="player-avatar">${avatarFor(p)}</span><span class="player-name">${escapeHtml(p.name)}${p.id === myId ? ' (du)' : ''}</span>${p.connected === false ? '<span class="tag-offline">getrennt</span>' : ''}</span>`;
+    if (isMod) {
+      const tag = document.createElement('span');
+      tag.className = 'tag';
+      tag.textContent = 'Moderator';
+      li.appendChild(tag);
+    }
+    if (isHost && p.id !== myId) {
+      const kickBtn = document.createElement('button');
+      kickBtn.className = 'btn-kick';
+      kickBtn.title = 'Spieler entfernen';
+      kickBtn.textContent = '🚫';
+      kickBtn.addEventListener('click', () => {
+        pendingKickId = p.id;
+        renderLobbyPlayerList(lastLobbyState);
+      });
+      li.appendChild(kickBtn);
+    }
+    list.appendChild(li);
+  });
+}
+
+socket.on('kicked', () => {
+  clearSession();
+  currentCode = null;
+  myId = null;
+  lastState = null;
+  document.getElementById('board-bar').classList.add('hidden');
+  showError('Du wurdest vom Host aus dem Raum entfernt.');
+  showScreen('start');
+});
+
+function updateConnectionBanner(state) {
+  const banner = document.getElementById('connection-issue-banner');
+  const disconnected = (state.players || []).filter(p => p.connected === false && p.id !== myId);
+  if (disconnected.length === 0) {
+    banner.classList.add('hidden');
+    return;
+  }
+  const names = disconnected.map(p => p.name).join(', ');
+  banner.textContent = `⚠️ Verbindungsprobleme bei ${names} – das Spiel läuft trotzdem normal weiter.`;
+  banner.classList.remove('hidden');
+}
+
 // ---------- MAIN STATE HANDLER ----------
 socket.on('state', (state) => {
   const enteringVoting = state.phase === 'voting' && (!lastState || lastState.phase !== 'voting');
@@ -507,6 +643,8 @@ socket.on('state', (state) => {
   }
   const enteringAnswering = state.phase === 'answering' && (!lastState || lastState.phase !== 'answering');
   const enteringBoard = state.phase === 'board' && (!lastState || lastState.phase !== 'board');
+  const enteringReveal = state.phase === 'reveal' && (!lastState || lastState.phase !== 'reveal');
+  if (enteringReveal) playRevealSound();
   if (enteringAnswering) {
     miniBarShowsLive = false;
     roundStartPositions = {};
@@ -524,6 +662,7 @@ socket.on('state', (state) => {
   }
 
   lastState = state;
+  updateConnectionBanner(state);
   if (state.estimateTriggerFields) estimateTriggerFields = state.estimateTriggerFields;
   const iAmModerator = state.moderatorId === myId;
 
@@ -534,21 +673,7 @@ socket.on('state', (state) => {
 
   if (state.phase === 'lobby') {
     document.getElementById('room-code-display').textContent = state.code;
-    const list = document.getElementById('player-list');
-    list.innerHTML = '';
-    state.players.forEach(p => {
-      const li = document.createElement('li');
-      const isMod = p.id === state.moderatorId;
-      li.className = p.connected === false ? 'disconnected' : '';
-      li.innerHTML = `<span><span class="player-avatar">${avatarFor(p)}</span><span class="player-name">${escapeHtml(p.name)}${p.id === myId ? ' (du)' : ''}</span>${p.connected === false ? '<span class="tag-offline">getrennt</span>' : ''}</span>`;
-      if (isMod) {
-        const tag = document.createElement('span');
-        tag.className = 'tag';
-        tag.textContent = 'Moderator';
-        li.appendChild(tag);
-      }
-      list.appendChild(li);
-    });
+    renderLobbyPlayerList(state);
     document.getElementById('btn-start-round').style.display = (state.players.length >= 3 && iAmModerator) ? 'block' : 'none';
     showScreen('lobby');
   }

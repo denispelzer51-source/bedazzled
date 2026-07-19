@@ -11,7 +11,10 @@
 
 <div id="app">
 
+  <button id="theme-toggle" class="theme-toggle" title="Helles/dunkles Design umschalten">🌙</button>
+
   <p id="reconnect-banner" class="reconnect-banner hidden">🔄 Verbinde dich wieder mit deinem Raum …</p>
+  <p id="connection-issue-banner" class="connection-issue-banner hidden"></p>
 
   <!-- START SCREEN -->
   <section id="screen-start" class="screen active">
@@ -179,6 +182,7 @@
   <div class="overlay-card">
     <span class="brand-mask big">🏆</span>
     <h2 id="winner-text"></h2>
+    <div id="awards-list" class="awards-list"></div>
     <button id="btn-close-winner" class="btn btn-primary">Schließen</button>
   </div>
 </div>

@@ -412,3 +412,92 @@ h2 { font-family: var(--font-display); font-weight: 700; font-size: 24px; text-a
   box-shadow: 0 6px 20px rgba(140,57,247,0.35);
 }
 .btn-join-prominent:hover { filter: brightness(1.1); }
+
+.btn-kick {
+  background: transparent;
+  border: 1.5px solid rgba(232,84,122,0.4);
+  color: var(--pink);
+  border-radius: 8px;
+  width: 32px; height: 32px;
+  font-size: 14px;
+  cursor: pointer;
+  margin-left: 8px;
+  flex-shrink: 0;
+}
+.btn-kick:hover { background: rgba(232,84,122,0.12); border-color: var(--pink); }
+.player-list li { flex-wrap: wrap; gap: 6px; }
+.kick-confirm-text { font-size: 14px; color: var(--pink); font-weight: 700; }
+.kick-confirm-actions { display: flex; gap: 8px; }
+.kick-confirm-actions button {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 7px 12px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+}
+.btn-kick-yes { background: var(--pink); color: var(--void); }
+.btn-kick-no { background: rgba(255,255,255,0.1); color: var(--ink); }
+
+.awards-list { display: flex; flex-direction: column; gap: 8px; margin: 16px 0; }
+.award-item {
+  display: flex; justify-content: space-between; align-items: center;
+  background: rgba(172,88,249,0.1);
+  border: 1px solid rgba(172,88,249,0.25);
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 13px;
+}
+.award-title { font-weight: 700; color: var(--glow); }
+.award-names { font-weight: 600; color: var(--ink); }
+
+.theme-toggle {
+  position: fixed;
+  top: 16px; right: 16px;
+  z-index: 100;
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(172,88,249,0.3);
+  background: var(--night-2);
+  color: var(--ink);
+  font-size: 17px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.theme-toggle:hover { border-color: var(--gold); }
+
+/* ---------- Helles Theme ---------- */
+[data-theme="light"] {
+  --ink: #241A38;
+  --ink-dim: #6B5B80;
+  --night: #F3EDFB;
+  --night-2: #FFFFFF;
+}
+[data-theme="light"] body::before { display: none; }
+[data-theme="light"] body {
+  background:
+    radial-gradient(circle at 15% 10%, rgba(140,57,247,0.08), transparent 40%),
+    radial-gradient(circle at 85% 85%, rgba(197,119,251,0.10), transparent 45%),
+    var(--night);
+}
+[data-theme="light"] .player-list li,
+[data-theme="light"] .q-row,
+[data-theme="light"] .reveal-item,
+[data-theme="light"] .board-rect,
+[data-theme="light"] .card,
+[data-theme="light"] .avatar-option,
+[data-theme="light"] .vote-option {
+  box-shadow: 0 1px 3px rgba(51,13,152,0.08);
+}
+
+.connection-issue-banner {
+  text-align: center;
+  background: rgba(232,84,122,0.15);
+  border: 1px solid rgba(232,84,122,0.4);
+  color: var(--pink);
+  font-weight: 600;
+  font-size: 13px;
+  padding: 9px 14px;
+  border-radius: 12px;
+  margin-bottom: 14px;
+}

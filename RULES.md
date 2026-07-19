@@ -137,6 +137,22 @@ herunterladen und im Repo überschreiben, damit die Änderungen dauerhaft bleibe
 
 ## Änderungsprotokoll
 
+- **19.07.2026:** Vier neue Features: (1) Sieger-Ehrung am Spielende – neben dem Gewinner
+  werden bis zu 3 Auszeichnungen angezeigt ("🎭 Bester Bluffer", "🙈 Meist Getäuscht",
+  "🎯 Schätz-Ass"), jeweils nur wenn tatsächlich jemand die Bedingung erfüllt hat, bei
+  Gleichstand mehrere Namen. (2) Dezente Soundeffekte (per Web Audio erzeugt, keine
+  externen Dateien): leiser Ton beim Abschicken von Antwort/Stimme, Doppelton bei der
+  Auflösung, leises Klack-Geräusch pro Spielbrett-Zug, kleine Melodie beim Sieg.
+  (3) Dark/Light-Umschalter oben rechts (🌙/☀️), Einstellung wird im Browser gespeichert.
+  (4) Dezentes Warn-Banner, falls ein Mitspieler während der Runde die Verbindung verliert
+  ("Verbindungsprobleme bei ... – das Spiel läuft trotzdem normal weiter"), ohne das Spiel
+  zu unterbrechen.
+- **19.07.2026:** Host-Rolle eingeführt (der Raum-Ersteller, unabhängig von der rotierenden
+  Moderatorrolle). Nur der Host sieht in der Lobby einen 🚫-Button neben jedem anderen
+  Spieler, um ihn zu entfernen – mit zweistufiger Bestätigung ("wirklich entfernen?" →
+  "Ja, entfernen"/"Abbrechen"), damit niemand versehentlich rausgeworfen wird. Entfernte
+  Spieler bekommen eine Meldung und landen zurück auf dem Startbildschirm. Verlässt der
+  Host selbst den Raum, wandert die Host-Rolle automatisch zum nächsten verbliebenen Spieler.
 - **19.07.2026:** Startbildschirm umsortiert: "Raum beitreten" steht jetzt oben und wirkt
   optisch auffälliger (dickerer lila Rahmen, gefülltes Feld), "Neuen Raum erstellen" steht
   darunter und dezenter – da die meisten Spieler einem Raum beitreten statt selbst einen zu

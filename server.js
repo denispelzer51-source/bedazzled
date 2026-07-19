@@ -286,6 +286,7 @@ function publicRoomState(room, forPlayerId) {
     pointsPerFooled: POINTS_PER_FOOLED_PLAYER,
     players: room.players.map(p => ({ id: p.id, name: p.name, avatar: p.avatar, position: p.position, connected: !!p.socketId })),
     moderatorId,
+    hostId: room.hostId,
     currentQuestion: room.phase !== 'lobby' && room.currentQuestionObj ? room.currentQuestionObj.question : null,
     realAnswer: (isModerator && room.phase === 'answering' && room.currentQuestionObj) ? room.currentQuestionObj.answer : null,
     answeredCount: Object.keys(room.answers || {}).length,
@@ -372,10 +373,34 @@ function applyEstimateTriggerCheck(room, prevPositions) {
   room.pendingRoundType = triggered ? 'estimate' : 'question';
 }
 
+function ensureStats(room, playerId) {
+  if (!room.stats) room.stats = {};
+  if (!room.stats[playerId]) room.stats[playerId] = { fooled: 0, timesFooled: 0, estimateBest: 0 };
+  return room.stats[playerId];
+}
+
+function computeAwards(room) {
+  const awards = [];
+  const entries = Object.entries(room.stats || {});
+  const nameFor = id => { const p = room.players.find(pp => pp.id === id); return p ? p.name : null; };
+
+  function topAward(key, title, emoji) {
+    const max = Math.max(0, ...entries.map(([, s]) => s[key]));
+    if (max === 0) return;
+    const winners = entries.filter(([, s]) => s[key] === max).map(([id]) => nameFor(id)).filter(Boolean);
+    if (winners.length > 0) awards.push({ title: `${emoji} ${title}`, names: winners });
+  }
+
+  topAward('fooled', 'Bester Bluffer', '🎭');
+  topAward('timesFooled', 'Meist Getäuscht', '🙈');
+  topAward('estimateBest', 'Schätz-Ass', '🎯');
+  return awards;
+}
+
 function checkForWinner(code, room) {
   const winner = room.players.find(p => p.position >= BOARD_LENGTH);
   if (winner) {
-    io.to(code).emit('gameOver', { winnerName: winner.name });
+    io.to(code).emit('gameOver', { winnerName: winner.name, awards: computeAwards(room) });
   }
 }
 
@@ -390,6 +415,7 @@ function removePlayerForGood(roomCode, playerId) {
     return;
   }
   if (room.moderatorIndex >= room.players.length) room.moderatorIndex = 0;
+  if (room.hostId === playerId) room.hostId = room.players[0].id; // Host-Rolle wandert weiter
   broadcastState(roomCode);
 }
 
@@ -402,6 +428,8 @@ io.on('connection', (socket) => {
     const player = { id: playerId, name: name || 'Spieler', avatar: avatar || '💎', position: 0, socketId: socket.id };
     rooms[code] = {
       code,
+      hostId: playerId,
+      stats: {},
       players: [player],
       moderatorIndex: 0,
       phase: 'lobby',
@@ -619,6 +647,8 @@ io.on('connection', (socket) => {
         const fooledOwner = room.players.find(p => p.id === chosenOwnerId);
         if (fooledOwner && fooledOwner.id !== voterId) {
           fooledOwner.position = Math.min(BOARD_LENGTH, fooledOwner.position + POINTS_PER_FOOLED_PLAYER);
+          ensureStats(room, fooledOwner.id).fooled += 1;
+          ensureStats(room, voterId).timesFooled += 1;
         }
       }
     }
@@ -656,6 +686,7 @@ io.on('connection', (socket) => {
       if (points > 0) {
         const player = room.players.find(p => p.id === entry.playerId);
         if (player) player.position = Math.min(BOARD_LENGTH, player.position + points);
+        if (i === 0) ensureStats(room, entry.playerId).estimateBest += 1;
       }
     });
 
@@ -704,6 +735,22 @@ io.on('connection', (socket) => {
     socket.leave(code);
     socket.data.token = null;
     socket.data.roomCode = null;
+  });
+
+  // Nur der Host (Raum-Ersteller, unabhängig von der rotierenden Moderatorrolle) darf kicken
+  socket.on('kickPlayer', ({ code, targetPlayerId }) => {
+    const room = rooms[code];
+    if (!room) return;
+    if (socket.data.token !== room.hostId) {
+      socket.emit('errorMsg', 'Nur der Host kann Spieler entfernen.');
+      return;
+    }
+    if (targetPlayerId === room.hostId) return; // Host kann sich nicht selbst rauswerfen
+    const target = room.players.find(p => p.id === targetPlayerId);
+    if (target && target.socketId) {
+      io.to(target.socketId).emit('kicked');
+    }
+    removePlayerForGood(code, targetPlayerId);
   });
 
   socket.on('disconnect', () => {
