@@ -653,10 +653,12 @@ io.on('connection', (socket) => {
       }
     }
 
-    // Für jede erfundene Antwort merken, wie viele Mitspieler darauf reingefallen sind (für die Anzeige)
+    // Für jede erfundene Antwort merken, wer darauf reingefallen ist (für die Anzeige)
     room.shuffledAnswers.forEach(a => {
       if (!a.isReal) {
-        a.foolCount = Object.values(room.votes).filter(v => v === a.ownerId).length;
+        const foolerIds = Object.entries(room.votes).filter(([, v]) => v === a.ownerId).map(([voterId]) => voterId);
+        a.foolCount = foolerIds.length;
+        a.foolerNames = foolerIds.map(id => (room.players.find(p => p.id === id) || {}).name || '???');
       }
     });
 

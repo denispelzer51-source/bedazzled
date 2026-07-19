@@ -137,6 +137,14 @@ herunterladen und im Repo überschreiben, damit die Änderungen dauerhaft bleibe
 
 ## Änderungsprotokoll
 
+- **19.07.2026:** Drei Feinschliffe: (1) Bei der Auflösung stehen jetzt die konkreten Namen
+  der getäuschten Mitspieler dabei, statt nur einer Anzahl ("🎣 Anna, Ben sind darauf
+  reingefallen!" statt "2 Mitspieler sind reingefallen"). (2) Spielbrett-Zugsound ersetzt –
+  klingt jetzt nach einer Spielfigur, die aufs Brett gesetzt wird (gefiltertes Rauschen +
+  tiefer Klopfton), statt nach einem einfachen Rechteck-Piepton. (3) Ruckeliges Verhalten
+  behoben, wenn eine ziehende Figur zu einer bereits stehenden dazukommt – der Versatz
+  zwischen mehreren Figuren auf einem Feld wird jetzt sauber mitanimiert statt hart zu
+  springen.
 - **19.07.2026:** Vier neue Features: (1) Sieger-Ehrung am Spielende – neben dem Gewinner
   werden bis zu 3 Auszeichnungen angezeigt ("🎭 Bester Bluffer", "🙈 Meist Getäuscht",
   "🎯 Schätz-Ass"), jeweils nur wenn tatsächlich jemand die Bedingung erfüllt hat, bei

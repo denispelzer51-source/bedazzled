@@ -26,7 +26,49 @@ function playRevealSound() {
   beep(500, 0.14, 0.06, 'sine');
   setTimeout(() => beep(760, 0.16, 0.06, 'sine'), 90);
 }
-function playHopSound() { beep(320, 0.06, 0.045, 'square'); }
+function playHopSound() {
+  try {
+    const ctx = getAudioCtx();
+    const now = ctx.currentTime;
+
+    // Kurzer, gefilterter Rauschimpuls simuliert das "Tock" einer Spielfigur, die auf ein
+    // Brett gesetzt wird - klingt organischer als ein reiner Sinus-/Rechteck-Ton.
+    const bufferSize = Math.floor(ctx.sampleRate * 0.05);
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = (Math.random() * 2 - 1) * (1 - i / bufferSize); // abklingendes Rauschen
+    }
+    const noise = ctx.createBufferSource();
+    noise.buffer = buffer;
+
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = 900;
+
+    const gain = ctx.createGain();
+    gain.gain.value = 0.05;
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.06);
+
+    noise.connect(filter);
+    filter.connect(gain);
+    gain.connect(ctx.destination);
+    noise.start(now);
+
+    // Ein kurzer, tiefer "Klopf"-Ton darunter für mehr Körper im Klang
+    const thud = ctx.createOscillator();
+    const thudGain = ctx.createGain();
+    thud.type = 'sine';
+    thud.frequency.setValueAtTime(180, now);
+    thud.frequency.exponentialRampToValueAtTime(90, now + 0.05);
+    thudGain.gain.value = 0.05;
+    thudGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.07);
+    thud.connect(thudGain);
+    thudGain.connect(ctx.destination);
+    thud.start(now);
+    thud.stop(now + 0.08);
+  } catch (e) { /* Audio nicht verfügbar, einfach stumm weitermachen */ }
+}
 function playWinSound() {
   [523, 659, 784].forEach((f, i) => setTimeout(() => beep(f, 0.22, 0.07, 'triangle'), i * 110));
 }
@@ -794,8 +836,9 @@ socket.on('state', (state) => {
         const myVoteBadge = isMyVote
           ? `<span class="my-vote-badge">${a.isReal ? `✔ Richtig getippt! (+${state.pointsCorrectGuess} Punkte)` : '✗ Reingefallen'}</span>`
           : '';
+        const foolerNamesText = (a.foolerNames || []).map(escapeHtml).join(', ');
         const foolCallout = (!a.isReal && a.foolCount > 0)
-          ? `<span class="fool-callout">🎣 ${a.foolCount} ${a.foolCount === 1 ? 'Mitspieler ist' : 'Mitspieler sind'} darauf reingefallen! ${ownerName} bekommt +${a.foolCount * state.pointsPerFooled} Punkte</span>`
+          ? `<span class="fool-callout">🎣 ${foolerNamesText} ${a.foolCount === 1 ? 'ist' : 'sind'} darauf reingefallen! ${ownerName} bekommt +${a.foolCount * state.pointsPerFooled} Punkte</span>`
           : '';
         div.innerHTML = `${escapeHtml(a.text)}<br><span class="owner">${ownerName}</span>${myVoteBadge}${foolCallout}`;
         list.appendChild(div);

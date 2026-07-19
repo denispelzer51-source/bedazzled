@@ -266,7 +266,7 @@ h2 { font-family: var(--font-display); font-weight: 700; font-size: 24px; text-a
   margin: -15px 0 0 -15px;
   font-size: 22px;
   display: flex; align-items: center; justify-content: center;
-  transition: left 0.35s ease, top 0.35s ease;
+  transition: left 0.35s ease, top 0.35s ease, transform 0.35s ease;
   filter: drop-shadow(0 3px 6px rgba(0,0,0,0.45));
   z-index: 2;
 }
