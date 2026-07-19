@@ -137,6 +137,18 @@ herunterladen und im Repo überschreiben, damit die Änderungen dauerhaft bleibe
 
 ## Änderungsprotokoll
 
+- **19.07.2026:** Drei wichtige Korrekturen: (1) Dopplungs-Auflösung korrigiert – der
+  Moderator wählt jetzt tatsächlich zwischen "echte Antwort behalten" (Spieler-Version raus)
+  oder "Spieler-Version behalten" (offizielle Antwort raus), sodass exakt einer von beiden
+  gleichwertigen Einträgen im Spiel bleibt, kein erzwungenes Neuschreiben mehr.
+  (2) Refresh-Bug behoben: Lud jemand die Seite mitten in der Antwort- oder Abstimm-Phase
+  neu, wurden Eingabefelder und Auswahl fälschlich zurückgesetzt, obwohl der Spieler schon
+  abgestimmt/geantwortet hatte – das führte zu auseinanderlaufenden Spielständen zwischen den
+  Spielern. Der Server teilt jetzt den eigenen Abgabestatus mit, der Client stellt ihn nach
+  einem Reload korrekt wieder her. (3) Alle Moderator-Aktionen (Abstimmung starten, Auflösen,
+  Spielbrett zeigen, nächste Runde) sind jetzt auch serverseitig auf den Moderator beschränkt
+  – vorher war das nur eine Anzeige-Einschränkung im Browser, die z.B. auf iOS umgangen
+  werden konnte.
 - **19.07.2026:** Drei größere Anpassungen an Antwort- und Abstimm-Phase: (1) Bei Bluff-Runden
   geht's jetzt automatisch zur Abstimmung über, sobald alle Mitspieler geantwortet haben –
   kein manueller Klick des Moderators mehr nötig. (2) Der Moderator sieht während der

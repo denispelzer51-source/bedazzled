@@ -312,6 +312,10 @@ function publicRoomState(room, forPlayerId) {
       : [],
     // Damit jede:r sofort sieht, ob die eigene Wahl in der Abstimmung richtig war
     myVote: room.votes[forPlayerId] || null,
+    // Damit ein Reload/Reconnect während der Antwort-Phase den eigenen Abgabestatus
+    // korrekt wiederherstellt, statt das Eingabefeld fälschlich leer zurückzusetzen
+    myAnswerSubmitted: room.answers[forPlayerId] !== undefined,
+    myAnswerText: room.answers[forPlayerId] !== undefined ? room.answers[forPlayerId] : null,
     shuffledAnswers: room.phase === 'voting' || room.phase === 'reveal'
       ? room.shuffledAnswers.map(a => room.phase === 'reveal' ? a : { text: a.text, ownerId: a.ownerId })
       : [],
@@ -439,7 +443,8 @@ io.on('connection', (socket) => {
       hostId: playerId,
       stats: {},
       duplicateConflicts: [],
-      mergedRealPlayerIds: [],
+      excludeFromPoolPlayerIds: [],
+      suppressRealEntry: false,
       players: [player],
       moderatorIndex: 0,
       phase: 'lobby',
@@ -544,7 +549,8 @@ io.on('connection', (socket) => {
     room.liveTyping = {};
     room.shuffledAnswers = [];
     room.duplicateConflicts = [];
-    room.mergedRealPlayerIds = [];
+    room.excludeFromPoolPlayerIds = [];
+    room.suppressRealEntry = false;
     room.currentQuestionObj = pickNextQuestion(room, roundType);
     broadcastState(code);
   });
@@ -620,18 +626,20 @@ io.on('connection', (socket) => {
 
   socket.on('resolveDuplicate', ({ code, playerId, action }) => {
     const room = rooms[code];
-    if (!room) return;
-    const moderatorId = room.players[room.moderatorIndex].id;
-    if (socket.data.token !== moderatorId) return;
+    if (!room || !isModerator(room, socket)) return;
     if (!room.duplicateConflicts || !room.duplicateConflicts.includes(playerId)) return;
 
     room.duplicateConflicts = room.duplicateConflicts.filter(id => id !== playerId);
 
-    if (action === 'remove') {
-      delete room.answers[playerId];
-    } else if (action === 'keep') {
-      if (!room.mergedRealPlayerIds) room.mergedRealPlayerIds = [];
-      if (!room.mergedRealPlayerIds.includes(playerId)) room.mergedRealPlayerIds.push(playerId);
+    if (action === 'keepReal') {
+      // Die offizielle echte Antwort bleibt als eigener Eintrag, die (identische) Antwort
+      // des Spielers wird aus dem Antwort-Pool entfernt (taucht nicht doppelt auf)
+      if (!room.excludeFromPoolPlayerIds) room.excludeFromPoolPlayerIds = [];
+      if (!room.excludeFromPoolPlayerIds.includes(playerId)) room.excludeFromPoolPlayerIds.push(playerId);
+    } else if (action === 'keepPlayerVersion') {
+      // Die Antwort des Spielers bleibt im Pool, die separate offizielle Antwort wird
+      // diese Runde nicht zusätzlich aufgeführt - es bleibt nur der eine, gemeinsame Eintrag
+      room.suppressRealEntry = true;
     }
 
     broadcastState(code);
@@ -640,12 +648,16 @@ io.on('connection', (socket) => {
 
   function startVotingPhase(room, code) {
     const moderator = room.players[room.moderatorIndex];
-    const merged = room.mergedRealPlayerIds || [];
-    const real = { ownerId: 'REAL', text: room.currentQuestionObj.answer, isReal: true };
-    const fake = room.players
-      .filter(p => p.id !== moderator.id && room.answers[p.id] && !merged.includes(p.id))
-      .map(p => ({ ownerId: p.id, text: room.answers[p.id], isReal: false }));
-    const combined = [real, ...fake];
+    const excluded = room.excludeFromPoolPlayerIds || [];
+    const combined = [];
+    if (!room.suppressRealEntry) {
+      combined.push({ ownerId: 'REAL', text: room.currentQuestionObj.answer, isReal: true });
+    }
+    room.players.forEach(p => {
+      if (p.id !== moderator.id && room.answers[p.id] !== undefined && !excluded.includes(p.id)) {
+        combined.push({ ownerId: p.id, text: room.answers[p.id], isReal: false });
+      }
+    });
     for (let i = combined.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [combined[i], combined[j]] = [combined[j], combined[i]];
@@ -668,9 +680,13 @@ io.on('connection', (socket) => {
     }
   }
 
+  function isModerator(room, socket) {
+    return room.players[room.moderatorIndex] && room.players[room.moderatorIndex].id === socket.data.token;
+  }
+
   socket.on('goToVoting', ({ code }) => {
     const room = rooms[code];
-    if (!room) return;
+    if (!room || !isModerator(room, socket)) return;
     startVotingPhase(room, code);
   });
 
@@ -698,7 +714,7 @@ io.on('connection', (socket) => {
 
   socket.on('revealResults', ({ code }) => {
     const room = rooms[code];
-    if (!room || room.roundType === 'estimate') return;
+    if (!room || !isModerator(room, socket) || room.roundType === 'estimate') return;
 
     const prevPositions = {};
     room.players.forEach(p => { prevPositions[p.id] = p.position; });
@@ -738,7 +754,7 @@ io.on('connection', (socket) => {
   // Für Schätzen-Runden: kein Voting, direkte Auswertung nach Nähe zur echten Zahl
   socket.on('revealEstimate', ({ code }) => {
     const room = rooms[code];
-    if (!room || room.roundType !== 'estimate') return;
+    if (!room || !isModerator(room, socket) || room.roundType !== 'estimate') return;
 
     const prevPositions = {};
     room.players.forEach(p => { prevPositions[p.id] = p.position; });
@@ -778,14 +794,14 @@ io.on('connection', (socket) => {
 
   socket.on('showBoard', ({ code }) => {
     const room = rooms[code];
-    if (!room) return;
+    if (!room || !isModerator(room, socket)) return;
     room.phase = 'board';
     broadcastState(code);
   });
 
   socket.on('nextRound', ({ code }) => {
     const room = rooms[code];
-    if (!room) return;
+    if (!room || !isModerator(room, socket)) return;
     room.moderatorIndex = (room.moderatorIndex + 1) % room.players.length;
     room.answers = {};
     room.votes = {};

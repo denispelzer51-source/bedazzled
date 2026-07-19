@@ -409,6 +409,7 @@ function renderVoteOptions(shuffledAnswers) {
     const div = document.createElement('div');
     div.className = 'vote-option';
     div.textContent = a.text;
+    div.dataset.ownerId = a.ownerId;
     div.addEventListener('click', () => {
       if (voteSubmitted) return;
       document.querySelectorAll('.vote-option').forEach(el => el.classList.remove('selected'));
@@ -698,8 +699,13 @@ function updateConnectionBanner(state) {
 socket.on('state', (state) => {
   const enteringVoting = state.phase === 'voting' && (!lastState || lastState.phase !== 'voting');
   if (enteringVoting) {
-    selectedVote = null;
-    voteSubmitted = false;
+    if (state.myVote) {
+      selectedVote = state.myVote;
+      voteSubmitted = true;
+    } else {
+      selectedVote = null;
+      voteSubmitted = false;
+    }
   }
   const enteringAnswering = state.phase === 'answering' && (!lastState || lastState.phase !== 'answering');
   const enteringBoard = state.phase === 'board' && (!lastState || lastState.phase !== 'board');
@@ -711,11 +717,22 @@ socket.on('state', (state) => {
     state.players.forEach(p => { roundStartPositions[p.id] = p.position; });
     const ta = document.getElementById('input-answer');
     const num = document.getElementById('input-answer-number');
-    ta.value = ''; ta.disabled = false;
-    num.value = ''; num.disabled = false;
-    document.getElementById('btn-submit-answer').disabled = false;
-    document.getElementById('btn-submit-answer').textContent = 'Antwort abschicken';
     document.getElementById('answer-reject-msg').classList.add('hidden');
+    if (state.myAnswerSubmitted) {
+      // Reload/Reconnect während der Antwort-Phase: eigenen Stand wiederherstellen,
+      // statt das Feld fälschlich leer zurückzusetzen (sonst laufen Spieler auseinander)
+      ta.value = state.myAnswerText || '';
+      num.value = state.myAnswerText || '';
+      ta.disabled = false;
+      num.disabled = false;
+      document.getElementById('btn-submit-answer').disabled = false;
+      document.getElementById('btn-submit-answer').textContent = 'Antwort abgeschickt ✓ (Änderung möglich)';
+    } else {
+      ta.value = ''; ta.disabled = false;
+      num.value = ''; num.disabled = false;
+      document.getElementById('btn-submit-answer').disabled = false;
+      document.getElementById('btn-submit-answer').textContent = 'Antwort abschicken';
+    }
   }
   if (enteringBoard) {
     miniBarShowsLive = true;
@@ -781,16 +798,17 @@ socket.on('state', (state) => {
           div.innerHTML = `
             <h4>⚠️ Dopplung: ${escapeHtml(c.name)}s Antwort ist fast identisch mit der echten Antwort</h4>
             <p class="dc-text">"${escapeHtml(String(c.answerText))}"</p>
+            <p class="dc-text" style="margin-bottom:14px;">Beide sind quasi dieselbe Antwort. Wähle, welche davon im Spiel bleibt:</p>
             <div class="dc-actions">
-              <button class="btn-dc-remove">Löschen, ${escapeHtml(c.name)} muss neu schreiben</button>
-              <button class="btn-dc-keep">Trotzdem behalten (zählt als Treffer, kein Bluff-Bonus)</button>
+              <button class="btn-dc-remove">Echte Antwort behalten (${escapeHtml(c.name)}s Version raus)</button>
+              <button class="btn-dc-keep">${escapeHtml(c.name)}s Version behalten (offizielle Antwort raus)</button>
             </div>
           `;
           div.querySelector('.btn-dc-remove').addEventListener('click', () => {
-            socket.emit('resolveDuplicate', { code: currentCode, playerId: c.playerId, action: 'remove' });
+            socket.emit('resolveDuplicate', { code: currentCode, playerId: c.playerId, action: 'keepReal' });
           });
           div.querySelector('.btn-dc-keep').addEventListener('click', () => {
-            socket.emit('resolveDuplicate', { code: currentCode, playerId: c.playerId, action: 'keep' });
+            socket.emit('resolveDuplicate', { code: currentCode, playerId: c.playerId, action: 'keepPlayerVersion' });
           });
           dcBox.appendChild(div);
         });
@@ -853,10 +871,21 @@ socket.on('state', (state) => {
       document.getElementById('moderator-vote-preview').classList.add('hidden');
       if (enteringVoting) {
         document.getElementById('vote-options').classList.remove('hidden');
-        document.getElementById('btn-submit-vote').classList.remove('hidden');
-        document.getElementById('btn-submit-vote').disabled = true;
-        document.getElementById('vote-submitted-msg').classList.add('hidden');
         renderVoteOptions(state.shuffledAnswers);
+        if (voteSubmitted) {
+          // Reload/Reconnect nach bereits abgegebener Stimme: gesperrten Zustand zeigen,
+          // statt die Auswahl fälschlich wieder freizugeben
+          document.querySelectorAll('.vote-option').forEach(el => {
+            el.style.pointerEvents = 'none';
+            if (el.dataset.ownerId === selectedVote) el.classList.add('selected');
+          });
+          document.getElementById('btn-submit-vote').classList.add('hidden');
+          document.getElementById('vote-submitted-msg').classList.remove('hidden');
+        } else {
+          document.getElementById('btn-submit-vote').classList.remove('hidden');
+          document.getElementById('btn-submit-vote').disabled = true;
+          document.getElementById('vote-submitted-msg').classList.add('hidden');
+        }
       }
     }
     showScreen('voting');
