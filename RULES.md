@@ -206,6 +206,16 @@ Fragen-Verwaltung (`/admin.html`) zeigt Fragen nach Kategorie gruppiert und aufk
     Mode" bereitgestellt (Standard-Ansatz, den praktisch jedes Spiel nutzt) - muss manuell
     im lokalen Android-Studio-Projekt eingesetzt werden, siehe Chat-Anleitung.
 
+- **20.07.2026:** Auflösungs-Bildschirm: etwas Abstand oben ergänzt (Frage klebte fast am
+  Heller/Dunkler-Button) sowie ein klarer Abstand zwischen der Frage und der ersten
+  Antwort-Box darunter (die beiden klebten vorher direkt aneinander).
+- **20.07.2026:** MainActivity.java-Vorlage aktualisiert - die zuerst bereitgestellte Version
+  nutzte eine seit Android 11 veraltete API, die von neueren Android-Versionen teils nicht
+  mehr zuverlässig beachtet wird. Neue Version nutzt die moderne `WindowInsetsController`-API
+  mit explizitem "kurz reinwischen zeigt die Leiste, danach klappt sie automatisch wieder
+  ein"-Verhalten (`BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE`), inkl. Rückfalloption für ältere
+  Android-Versionen.
+
 ## Fragen-Verwaltung: Zweistufiges Filtersystem
 
 Jede Frage hat jetzt zwei Ebenen:

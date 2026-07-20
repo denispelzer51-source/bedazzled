@@ -185,6 +185,11 @@ h2 { font-family: var(--font-display); font-weight: 700; font-size: 24px; text-a
 .question-box { background: var(--night-2); border-radius: var(--radius); padding: 22px; margin-bottom: 18px; }
 .question-text { font-family: var(--font-display); font-size: 22px; font-weight: 600; line-height: 1.4; margin: 0; }
 .question-text.small { font-size: 18px; }
+
+/* Auflösung: etwas Luft oben (sonst zu nah an den Ecken-Buttons) und ein klarer Abstand
+   zwischen der Frage und der ersten Antwort-Box darunter (klebte sonst direkt aneinander) */
+#screen-reveal .phase-tag { margin-top: 12px; }
+#screen-reveal #question-text-4 { margin-bottom: 22px; }
 .real-answer-box { margin-top: 14px; padding-top: 14px; border-top: 1px dashed rgba(255,255,255,0.15); color: var(--teal); font-weight: 600; }
 .real-answer-box.hidden, .hidden { display: none !important; }
 
