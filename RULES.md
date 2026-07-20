@@ -162,6 +162,18 @@ Fragen-Verwaltung (`/admin.html`) zeigt Fragen nach Kategorie gruppiert und aufk
 
 - **20.07.2026:** Vier Layout-Korrekturen: (1) Inhalte saßen zu weit oben/zu eng zusammengequetscht - mehr Abstand zum oberen Rand auf allen Bildschirmen ergänzt. (2) Heller/Dunkler-Button und Zurück-Pfeil waren zu klein und positionierten sich je nach Bildschirm uneinheitlich (lag an `position:absolute` relativ zum jeweiligen Bildschirm-Inhalt) - beide sind jetzt `position:fixed` mit exakt derselben Position auf jedem Bildschirm, größer (46×46px statt 38-40px) und weiter unten. (3) Zurück-Pfeil links, Heller/Dunkler-Button rechts, auf gleicher Höhe. (4) Der feste Button-Bereich unten (z.B. "Runde starten") hatte einen komplett deckenden Hintergrund, der wie ein abgetrennter schwarzer Balken über dem Text schwebte, sobald das aufgeklappte Regelwerk lang genug wurde - Hintergrund entfernt, nur der Button selbst behält seine eigene Farbe.
 
+- **20.07.2026:** Wichtiger Fix: Bisher konnte man mit einem völlig frei erfundenen
+  Raum-Code trotzdem bis zur Namens-/Spielfigur-Auswahl gelangen, obwohl der Raum gar nicht
+  existierte (der eigentliche Fehler kam erst ganz am Ende beim Abschicken). Jetzt wird beim
+  Klick auf "Raum beitreten" zuerst geprüft, ob der Raum überhaupt existiert - nur bei einem
+  gültigen Code geht's weiter zur Namens-/Spielfigur-Auswahl, sonst erscheint sofort "Raum
+  nicht gefunden". Isoliert getestet: nicht existierender Code liefert korrekt
+  `roomExists: false`.
+- **20.07.2026:** Weitere Layout-Feinjustierung: Inhalte auf Start- und Setup-Bildschirm
+  sitzen jetzt spürbar zentrierter (mehr Abstand nach oben). Logo jetzt auch auf dem
+  Setup-Bildschirm oben sichtbar. Zurück-Pfeil und Heller/Dunkler-Button nochmal vergrößert
+  (52×52px, größeres Pfeil-Symbol).
+
 ## Fragen-Verwaltung: Zweistufiges Filtersystem
 
 Jede Frage hat jetzt zwei Ebenen:

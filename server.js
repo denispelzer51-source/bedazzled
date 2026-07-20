@@ -591,7 +591,7 @@ io.on('connection', (socket) => {
 
   socket.on('checkTakenAvatars', ({ code }) => {
     const room = rooms[code];
-    socket.emit('takenAvatars', { takenAvatars: room ? getTakenAvatars(room) : [] });
+    socket.emit('takenAvatars', { takenAvatars: room ? getTakenAvatars(room) : [], roomExists: !!room });
   });
 
   socket.on('rejoinRoom', ({ code, token }) => {

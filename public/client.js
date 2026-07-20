@@ -238,13 +238,30 @@ document.getElementById('input-code').addEventListener('input', () => {
   }, 300);
 });
 
-socket.on('takenAvatars', ({ takenAvatars: taken }) => {
+socket.on('takenAvatars', ({ takenAvatars: taken, roomExists }) => {
   takenAvatars = taken || [];
   if (takenAvatars.includes(selectedAvatar)) {
     const free = AVATAR_CHOICES.find(a => !takenAvatars.includes(a.emoji));
     if (free) selectedAvatar = free.emoji;
   }
   renderAvatarPicker();
+
+  // Falls diese Antwort die Folge eines bewussten Klicks auf "Raum beitreten" war:
+  // erst jetzt tatsächlich zum Setup-Bildschirm wechseln, und nur wenn der Raum existiert
+  if (awaitingJoinConfirmation) {
+    awaitingJoinConfirmation = false;
+    document.getElementById('btn-join').disabled = false;
+    document.getElementById('btn-join').textContent = 'Raum beitreten';
+    if (roomExists) {
+      pendingIntent = 'join';
+      pendingJoinCode = pendingJoinCodeCheck;
+      showError('');
+      document.getElementById('setup-error-msg').textContent = '';
+      showScreen('setup');
+    } else {
+      showError('Raum nicht gefunden. Prüfe den Code.');
+    }
+  }
 });
 
 socket.on('avatarTaken', ({ takenAvatars: taken }) => {
@@ -258,6 +275,8 @@ socket.on('avatarTaken', ({ takenAvatars: taken }) => {
 // ---------- START SCREEN: nur Auswahl, ob beitreten oder erstellen ----------
 let pendingIntent = null; // 'join' | 'create'
 let pendingJoinCode = null;
+let awaitingJoinConfirmation = false;
+let pendingJoinCodeCheck = null;
 
 document.getElementById('btn-create').addEventListener('click', () => {
   pendingIntent = 'create';
@@ -270,11 +289,12 @@ document.getElementById('btn-create').addEventListener('click', () => {
 document.getElementById('btn-join').addEventListener('click', () => {
   const code = document.getElementById('input-code').value.trim();
   if (!code) return showError('Bitte gib einen Raum-Code ein.');
-  pendingIntent = 'join';
-  pendingJoinCode = code;
   showError('');
-  document.getElementById('setup-error-msg').textContent = '';
-  showScreen('setup');
+  awaitingJoinConfirmation = true;
+  pendingJoinCodeCheck = code;
+  document.getElementById('btn-join').disabled = true;
+  document.getElementById('btn-join').textContent = 'Wird geprüft …';
+  socket.emit('checkTakenAvatars', { code });
 });
 
 document.getElementById('btn-back-to-start').addEventListener('click', () => {
