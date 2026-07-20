@@ -171,7 +171,19 @@ const screens = {
 function showScreen(name) {
   Object.values(screens).forEach(s => s.classList.remove('active'));
   screens[name].classList.add('active');
+  updateBoardBarHeightVar();
 }
+
+// Die untere Spielleiste ist unterschiedlich hoch (abhängig vom Gerät/Safe-Area) - die
+// tatsächlich gerenderte Höhe wird gemessen, damit der fest angeheftete Button-Fußbereich
+// immer exakt darüber sitzt, statt einen geschätzten Fixwert zu verwenden
+function updateBoardBarHeightVar() {
+  const bar = document.getElementById('board-bar');
+  const height = (bar && !bar.classList.contains('hidden')) ? bar.offsetHeight : 0;
+  document.documentElement.style.setProperty('--board-bar-height', height + 'px');
+}
+window.addEventListener('resize', updateBoardBarHeightVar);
+window.addEventListener('orientationchange', () => setTimeout(updateBoardBarHeightVar, 200));
 
 // ---------- AVATAR PICKER ----------
 function renderAvatarPicker() {

@@ -139,14 +139,16 @@ Fragen-Verwaltung (`/admin.html`) zeigt Fragen nach Kategorie gruppiert und aufk
   lila Farbton, der sich in hell wie dunkel klar abhebt. Platzhaltertext in leeren
   Eingabefeldern war ebenfalls fest hell eingestellt und im hellen Modus unlesbar - behoben.
 
-- **20.07.2026:** Grundlegender Layout-Umbau für die native App: Die Seite selbst scrollt
-  nicht mehr komplett (was sich in der App-Hülle falsch anfühlte) - stattdessen hat jeder
-  Bildschirm jetzt einen festen Kopfbereich (Frage/Phase-Label), einen scrollbaren Mittelteil
-  (Antwortlisten, Live-Übersichten, Regelwerk - wird bei Bedarf intern scrollbar) und einen
-  festen Fußbereich mit den wichtigen Aktions-Buttons (Antwort abschicken, Auflösen, Runde
-  starten, etc.), der garantiert immer sichtbar bleibt, unabhängig von der Spieleranzahl.
-  Betrifft alle Bildschirme (Start, Lobby, Antwort-Phase, Abstimm-Phase, Auflösung,
-  Spielbrett).
+- **20.07.2026 (Korrektur):** Der vorherige Scroll-Umbau (verschachtelte Flexbox mit
+  `100dvh`) hat sich in der echten App-Hülle als unzuverlässig erwiesen - Felder wurden
+  abgeschnitten. Robusterer Ansatz: Die Seite scrollt wieder ganz normal (wie ursprünglich),
+  aber der Fußbereich mit den wichtigen Aktions-Buttons (Antwort abschicken, Auflösen, Runde
+  starten, etc.) wird jetzt **fest oberhalb der unteren Spielleiste angeheftet**
+  (`position: fixed`), statt im normalen Fluss zu stehen. Die tatsächliche Höhe der
+  Spielleiste wird per JavaScript gemessen (unterschiedlich je nach Gerät/Safe-Area), damit
+  der Button-Bereich immer exakt darüber sitzt. Dadurch bleiben die Buttons garantiert immer
+  erreichbar, ohne auf fragile CSS-Höhen-Verkettungen angewiesen zu sein.
+- **20.07.2026:** Grundlegender Layout-Umbau für die native App (siehe Korrektur oben)
 
 ## Fragen-Verwaltung: Zweistufiges Filtersystem
 
