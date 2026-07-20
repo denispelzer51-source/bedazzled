@@ -1,0 +1,9 @@
+{
+  "appId": "com.bedazzled.app",
+  "appName": "Bedazzled",
+  "webDir": "public",
+  "server": {
+    "url": "https://bedazzled.onrender.com",
+    "cleartext": false
+  }
+}

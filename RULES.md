@@ -117,6 +117,12 @@ vorne. Gilt getrennt für Bluff-Fragen und Schätzen-Fragen.
 
 Fragen-Verwaltung (`/admin.html`) zeigt Fragen nach Kategorie gruppiert und aufklappbar an.
 
+- **20.07.2026:** Sicherheitsabstände für die native App-Ansicht (Capacitor/Android) ergänzt:
+  Inhalt oben (z.B. "Antwort-Phase"-Label) klebte direkt an der Statusleiste/Uhrzeit, die
+  Spielleiste unten klebte am Bildschirmrand. Beides jetzt über `env(safe-area-inset-top/
+  bottom)` sauber abgesetzt - wirkt sich nur in der echten App-Hülle aus, im normalen
+  Browser unverändert.
+
 ## Fragen-Verwaltung: Zweistufiges Filtersystem
 
 Jede Frage hat jetzt zwei Ebenen:
