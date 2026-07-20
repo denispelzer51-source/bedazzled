@@ -75,13 +75,11 @@
       <div class="field-row">
         <div>
           <label id="category-label">Kategorie</label>
-          <input id="new-category" class="category-select" list="category-list" placeholder="z.B. Kuriositäten" />
-          <datalist id="category-list"></datalist>
+          <select id="new-category" class="category-select"></select>
         </div>
         <div>
           <label>Thema</label>
-          <input id="new-topic" class="category-select" list="topic-list" placeholder="z.B. Tiere & Natur" />
-          <datalist id="topic-list"></datalist>
+          <select id="new-topic" class="category-select"></select>
         </div>
       </div>
       <label>Frage</label>
@@ -128,6 +126,38 @@
   let filterSearch = '';
   const DEFAULT_CATEGORY = 'Sonstige';
   const DEFAULT_TOPIC = 'Sonstiges';
+
+  // Feste Grund-Kategorien (die drei Haupt-Kategorien des Spiels)
+  const BASE_CATEGORIES = ['Kuriositäten', 'Fremdwörter', 'Historischer Kontext'];
+
+  // Feste, erweiterte Themenliste - steht immer komplett zur Auswahl, auch wenn noch keine
+  // Frage mit diesem Thema existiert (für künftige Fragen-Batches gedacht)
+  const BASE_TOPICS = [
+    'Tiere & Natur',
+    'Wissenschaft & Forschung',
+    'Kunst & Kultur',
+    'Militär & Kriegsführung',
+    'Herrscher & Politik',
+    'Aberglaube & Bräuche',
+    'Essen & Trinken',
+    'Spiele & Freizeit',
+    'Psychologie & Phobien',
+    'Alltag & Technik',
+    'Schifffahrt & Entdeckung',
+    'Sprache & Wortschatz',
+    'Architektur',
+    'Geographie & Länder',
+    'Weltraum & Astronomie',
+    'Musik',
+    'Film & Fernsehen',
+    'Sport',
+    'Mode & Design',
+    'Medizin & Gesundheit',
+    'Erfindungen & Entdeckungen',
+    'Mythologie & Legenden',
+    'Verkehr & Mobilität',
+    'Wirtschaft & Handel',
+  ];
 
   const loginBox = document.getElementById('login-box');
   const mainBox = document.getElementById('main-box');
@@ -227,11 +257,18 @@
   function renderQuestions() {
     document.getElementById('q-count').textContent = questions.length;
 
-    const categoryNames = [...new Set(questions.map(q => q.category || DEFAULT_CATEGORY))].sort();
-    const topicNames = [...new Set(questions.map(q => q.topic || DEFAULT_TOPIC))].sort();
+    const categoryNames = [...new Set([...BASE_CATEGORIES, ...questions.map(q => q.category || DEFAULT_CATEGORY)])].sort();
+    const topicNames = [...new Set([...BASE_TOPICS, ...questions.map(q => q.topic || DEFAULT_TOPIC)])].sort();
 
-    document.getElementById('category-list').innerHTML = categoryNames.map(c => `<option value="${escapeHtml(c)}">`).join('');
-    document.getElementById('topic-list').innerHTML = topicNames.map(t => `<option value="${escapeHtml(t)}">`).join('');
+    const newCategorySelect = document.getElementById('new-category');
+    const prevNewCat = newCategorySelect.value;
+    newCategorySelect.innerHTML = categoryNames.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+    if (categoryNames.includes(prevNewCat)) newCategorySelect.value = prevNewCat;
+
+    const newTopicSelect = document.getElementById('new-topic');
+    const prevNewTopic = newTopicSelect.value;
+    newTopicSelect.innerHTML = topicNames.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('');
+    if (topicNames.includes(prevNewTopic)) newTopicSelect.value = prevNewTopic;
 
     const catFilterSelect = document.getElementById('filter-category');
     const prevCatVal = catFilterSelect.value;
@@ -301,10 +338,14 @@
 
   function startEdit(row, q, idx) {
     const isEstimate = category === 'estimate';
+    const categoryNames = [...new Set([...BASE_CATEGORIES, ...questions.map(x => x.category || DEFAULT_CATEGORY)])].sort();
+    const topicNames = [...new Set([...BASE_TOPICS, ...questions.map(x => x.topic || DEFAULT_TOPIC)])].sort();
+    const currentCat = q.category || DEFAULT_CATEGORY;
+    const currentTopic = q.topic || DEFAULT_TOPIC;
     row.innerHTML = `
       <div class="field-row" style="margin-bottom:8px;">
-        <input class="q-cat-edit" value="${escapeHtml(q.category || DEFAULT_CATEGORY)}" placeholder="Kategorie" />
-        <input class="q-topic-edit" value="${escapeHtml(q.topic || DEFAULT_TOPIC)}" placeholder="Thema" />
+        <select class="q-cat-edit">${categoryNames.map(c => `<option value="${escapeHtml(c)}" ${c === currentCat ? 'selected' : ''}>${escapeHtml(c)}</option>`).join('')}</select>
+        <select class="q-topic-edit">${topicNames.map(t => `<option value="${escapeHtml(t)}" ${t === currentTopic ? 'selected' : ''}>${escapeHtml(t)}</option>`).join('')}</select>
       </div>
       <textarea class="q-question-edit">${escapeHtml(q.question)}</textarea>
       <input class="a-text-edit" type="${isEstimate ? 'number' : 'text'}" step="any" value="${escapeHtml(String(q.answer))}" />
