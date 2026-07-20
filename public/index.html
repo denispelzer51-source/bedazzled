@@ -18,26 +18,28 @@
 
   <!-- START SCREEN -->
   <section id="screen-start" class="screen active">
-    <div class="brand">
-      <img src="logo.png" alt="Bedazzled Logo" class="brand-logo" />
-      <h1>Beda<span class="accent">zzled</span></h1>
-      <p class="tagline">Lüg dich zum Sieg.</p>
-    </div>
-
-    <div class="card">
-      <label>Dein Name</label>
-      <input id="input-name" type="text" maxlength="16" placeholder="z.B. Sascha" />
-
-      <label>Deine Spielfigur</label>
-      <div id="avatar-picker" class="avatar-picker"></div>
-
-      <div class="actions">
-        <input id="input-code" type="text" maxlength="4" inputmode="numeric" placeholder="Raum-Code" class="input-code-prominent" />
-        <button id="btn-join" class="btn btn-join-prominent">Raum beitreten</button>
-        <div class="divider"><span>oder</span></div>
-        <button id="btn-create" class="btn btn-secondary">Neuen Raum erstellen</button>
+    <div class="screen-scroll">
+      <div class="brand">
+        <img src="logo.png" alt="Bedazzled Logo" class="brand-logo" />
+        <h1>Beda<span class="accent">zzled</span></h1>
+        <p class="tagline">Lüg dich zum Sieg.</p>
       </div>
-      <p id="error-msg" class="error"></p>
+
+      <div class="card">
+        <label>Dein Name</label>
+        <input id="input-name" type="text" maxlength="16" placeholder="z.B. Sascha" />
+
+        <label>Deine Spielfigur</label>
+        <div id="avatar-picker" class="avatar-picker"></div>
+
+        <div class="actions">
+          <input id="input-code" type="text" maxlength="4" inputmode="numeric" placeholder="Raum-Code" class="input-code-prominent" />
+          <button id="btn-join" class="btn btn-join-prominent">Raum beitreten</button>
+          <div class="divider"><span>oder</span></div>
+          <button id="btn-create" class="btn btn-secondary">Neuen Raum erstellen</button>
+        </div>
+        <p id="error-msg" class="error"></p>
+      </div>
     </div>
   </section>
 
@@ -53,61 +55,67 @@
       <button id="btn-share-whatsapp" class="btn btn-secondary btn-share">💬 Per WhatsApp teilen</button>
     </div>
     <p id="copy-link-msg" class="copy-link-msg hidden">Link kopiert ✓</p>
-    <h2>Wer ist dabei?</h2>
-    <ul id="player-list" class="player-list"></ul>
-    <p class="hint">Mindestens 3 Spieler nötig. Teile den Code, damit alle beitreten können.</p>
-    <button id="btn-start-round" class="btn btn-primary">Runde starten</button>
 
-    <details id="rules-panel" class="rules-panel">
-      <summary class="rules-summary">📖 Regelwerk anzeigen</summary>
-      <div class="rules-content">
+    <div class="screen-scroll">
+      <h2>Wer ist dabei?</h2>
+      <ul id="player-list" class="player-list"></ul>
+      <p class="hint">Mindestens 3 Spieler nötig. Teile den Code, damit alle beitreten können.</p>
 
-      <div class="rules-section">
-        <h4>Grundprinzip</h4>
-        <p>Jede Runde liest eine wechselnde Moderator:in-Rolle eine ungewöhnliche Frage vor. Alle anderen geben eine möglichst überzeugende Antwort ab (erfunden oder zufällig auch mal die echte). Danach stimmt jede:r ab, welche Antwort die echte ist.</p>
-      </div>
+      <details id="rules-panel" class="rules-panel">
+        <summary class="rules-summary">📖 Regelwerk anzeigen</summary>
+        <div class="rules-content">
 
-      <div class="rules-section">
-        <h4>Punkte</h4>
-        <ul>
-          <li>Echte Antwort erraten: <strong>+3 Punkte</strong></li>
-          <li>Pro Mitspieler, der auf deine erfundene Antwort reinfällt: <strong>+2 Punkte</strong></li>
-          <li>Moderator:in bekommt in der Runde keine Punkte</li>
-        </ul>
-      </div>
+        <div class="rules-section">
+          <h4>Grundprinzip</h4>
+          <p>Jede Runde liest eine wechselnde Moderator:in-Rolle eine ungewöhnliche Frage vor. Alle anderen geben eine möglichst überzeugende Antwort ab (erfunden oder zufällig auch mal die echte). Danach stimmt jede:r ab, welche Antwort die echte ist.</p>
+        </div>
 
-      <div class="rules-section">
-        <h4>Schätzen-Karten 🔢</h4>
-        <p>Türkise Felder (5, 8, 13, 18) lösen statt der normalen Frage eine Schätzen-Karte aus: alle tippen eine Zahl, kein Bluffen, kein Voting. Platz 1 = <strong>3 Punkte</strong>, Platz 2 = <strong>2 Punkte</strong>, Platz 3 = <strong>1 Punkt</strong>, der Rest geht leer aus.</p>
-      </div>
+        <div class="rules-section">
+          <h4>Punkte</h4>
+          <ul>
+            <li>Echte Antwort erraten: <strong>+3 Punkte</strong></li>
+            <li>Pro Mitspieler, der auf deine erfundene Antwort reinfällt: <strong>+2 Punkte</strong></li>
+            <li>Moderator:in bekommt in der Runde keine Punkte</li>
+          </ul>
+        </div>
 
-      <div class="rules-section">
-        <h4>Aufholjagd 🚀</h4>
-        <p>Sobald jemand Feld 18 erreicht oder überschreitet, bekommt der/die Letzte einmalig pro Spiel automatisch <strong>+5 Bonusfelder</strong>. Damit bleibt es bis zum Schluss spannend.</p>
-      </div>
+        <div class="rules-section">
+          <h4>Schätzen-Karten 🔢</h4>
+          <p>Türkise Felder (5, 8, 13, 18) lösen statt der normalen Frage eine Schätzen-Karte aus: alle tippen eine Zahl, kein Bluffen, kein Voting. Platz 1 = <strong>3 Punkte</strong>, Platz 2 = <strong>2 Punkte</strong>, Platz 3 = <strong>1 Punkt</strong>, der Rest geht leer aus.</p>
+        </div>
 
-      <div class="rules-section">
-        <h4>Spielfeld</h4>
-        <p>Das Brett hat Felder von 0 bis 26. Wer zuerst Feld 26 erreicht oder überschreitet, gewinnt sofort.</p>
-      </div>
+        <div class="rules-section">
+          <h4>Aufholjagd 🚀</h4>
+          <p>Sobald jemand Feld 18 erreicht oder überschreitet, bekommt der/die Letzte einmalig pro Spiel automatisch <strong>+5 Bonusfelder</strong>. Damit bleibt es bis zum Schluss spannend.</p>
+        </div>
 
-      <div class="rules-section">
-        <h4>Ablauf pro Runde</h4>
-        <ol>
-          <li>Frage wird gezeigt, alle außer Moderator:in tippen eine Antwort</li>
-          <li>Abstimmung: welche Antwort ist die echte?</li>
-          <li>Auflösung mit grün/rot-Feedback</li>
-          <li>Animiertes Spielbrett zeigt die neuen Positionen</li>
-          <li>Moderatorrolle wandert weiter, nächste Runde beginnt</li>
-        </ol>
-      </div>
+        <div class="rules-section">
+          <h4>Spielfeld</h4>
+          <p>Das Brett hat Felder von 0 bis 26. Wer zuerst Feld 26 erreicht oder überschreitet, gewinnt sofort.</p>
+        </div>
 
-      <div class="rules-section">
-        <h4>Sonstiges</h4>
-        <p>Mindestens 3 Spieler nötig. Jede Spielfigur ist pro Raum nur einmal vergebbar. Antworten, die zu ähnlich zur echten Antwort sind, werden beim Absenden automatisch abgelehnt.</p>
-      </div>
-      </div>
-    </details>
+        <div class="rules-section">
+          <h4>Ablauf pro Runde</h4>
+          <ol>
+            <li>Frage wird gezeigt, alle außer Moderator:in tippen eine Antwort</li>
+            <li>Abstimmung: welche Antwort ist die echte?</li>
+            <li>Auflösung mit grün/rot-Feedback</li>
+            <li>Animiertes Spielbrett zeigt die neuen Positionen</li>
+            <li>Moderatorrolle wandert weiter, nächste Runde beginnt</li>
+          </ol>
+        </div>
+
+        <div class="rules-section">
+          <h4>Sonstiges</h4>
+          <p>Mindestens 3 Spieler nötig. Jede Spielfigur ist pro Raum nur einmal vergebbar. Antworten, die zu ähnlich zur echten Antwort sind, werden beim Absenden automatisch abgelehnt.</p>
+        </div>
+        </div>
+      </details>
+    </div>
+
+    <div class="screen-footer">
+      <button id="btn-start-round" class="btn btn-primary">Runde starten</button>
+    </div>
   </section>
 
   <!-- ANSWERING SCREEN (Frage + Antwort-Eingabe in einer Phase) -->
@@ -116,38 +124,48 @@
     <p id="question-text-2" class="question-text small"></p>
     <p id="real-answer-box" class="real-answer-box hidden"></p>
 
-    <div id="answer-input-box">
-      <label id="answer-input-label">Denk dir eine überzeugende Antwort aus:</label>
-      <textarea id="input-answer" maxlength="140" placeholder="Deine erfundene Antwort …"></textarea>
-      <div class="estimate-input-wrap">
-        <input id="input-answer-number" type="number" step="any" class="hidden" placeholder="Deine Schätzung …" />
+    <div class="screen-scroll">
+      <div id="answer-input-box">
+        <label id="answer-input-label">Denk dir eine überzeugende Antwort aus:</label>
+        <textarea id="input-answer" maxlength="140" placeholder="Deine erfundene Antwort …"></textarea>
+        <div class="estimate-input-wrap">
+          <input id="input-answer-number" type="number" step="any" class="hidden" placeholder="Deine Schätzung …" />
+        </div>
+        <button id="btn-submit-answer" class="btn btn-primary">Antwort abschicken</button>
+        <p id="answer-reject-msg" class="error hidden"></p>
       </div>
-      <button id="btn-submit-answer" class="btn btn-primary">Antwort abschicken</button>
-      <p id="answer-reject-msg" class="error hidden"></p>
+      <p id="moderator-wait-box" class="waiting-msg hidden">Du bist Moderator:in. Hier siehst du live, wer was schreibt:</p>
+      <div id="duplicate-conflict-box" class="duplicate-conflict-box hidden"></div>
+      <div id="moderator-answers-preview" class="reveal-list hidden"></div>
     </div>
-    <p id="moderator-wait-box" class="waiting-msg hidden">Du bist Moderator:in. Hier siehst du live, wer was schreibt:</p>
-    <div id="duplicate-conflict-box" class="duplicate-conflict-box hidden"></div>
-    <div id="moderator-answers-preview" class="reveal-list hidden"></div>
 
-    <p class="progress-text"><span id="answered-count">0</span>/<span id="answering-total">0</span> haben geantwortet</p>
-    <button id="btn-to-voting" class="btn btn-secondary mod-only">Weiter zur Abstimmung</button>
-    <button id="btn-reveal-estimate" class="btn btn-secondary mod-only hidden">Auswerten</button>
+    <div class="screen-footer">
+      <p class="progress-text"><span id="answered-count">0</span>/<span id="answering-total">0</span> haben geantwortet</p>
+      <button id="btn-to-voting" class="btn btn-secondary mod-only">Weiter zur Abstimmung</button>
+      <button id="btn-reveal-estimate" class="btn btn-secondary mod-only hidden">Auswerten</button>
+    </div>
   </section>
 
   <!-- VOTING SCREEN -->
   <section id="screen-voting" class="screen">
     <div class="phase-tag">Abstimm-Phase</div>
     <p class="question-text small" id="question-text-3"></p>
-    <p class="hint" id="vote-question-hint">Welche Antwort ist die echte?</p>
-    <div id="vote-options" class="vote-options"></div>
-    <button id="btn-submit-vote" class="btn btn-primary" disabled>Auswahl abschicken</button>
-    <p id="vote-submitted-msg" class="waiting-msg hidden">Deine Stimme wurde abgeschickt ✓</p>
-    <p id="moderator-vote-wait" class="waiting-msg hidden">Du bist Moderator:in – du stimmst diese Runde nicht ab.</p>
-    <div id="moderator-answer-options" class="reveal-list hidden"></div>
-    <p class="hint mod-only" style="margin-top:14px;">Live-Übersicht, wer worauf tippt:</p>
-    <div id="moderator-vote-preview" class="reveal-list hidden"></div>
-    <p class="progress-text"><span id="voted-count">0</span>/<span id="voting-total">0</span> haben abgestimmt</p>
-    <button id="btn-to-reveal" class="btn btn-secondary mod-only">Auflösen</button>
+
+    <div class="screen-scroll">
+      <p class="hint" id="vote-question-hint">Welche Antwort ist die echte?</p>
+      <div id="vote-options" class="vote-options"></div>
+      <button id="btn-submit-vote" class="btn btn-primary" disabled>Auswahl abschicken</button>
+      <p id="vote-submitted-msg" class="waiting-msg hidden">Deine Stimme wurde abgeschickt ✓</p>
+      <p id="moderator-vote-wait" class="waiting-msg hidden">Du bist Moderator:in – du stimmst diese Runde nicht ab.</p>
+      <div id="moderator-answer-options" class="reveal-list hidden"></div>
+      <p class="hint mod-only" style="margin-top:14px;">Live-Übersicht, wer worauf tippt:</p>
+      <div id="moderator-vote-preview" class="reveal-list hidden"></div>
+    </div>
+
+    <div class="screen-footer">
+      <p class="progress-text"><span id="voted-count">0</span>/<span id="voting-total">0</span> haben abgestimmt</p>
+      <button id="btn-to-reveal" class="btn btn-secondary mod-only">Auflösen</button>
+    </div>
   </section>
 
   <!-- REVEAL SCREEN -->
@@ -155,23 +173,35 @@
     <div class="phase-tag">Auflösung</div>
     <p id="catchup-banner" class="catchup-banner hidden"></p>
     <p class="question-text small" id="question-text-4"></p>
-    <p id="estimate-real-answer" class="real-answer-box hidden"></p>
-    <div id="reveal-list" class="reveal-list"></div>
-    <button id="btn-to-board" class="btn btn-primary mod-only">Weiter zum Spielbrett</button>
-    <p class="waiting-msg mod-hide">Warte auf den Moderator …</p>
+
+    <div class="screen-scroll">
+      <p id="estimate-real-answer" class="real-answer-box hidden"></p>
+      <div id="reveal-list" class="reveal-list"></div>
+    </div>
+
+    <div class="screen-footer">
+      <button id="btn-to-board" class="btn btn-primary mod-only">Weiter zum Spielbrett</button>
+      <p class="waiting-msg mod-hide">Warte auf den Moderator …</p>
+    </div>
   </section>
 
   <!-- BOARD SCREEN (full-size, animated, rectangular track) -->
   <section id="screen-board" class="screen">
     <div class="phase-tag">Spielbrett</div>
-    <h2>Wer zieht wie weit?</h2>
-    <div id="board-rect" class="board-rect">
-      <div id="board-fields-large"></div>
-      <div id="board-tokens-large"></div>
+
+    <div class="screen-scroll">
+      <h2>Wer zieht wie weit?</h2>
+      <div id="board-rect" class="board-rect">
+        <div id="board-fields-large"></div>
+        <div id="board-tokens-large"></div>
+      </div>
+      <div id="board-legend" class="board-legend"></div>
     </div>
-    <div id="board-legend" class="board-legend"></div>
-    <button id="btn-next-round" class="btn btn-primary mod-only">Nächste Runde</button>
-    <p class="waiting-msg mod-hide">Warte auf den Moderator …</p>
+
+    <div class="screen-footer">
+      <button id="btn-next-round" class="btn btn-primary mod-only">Nächste Runde</button>
+      <p class="waiting-msg mod-hide">Warte auf den Moderator …</p>
+    </div>
   </section>
 
   <!-- BOARD (always visible bottom bar once in a room) -->

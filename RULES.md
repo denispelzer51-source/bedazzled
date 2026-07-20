@@ -130,6 +130,24 @@ Fragen-Verwaltung (`/admin.html`) zeigt Fragen nach Kategorie gruppiert und aufk
   Kästchen, weniger Abstand), damit der "Auflösen"-Button am Ende nicht mehr aus dem
   sichtbaren Bereich rutscht.
 
+- **20.07.2026:** Kontrast-Fehler im hellen Modus behoben. Ursache: Die untere Spielleiste
+  (Feld-Anzeige) hatte eine fest einprogrammierte dunkle Hintergrundfarbe, die sich nie an
+  den hellen Modus anpasste - dadurch wurde der (im hellen Modus korrekt dunkel werdende)
+  Text auf einem weiterhin dunklen Balken unlesbar. Jetzt passt sich der Balken dem Theme an.
+  Zusätzlich hatten Spielfelder, Eingabefelder und Avatar-Kacheln nur einen hauchdünnen
+  weißen Schimmer als Hintergrund (in beiden Modi kaum sichtbar) - jetzt ein durchgehender
+  lila Farbton, der sich in hell wie dunkel klar abhebt. Platzhaltertext in leeren
+  Eingabefeldern war ebenfalls fest hell eingestellt und im hellen Modus unlesbar - behoben.
+
+- **20.07.2026:** Grundlegender Layout-Umbau für die native App: Die Seite selbst scrollt
+  nicht mehr komplett (was sich in der App-Hülle falsch anfühlte) - stattdessen hat jeder
+  Bildschirm jetzt einen festen Kopfbereich (Frage/Phase-Label), einen scrollbaren Mittelteil
+  (Antwortlisten, Live-Übersichten, Regelwerk - wird bei Bedarf intern scrollbar) und einen
+  festen Fußbereich mit den wichtigen Aktions-Buttons (Antwort abschicken, Auflösen, Runde
+  starten, etc.), der garantiert immer sichtbar bleibt, unabhängig von der Spieleranzahl.
+  Betrifft alle Bildschirme (Start, Lobby, Antwort-Phase, Abstimm-Phase, Auflösung,
+  Spielbrett).
+
 ## Fragen-Verwaltung: Zweistufiges Filtersystem
 
 Jede Frage hat jetzt zwei Ebenen:
