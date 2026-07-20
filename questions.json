@@ -2,186 +2,223 @@
   {
     "category": "Kuriositäten",
     "question": "Wie nennt man in Bayern traditionell den ersten Schluck Bier, den man vor dem eigentlichen Trinken über den Tisch schüttet?",
-    "answer": "Antrunk"
+    "answer": "Antrunk",
+    "topic": "Essen & Trinken"
   },
   {
     "category": "Kuriositäten",
     "question": "Wofür wurde früher in ländlichen Regionen Deutschlands ein Kuckucksruf am frühen Morgen als Aberglaube gedeutet?",
-    "answer": "Er sagt die verbleibenden Lebensjahre voraus"
+    "answer": "Er sagt die verbleibenden Lebensjahre voraus",
+    "topic": "Aberglaube & Bräuche"
   },
   {
     "category": "Kuriositäten",
     "question": "Wie heißt die Angst davor, dass Knöpfe an der Kleidung eines anderen Menschen zu nah an einem selbst sind?",
-    "answer": "Koumpounophobie"
+    "answer": "Koumpounophobie",
+    "topic": "Psychologie & Phobien"
   },
   {
     "category": "Kuriositäten",
     "question": "Was ist die ursprüngliche Bedeutung des Wortes Roboter, bevor es für Maschinen verwendet wurde?",
-    "answer": "Kommt von robota, tschechisch für Zwangsarbeit"
+    "answer": "Kommt von robota, tschechisch für Zwangsarbeit",
+    "topic": "Sprache & Wortschatz"
   },
   {
     "category": "Kuriositäten",
     "question": "Warum tragen Schweizer Kühe im Sommer oft besonders große Glocken um den Hals?",
-    "answer": "Damit man sie auch im Nebel hört"
+    "answer": "Damit man sie auch im Nebel hört",
+    "topic": "Tiere & Natur"
   },
   {
     "category": "Kuriositäten",
     "question": "Wie lautete der Spitzname, den Astronauten für den ersten Kaffee-Automaten auf der ISS gaben?",
-    "answer": "ISSpresso"
+    "answer": "ISSpresso",
+    "topic": "Wissenschaft & Forschung"
   },
   {
     "category": "Kuriositäten",
     "question": "Warum haben Feuerwehrautos in den USA historisch fast immer die Farbe Rot?",
-    "answer": "Rot war einfach am billigsten"
+    "answer": "Rot war einfach am billigsten",
+    "topic": "Alltag & Technik"
   },
   {
     "category": "Kuriositäten",
     "question": "Warum klopfen manche Menschen vor dem Trinken eines Schnapses mit dem Glas auf den Tisch?",
-    "answer": "Alter Aberglaube gegen böse Geister"
+    "answer": "Alter Aberglaube gegen böse Geister",
+    "topic": "Aberglaube & Bräuche"
   },
   {
     "category": "Kuriositäten",
     "question": "Warum sind Bienenwaben sechseckig geformt?",
-    "answer": "Das spart am meisten Wachs"
+    "answer": "Das spart am meisten Wachs",
+    "topic": "Tiere & Natur"
   },
   {
     "category": "Kuriositäten",
     "question": "Warum tragen Schachfiguren in westlichen Sets meist Schwarz und Weiß statt anderer Farben?",
-    "answer": "Elfenbein und Ebenholz waren am günstigsten"
+    "answer": "Elfenbein und Ebenholz waren am günstigsten",
+    "topic": "Spiele & Freizeit"
   },
   {
     "category": "Kuriositäten",
     "question": "Warum stößt man beim Prost mit Gläsern an?",
-    "answer": "Damit auch das Ohr etwas vom Trinken hat"
+    "answer": "Damit auch das Ohr etwas vom Trinken hat",
+    "topic": "Essen & Trinken"
   },
   {
     "category": "Kuriositäten",
     "question": "Warum haben manche alte Landkarten am Rand Seeungeheuer eingezeichnet?",
-    "answer": "So markierten Kartografen gefährliche Gewässer"
+    "answer": "So markierten Kartografen gefährliche Gewässer",
+    "topic": "Schifffahrt & Entdeckung"
   },
   {
     "category": "Kuriositäten",
     "question": "Warum haben Zebras Streifen?",
-    "answer": "Sie verwirren mit den Streifen stechende Insekten"
+    "answer": "Sie verwirren mit den Streifen stechende Insekten",
+    "topic": "Tiere & Natur"
   },
   {
     "category": "Kuriositäten",
     "question": "Warum wurde in vielen alten Kulturen ein zerbrochener Spiegel mit Unglück verbunden?",
-    "answer": "Man dachte, das verletzt die Seele"
+    "answer": "Man dachte, das verletzt die Seele",
+    "topic": "Aberglaube & Bräuche"
   },
   {
     "category": "Fremdwörter",
     "question": "Was bedeutet das Wort Usurpator?",
-    "answer": "Jemand, der sich Macht unrechtmäßig aneignet"
+    "answer": "Jemand, der sich Macht unrechtmäßig aneignet",
+    "topic": "Sprache & Wortschatz"
   },
   {
     "category": "Fremdwörter",
     "question": "Was bedeutet das Wort Anachronismus?",
-    "answer": "Ein zeitlicher Fehler, passt nicht in die Epoche"
+    "answer": "Ein zeitlicher Fehler, passt nicht in die Epoche",
+    "topic": "Sprache & Wortschatz"
   },
   {
     "category": "Fremdwörter",
     "question": "Was bedeutet das Wort Kontemplation?",
-    "answer": "Versunkene, nachdenkliche Betrachtung"
+    "answer": "Versunkene, nachdenkliche Betrachtung",
+    "topic": "Sprache & Wortschatz"
   },
   {
     "category": "Fremdwörter",
     "question": "Was bedeutet das Wort Idiosynkrasie?",
-    "answer": "Eine besondere persönliche Eigenart"
+    "answer": "Eine besondere persönliche Eigenart",
+    "topic": "Sprache & Wortschatz"
   },
   {
     "category": "Fremdwörter",
     "question": "Was bedeutet das Wort Dogma?",
-    "answer": "Eine nicht hinterfragte Lehrmeinung"
+    "answer": "Eine nicht hinterfragte Lehrmeinung",
+    "topic": "Sprache & Wortschatz"
   },
   {
     "category": "Fremdwörter",
     "question": "Was bedeutet das Wort Kompendium?",
-    "answer": "Eine kurze Zusammenfassung"
+    "answer": "Eine kurze Zusammenfassung",
+    "topic": "Sprache & Wortschatz"
   },
   {
     "category": "Fremdwörter",
     "question": "Was bedeutet das Wort kapriziös?",
-    "answer": "Launisch und unberechenbar"
+    "answer": "Launisch und unberechenbar",
+    "topic": "Sprache & Wortschatz"
   },
   {
     "category": "Fremdwörter",
     "question": "Was bedeutet das Wort divergent?",
-    "answer": "Auseinanderstrebend"
+    "answer": "Auseinanderstrebend",
+    "topic": "Sprache & Wortschatz"
   },
   {
     "category": "Historischer Kontext",
     "question": "Wieso musste sich Napoleon Bonaparte bei einer eigens organisierten Hasenjagd plötzlich zurückziehen?",
-    "answer": "Hunderte Kaninchen griffen ihn völlig unerwartet an"
+    "answer": "Hunderte Kaninchen griffen ihn völlig unerwartet an",
+    "topic": "Militär & Kriegsführung"
   },
   {
     "category": "Historischer Kontext",
     "question": "Was tat sich der Physiker Isaac Newton für seine Forschung tatsächlich selbst an?",
-    "answer": "Er stach sich eine Nadel zwischen Auge und Knochen"
+    "answer": "Er stach sich eine Nadel zwischen Auge und Knochen",
+    "topic": "Wissenschaft & Forschung"
   },
   {
     "category": "Historischer Kontext",
     "question": "Wie überzeugte Christoph Kolumbus verzweifelte Ureinwohner, ihm dringend benötigte Vorräte zu geben?",
-    "answer": "Er drohte, den Mond verschwinden zu lassen"
+    "answer": "Er drohte, den Mond verschwinden zu lassen",
+    "topic": "Schifffahrt & Entdeckung"
   },
   {
     "category": "Historischer Kontext",
     "question": "Welchen kuriosen, aber hoch angesehenen Posten gab es tatsächlich am Hof von Heinrich dem Achten?",
-    "answer": "Einen Diener, der ihm nur den Hintern abwischte"
+    "answer": "Einen Diener, der ihm nur den Hintern abwischte",
+    "topic": "Herrscher & Politik"
   },
   {
     "category": "Historischer Kontext",
     "question": "Welche Speise führte sich der Naturforscher Charles Darwin tatsächlich regelmäßig zu?",
-    "answer": "Die exotischen Tiere, die er entdeckte und untersuchen sollte"
+    "answer": "Die exotischen Tiere, die er entdeckte und untersuchen sollte",
+    "topic": "Wissenschaft & Forschung"
   },
   {
     "category": "Historischer Kontext",
     "question": "Warum müssen die Original-Notizbücher von Marie Curie bis heute in bleiverkleideten Kisten aufbewahrt werden?",
-    "answer": "Sie sind noch immer radioaktiv"
+    "answer": "Sie sind noch immer radioaktiv",
+    "topic": "Wissenschaft & Forschung"
   },
   {
     "category": "Historischer Kontext",
     "question": "Wie schrieb Leonardo da Vinci viele seiner privaten Notizen, sodass man sie nur erschwert lesen konnte?",
-    "answer": "Spiegelverkehrt, von rechts nach links"
+    "answer": "Spiegelverkehrt, von rechts nach links",
+    "topic": "Kunst & Kultur"
   },
   {
     "category": "Historischer Kontext",
     "question": "Was verkaufte der findige Kaufmann Marco Polo den staunenden Europäern als exotische Neuheit aus China?",
-    "answer": "Nudeln und Eiscreme"
+    "answer": "Nudeln und Eiscreme",
+    "topic": "Schifffahrt & Entdeckung"
   },
   {
     "category": "Historischer Kontext",
     "question": "Was machte Nikola Tesla, nachdem ihn ein Hotel wegen unbezahlter Rechnungen hinausgeworfen hatte?",
-    "answer": "Er bezahlte mit einer Kiste voll einer angeblich revolutionären Erfindung. Sie war leer"
+    "answer": "Er bezahlte mit einer Kiste voll einer angeblich revolutionären Erfindung. Sie war leer",
+    "topic": "Wissenschaft & Forschung"
   },
   {
     "category": "Historischer Kontext",
     "question": "Welchen ungewöhnlichen Trick nutzte Victor Hugo, als er unbedingt seinen Roman fertig schreiben wollte?",
-    "answer": "Er ließ fast seine gesamte Kleidung wegschließen, damit er das Haus nicht verlassen konnte"
+    "answer": "Er ließ fast seine gesamte Kleidung wegschließen, damit er das Haus nicht verlassen konnte",
+    "topic": "Kunst & Kultur"
   },
   {
     "category": "Historischer Kontext",
     "question": "Was machte Salvador Dalí, wenn ihm besonders gute Ideen im Halbschlaf einfielen?",
-    "answer": "Er hielt einen Löffel in der Hand, fiel er herunter, wachte er sofort auf"
+    "answer": "Er hielt einen Löffel in der Hand, fiel er herunter, wachte er sofort auf",
+    "topic": "Kunst & Kultur"
   },
   {
     "category": "Historischer Kontext",
     "question": "Was tat der griechische Redner Demosthenes beim Üben seiner Reden?",
-    "answer": "Er steckte sich Kieselsteine in den Mund und sprach gegen das Meeresrauschen"
+    "answer": "Er steckte sich Kieselsteine in den Mund und sprach gegen das Meeresrauschen",
+    "topic": "Kunst & Kultur"
   },
   {
     "category": "Historischer Kontext",
     "question": "Welches Tier diente dem polnischen Militär im Zweiten Weltkrieg offiziell als Soldat?",
-    "answer": "Ein Braunbär namens Wojtek"
+    "answer": "Ein Braunbär namens Wojtek",
+    "topic": "Militär & Kriegsführung"
   },
   {
     "category": "Historischer Kontext",
     "question": "Was glaubte der Schriftsteller Charles Dickens über die Ausrichtung seines Bettes?",
-    "answer": "Mit dem Kopf nach Norden würde er besser schlafen"
+    "answer": "Mit dem Kopf nach Norden würde er besser schlafen",
+    "topic": "Kunst & Kultur"
   },
   {
     "category": "Historischer Kontext",
     "question": "Was tat der römische Kaiser Augustus angeblich jedes Mal, wenn ein Gewitter aufzog?",
-    "answer": "Er versteckte sich unter seinem Bett"
+    "answer": "Er versteckte sich unter seinem Bett",
+    "topic": "Herrscher & Politik"
   }
 ]

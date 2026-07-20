@@ -4,6 +4,7 @@ const { Server } = require('socket.io');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
+const { MongoClient } = require('mongodb');
 
 const app = express();
 const server = http.createServer(app);
@@ -13,10 +14,57 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 
 const QUESTIONS_PATH = path.join(__dirname, 'questions.json');
-let questionsList = JSON.parse(fs.readFileSync(QUESTIONS_PATH, 'utf8'));
-
 const ESTIMATE_QUESTIONS_PATH = path.join(__dirname, 'estimate_questions.json');
+
+// ---------- Fragen-Speicherung: MongoDB Atlas, falls eingerichtet - sonst lokale Dateien ----------
+// Sobald die Umgebungsvariable MONGODB_URI auf Render gesetzt ist, werden Fragen dauerhaft
+// in der Datenbank gespeichert (überlebt Deploys). Ist sie nicht gesetzt, läuft alles wie
+// bisher über die lokalen JSON-Dateien weiter - kein Bruch, falls die DB noch nicht bereit ist.
+const MONGODB_URI = process.env.MONGODB_URI || '';
+const useMongo = !!MONGODB_URI;
+let mongoDb = null;
+
+let questionsList = JSON.parse(fs.readFileSync(QUESTIONS_PATH, 'utf8'));
 let estimateQuestionsList = JSON.parse(fs.readFileSync(ESTIMATE_QUESTIONS_PATH, 'utf8'));
+
+async function initDatabase() {
+  if (!useMongo) {
+    console.log('[DB] Keine MONGODB_URI gesetzt - Fragen laufen über lokale JSON-Dateien.');
+    return;
+  }
+  try {
+    const client = new MongoClient(MONGODB_URI);
+    await client.connect();
+    mongoDb = client.db('bedazzled');
+    console.log('[DB] Mit MongoDB Atlas verbunden.');
+
+    const questionsCol = mongoDb.collection('questions');
+    const estimateCol = mongoDb.collection('estimateQuestions');
+
+    const existingQuestions = await questionsCol.countDocuments();
+    if (existingQuestions === 0) {
+      console.log('[DB] Erstbefüllung: bestehende Bluff-Fragen aus questions.json werden importiert …');
+      if (questionsList.length > 0) await questionsCol.insertMany(questionsList.map(stripId));
+    }
+    const existingEstimate = await estimateCol.countDocuments();
+    if (existingEstimate === 0) {
+      console.log('[DB] Erstbefüllung: bestehende Schätzen-Fragen aus estimate_questions.json werden importiert …');
+      if (estimateQuestionsList.length > 0) await estimateCol.insertMany(estimateQuestionsList.map(stripId));
+    }
+
+    questionsList = (await questionsCol.find().toArray()).map(stripId);
+    estimateQuestionsList = (await estimateCol.find().toArray()).map(stripId);
+    console.log(`[DB] Geladen: ${questionsList.length} Bluff-Fragen, ${estimateQuestionsList.length} Schätzen-Fragen aus MongoDB.`);
+  } catch (err) {
+    console.error('[DB] Verbindung zu MongoDB fehlgeschlagen, falle auf lokale Dateien zurück:', err.message);
+    mongoDb = null;
+  }
+}
+
+function stripId(doc) {
+  const { _id, ...rest } = doc;
+  return rest;
+}
 
 const BOARD_LENGTH = 26; // Zielfeld
 const POINTS_CORRECT_GUESS = 3;
@@ -46,11 +94,24 @@ function checkAdmin(req, res, next) {
 }
 
 function saveQuestions() {
+  // Lokale Datei bleibt immer als Backup bestehen (überlebt aber keinen Deploy)
   fs.writeFileSync(QUESTIONS_PATH, JSON.stringify(questionsList, null, 2), 'utf8');
+  if (mongoDb) {
+    const col = mongoDb.collection('questions');
+    col.deleteMany({})
+      .then(() => (questionsList.length > 0 ? col.insertMany(questionsList.map(stripId)) : null))
+      .catch(err => console.error('[DB] Fehler beim Speichern der Bluff-Fragen:', err.message));
+  }
 }
 
 function saveEstimateQuestions() {
   fs.writeFileSync(ESTIMATE_QUESTIONS_PATH, JSON.stringify(estimateQuestionsList, null, 2), 'utf8');
+  if (mongoDb) {
+    const col = mongoDb.collection('estimateQuestions');
+    col.deleteMany({})
+      .then(() => (estimateQuestionsList.length > 0 ? col.insertMany(estimateQuestionsList.map(stripId)) : null))
+      .catch(err => console.error('[DB] Fehler beim Speichern der Schätzen-Fragen:', err.message));
+  }
 }
 
 // ---------- Fragen-Verwaltung: Schätzen-Karten (Admin-API) ----------
@@ -59,13 +120,18 @@ app.get('/api/estimate-questions', checkAdmin, (req, res) => {
 });
 
 app.post('/api/estimate-questions', checkAdmin, (req, res) => {
-  const { question, answer, category } = req.body || {};
+  const { question, answer, category, topic } = req.body || {};
   const numericAnswer = Number(answer);
   if (!question || Number.isNaN(numericAnswer)) {
     res.status(400).json({ error: 'Frage und eine numerische Antwort sind erforderlich.' });
     return;
   }
-  estimateQuestionsList.push({ category: (category || 'Sonstige').trim(), question: question.trim(), answer: numericAnswer });
+  estimateQuestionsList.push({
+    category: (category || 'Sonstige').trim(),
+    topic: (topic || 'Sonstiges').trim(),
+    question: question.trim(),
+    answer: numericAnswer,
+  });
   saveEstimateQuestions();
   res.json(estimateQuestionsList);
 });
@@ -76,10 +142,11 @@ app.put('/api/estimate-questions/:index', checkAdmin, (req, res) => {
     res.status(404).json({ error: 'Frage nicht gefunden.' });
     return;
   }
-  const { question, answer, category } = req.body || {};
+  const { question, answer, category, topic } = req.body || {};
   if (question) estimateQuestionsList[idx].question = question.trim();
   if (answer !== undefined && !Number.isNaN(Number(answer))) estimateQuestionsList[idx].answer = Number(answer);
   if (category) estimateQuestionsList[idx].category = category.trim();
+  if (topic) estimateQuestionsList[idx].topic = topic.trim();
   saveEstimateQuestions();
   res.json(estimateQuestionsList);
 });
@@ -103,7 +170,12 @@ app.post('/api/estimate-questions/import', checkAdmin, (req, res) => {
   }
   const valid = items
     .filter(i => i && i.question && !Number.isNaN(Number(i.answer)))
-    .map(i => ({ category: (i.category || 'Sonstige').toString().trim(), question: String(i.question).trim(), answer: Number(i.answer) }));
+    .map(i => ({
+      category: (i.category || 'Sonstige').toString().trim(),
+      topic: (i.topic || 'Sonstiges').toString().trim(),
+      question: String(i.question).trim(),
+      answer: Number(i.answer),
+    }));
   if (valid.length === 0) {
     res.status(400).json({ error: 'Keine gültigen Fragen im Import gefunden.' });
     return;
@@ -114,17 +186,26 @@ app.post('/api/estimate-questions/import', checkAdmin, (req, res) => {
 });
 
 // ---------- Fragen-Verwaltung: Bluff-Fragen (Admin-API) ----------
+app.get('/api/storage-status', checkAdmin, (req, res) => {
+  res.json({ usingMongo: !!mongoDb });
+});
+
 app.get('/api/questions', checkAdmin, (req, res) => {
   res.json(questionsList);
 });
 
 app.post('/api/questions', checkAdmin, (req, res) => {
-  const { question, answer, category } = req.body || {};
+  const { question, answer, category, topic } = req.body || {};
   if (!question || !answer) {
     res.status(400).json({ error: 'Frage und Antwort sind erforderlich.' });
     return;
   }
-  questionsList.push({ category: (category || 'Sonstige').trim(), question: question.trim(), answer: answer.trim() });
+  questionsList.push({
+    category: (category || 'Sonstige').trim(),
+    topic: (topic || 'Sonstiges').trim(),
+    question: question.trim(),
+    answer: answer.trim(),
+  });
   saveQuestions();
   res.json(questionsList);
 });
@@ -135,10 +216,11 @@ app.put('/api/questions/:index', checkAdmin, (req, res) => {
     res.status(404).json({ error: 'Frage nicht gefunden.' });
     return;
   }
-  const { question, answer, category } = req.body || {};
+  const { question, answer, category, topic } = req.body || {};
   if (question) questionsList[idx].question = question.trim();
   if (answer) questionsList[idx].answer = answer.trim();
   if (category) questionsList[idx].category = category.trim();
+  if (topic) questionsList[idx].topic = topic.trim();
   saveQuestions();
   res.json(questionsList);
 });
@@ -162,7 +244,12 @@ app.post('/api/questions/import', checkAdmin, (req, res) => {
   }
   const valid = items
     .filter(i => i && i.question && i.answer)
-    .map(i => ({ category: (i.category || 'Sonstige').toString().trim(), question: String(i.question).trim(), answer: String(i.answer).trim() }));
+    .map(i => ({
+      category: (i.category || 'Sonstige').toString().trim(),
+      topic: (i.topic || 'Sonstiges').toString().trim(),
+      question: String(i.question).trim(),
+      answer: String(i.answer).trim(),
+    }));
   if (valid.length === 0) {
     res.status(400).json({ error: 'Keine gültigen Fragen im Import gefunden.' });
     return;
@@ -893,4 +980,6 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`Bedazzled läuft auf Port ${PORT}`));
+initDatabase().finally(() => {
+  server.listen(PORT, () => console.log(`Bedazzled läuft auf Port ${PORT}`));
+});

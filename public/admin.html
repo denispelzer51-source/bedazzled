@@ -7,9 +7,10 @@
 <link rel="icon" type="image/png" href="logo.png" />
 <link rel="stylesheet" href="style.css" />
 <style>
-  #admin-app { max-width: 720px; margin: 0 auto; padding: 28px 20px 60px; }
+  #admin-app { max-width: 760px; margin: 0 auto; padding: 28px 20px 60px; }
   .q-row { background: var(--night-2); border-radius: 12px; padding: 14px 16px; margin-bottom: 8px; }
-  .q-row .q-text { font-weight: 600; margin-bottom: 6px; }
+  .q-row .q-text { font-weight: 600; margin-bottom: 4px; }
+  .q-row .q-topic-tag { display: inline-block; font-size: 11px; color: var(--gold); background: rgba(172,88,249,0.12); padding: 2px 8px; border-radius: 20px; margin-bottom: 6px; }
   .q-text-edit, .a-text-edit { width: 100%; margin-bottom: 8px; }
   .q-row .a-text { color: var(--teal); font-size: 14px; }
   .q-row .row-actions { display: flex; gap: 8px; margin-top: 10px; }
@@ -21,6 +22,14 @@
   .tabs { display: flex; gap: 8px; margin-bottom: 20px; }
   .tab-btn { flex: 1; padding: 12px; border-radius: 12px; border: 1.5px solid rgba(255,255,255,0.12); background: var(--night-2); color: var(--ink-dim); font-weight: 700; cursor: pointer; font-family: var(--font-body); font-size: 14px; }
   .tab-btn.active { border-color: var(--gold); color: var(--gold); background: rgba(242,183,5,0.08); }
+
+  .filter-bar { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 18px; }
+  .filter-bar select, .filter-bar input {
+    background: var(--night-2); border: 1.5px solid rgba(172,88,249,0.25); color: var(--ink);
+    border-radius: 10px; padding: 10px 12px; font-size: 14px; font-family: var(--font-body);
+  }
+  .filter-bar select { flex: 1; min-width: 160px; }
+  .filter-bar input[type="search"] { flex: 2; min-width: 200px; }
 
   .category-group { margin-bottom: 12px; border-radius: 14px; overflow: hidden; border: 1px solid rgba(255,255,255,0.08); }
   .category-header {
@@ -34,6 +43,8 @@
   .category-body { padding: 10px; display: none; }
   .category-body.open { display: block; }
   .category-select { margin-bottom: 8px; }
+  .field-row { display: flex; gap: 8px; }
+  .field-row > * { flex: 1; }
 </style>
 </head>
 <body>
@@ -56,13 +67,23 @@
       <button id="tab-estimate" class="tab-btn">🔢 Schätzen-Fragen</button>
     </div>
 
-    <p class="count-badge"><span id="q-count">0</span> Fragen aktuell hinterlegt</p>
+    <p class="count-badge"><span id="q-count">0</span> Fragen aktuell hinterlegt, <span id="q-count-filtered">0</span> nach Filter sichtbar</p>
+    <p class="count-badge" id="storage-status-badge">Speicherort wird geprüft …</p>
 
     <div class="card">
       <h2 class="section-title" style="margin-top:0;">Neue Frage hinzufügen</h2>
-      <label id="category-label">Kategorie</label>
-      <input id="new-category" class="category-select" list="category-list" placeholder="z.B. Kuriositäten" />
-      <datalist id="category-list"></datalist>
+      <div class="field-row">
+        <div>
+          <label id="category-label">Kategorie</label>
+          <input id="new-category" class="category-select" list="category-list" placeholder="z.B. Kuriositäten" />
+          <datalist id="category-list"></datalist>
+        </div>
+        <div>
+          <label>Thema</label>
+          <input id="new-topic" class="category-select" list="topic-list" placeholder="z.B. Tiere & Natur" />
+          <datalist id="topic-list"></datalist>
+        </div>
+      </div>
       <label>Frage</label>
       <textarea id="new-question" placeholder="z.B. Warum tragen Schweizer Kühe große Glocken?"></textarea>
       <label id="new-answer-label">Echte Antwort</label>
@@ -73,14 +94,24 @@
 
     <h2 class="section-title">Massen-Import</h2>
     <div class="card">
-      <p class="hint" style="margin-top:0;" id="import-format-hint">Ein Eintrag pro Zeile, Kategorie, Frage und Antwort getrennt durch <code>;</code>:<br>
-        <code>Kategorie;Frage hier?;Echte Antwort hier</code></p>
-      <textarea id="bulk-import" placeholder="Kuriositäten;Frage 1?;Antwort 1&#10;Fremdwörter;Frage 2?;Antwort 2"></textarea>
+      <p class="hint" style="margin-top:0;" id="import-format-hint">Ein Eintrag pro Zeile im Format <code>Kategorie;Thema;Frage;Antwort</code>:</p>
+      <textarea id="bulk-import" placeholder="Kuriositäten;Tiere & Natur;Frage 1?;Antwort 1&#10;Fremdwörter;Sprache & Wortschatz;Frage 2?;Antwort 2"></textarea>
       <button id="btn-import" class="btn btn-secondary">Import starten</button>
       <p id="import-result" class="hint"></p>
     </div>
 
-    <h2 class="section-title">Alle Fragen (<span id="q-count-2">0</span>)</h2>
+    <h2 class="section-title">Filter &amp; Suche</h2>
+    <div class="filter-bar">
+      <select id="filter-category">
+        <option value="">Alle Kategorien</option>
+      </select>
+      <select id="filter-topic">
+        <option value="">Alle Themen</option>
+      </select>
+      <input id="filter-search" type="search" placeholder="🔍 Volltextsuche in Frage/Antwort …" />
+    </div>
+
+    <h2 class="section-title">Fragen nach Thema</h2>
     <button id="btn-export" class="btn btn-secondary" style="margin-bottom:16px;">📥 Als Datei herunterladen</button>
     <div id="category-groups"></div>
   </div>
@@ -91,8 +122,12 @@
   let adminKey = sessionStorage.getItem('bedazzled_admin_key') || '';
   let questions = [];
   let category = 'bluff'; // 'bluff' | 'estimate'
-  let openCategories = new Set();
+  let openTopics = new Set();
+  let filterCategory = '';
+  let filterTopic = '';
+  let filterSearch = '';
   const DEFAULT_CATEGORY = 'Sonstige';
+  const DEFAULT_TOPIC = 'Sonstiges';
 
   const loginBox = document.getElementById('login-box');
   const mainBox = document.getElementById('main-box');
@@ -121,6 +156,12 @@
       renderQuestions();
       loginBox.classList.add('hidden');
       mainBox.classList.remove('hidden');
+      try {
+        const status = await apiCall('/api/storage-status');
+        document.getElementById('storage-status-badge').textContent = status.usingMongo
+          ? '💾 Speicherort: MongoDB Atlas (dauerhaft, übersteht Deploys)'
+          : '⚠️ Speicherort: lokale Datei (wird bei nächstem Deploy zurückgesetzt, sofern nicht neu hochgeladen)';
+      } catch (e) { /* Status ist nicht kritisch, einfach ignorieren falls nicht verfügbar */ }
     } catch (e) {
       if (e.message === 'UNAUTHORIZED') {
         sessionStorage.removeItem('bedazzled_admin_key');
@@ -141,44 +182,77 @@
 
   function setCategory(cat) {
     category = cat;
-    openCategories = new Set();
+    openTopics = new Set();
+    filterCategory = ''; filterTopic = ''; filterSearch = '';
+    document.getElementById('filter-search').value = '';
     document.getElementById('tab-bluff').classList.toggle('active', cat === 'bluff');
     document.getElementById('tab-estimate').classList.toggle('active', cat === 'estimate');
     document.getElementById('new-answer-label').textContent = cat === 'estimate' ? 'Echte Zahl' : 'Echte Antwort';
     document.getElementById('new-answer').classList.toggle('hidden', cat === 'estimate');
     document.getElementById('new-answer-number').classList.toggle('hidden', cat !== 'estimate');
     document.getElementById('import-format-hint').innerHTML = cat === 'estimate'
-      ? 'Ein Eintrag pro Zeile, Kategorie, Frage und Zahl getrennt durch <code>;</code>:<br><code>Kategorie;Frage hier?;42</code>'
-      : 'Ein Eintrag pro Zeile, Kategorie, Frage und Antwort getrennt durch <code>;</code>:<br><code>Kategorie;Frage hier?;Echte Antwort hier</code>';
+      ? 'Ein Eintrag pro Zeile im Format <code>Kategorie;Thema;Frage;Zahl</code>:'
+      : 'Ein Eintrag pro Zeile im Format <code>Kategorie;Thema;Frage;Antwort</code>:';
     if (adminKey) loadQuestions();
   }
   document.getElementById('tab-bluff').addEventListener('click', () => setCategory('bluff'));
   document.getElementById('tab-estimate').addEventListener('click', () => setCategory('estimate'));
 
-  function groupByCategory() {
+  document.getElementById('filter-category').addEventListener('change', (e) => { filterCategory = e.target.value; renderQuestions(); });
+  document.getElementById('filter-topic').addEventListener('change', (e) => { filterTopic = e.target.value; renderQuestions(); });
+  document.getElementById('filter-search').addEventListener('input', (e) => { filterSearch = e.target.value.toLowerCase(); renderQuestions(); });
+
+  function applyFilters(list) {
+    return list.filter(q => {
+      if (filterCategory && (q.category || DEFAULT_CATEGORY) !== filterCategory) return false;
+      if (filterTopic && (q.topic || DEFAULT_TOPIC) !== filterTopic) return false;
+      if (filterSearch) {
+        const hay = (q.question + ' ' + q.answer).toLowerCase();
+        if (!hay.includes(filterSearch)) return false;
+      }
+      return true;
+    });
+  }
+
+  function groupByTopic(list) {
     const groups = {};
-    questions.forEach((q, idx) => {
-      const cat = q.category || DEFAULT_CATEGORY;
-      if (!groups[cat]) groups[cat] = [];
-      groups[cat].push({ ...q, _idx: idx });
+    list.forEach((q, idx) => {
+      const topic = q.topic || DEFAULT_TOPIC;
+      if (!groups[topic]) groups[topic] = [];
+      groups[topic].push({ ...q, _idx: idx });
     });
     return groups;
   }
 
   function renderQuestions() {
     document.getElementById('q-count').textContent = questions.length;
-    document.getElementById('q-count-2').textContent = questions.length;
 
-    const categoryNames = [...new Set(questions.map(q => q.category || DEFAULT_CATEGORY))];
+    const categoryNames = [...new Set(questions.map(q => q.category || DEFAULT_CATEGORY))].sort();
+    const topicNames = [...new Set(questions.map(q => q.topic || DEFAULT_TOPIC))].sort();
+
     document.getElementById('category-list').innerHTML = categoryNames.map(c => `<option value="${escapeHtml(c)}">`).join('');
+    document.getElementById('topic-list').innerHTML = topicNames.map(t => `<option value="${escapeHtml(t)}">`).join('');
 
-    const groups = groupByCategory();
+    const catFilterSelect = document.getElementById('filter-category');
+    const prevCatVal = catFilterSelect.value;
+    catFilterSelect.innerHTML = '<option value="">Alle Kategorien</option>' + categoryNames.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+    catFilterSelect.value = prevCatVal;
+
+    const topicFilterSelect = document.getElementById('filter-topic');
+    const prevTopicVal = topicFilterSelect.value;
+    topicFilterSelect.innerHTML = '<option value="">Alle Themen</option>' + topicNames.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('');
+    topicFilterSelect.value = prevTopicVal;
+
+    const filtered = applyFilters(questions.map((q, idx) => ({ ...q, _globalIdx: idx })));
+    document.getElementById('q-count-filtered').textContent = filtered.length;
+
+    const groups = groupByTopic(filtered);
     const box = document.getElementById('category-groups');
     box.innerHTML = '';
 
-    Object.keys(groups).sort().forEach(catName => {
-      const items = groups[catName];
-      const isOpen = openCategories.has(catName);
+    Object.keys(groups).sort().forEach(topicName => {
+      const items = groups[topicName];
+      const isOpen = openTopics.has(topicName);
 
       const groupDiv = document.createElement('div');
       groupDiv.className = 'category-group';
@@ -186,12 +260,12 @@
       const header = document.createElement('div');
       header.className = 'category-header' + (isOpen ? ' open' : '');
       header.innerHTML = `
-        <span><span class="cat-name">${escapeHtml(catName)}</span><span class="cat-count">${items.length}</span></span>
+        <span><span class="cat-name">${escapeHtml(topicName)}</span><span class="cat-count">${items.length}</span></span>
         <span class="chevron">▶</span>
       `;
       header.addEventListener('click', () => {
-        if (openCategories.has(catName)) openCategories.delete(catName);
-        else openCategories.add(catName);
+        if (openTopics.has(topicName)) openTopics.delete(topicName);
+        else openTopics.add(topicName);
         renderQuestions();
       });
       groupDiv.appendChild(header);
@@ -203,6 +277,7 @@
           const row = document.createElement('div');
           row.className = 'q-row';
           row.innerHTML = `
+            <span class="q-topic-tag">${escapeHtml(q.category || DEFAULT_CATEGORY)}</span>
             <div class="q-text">${escapeHtml(q.question)}</div>
             <div class="a-text">✔ ${escapeHtml(String(q.answer))}</div>
             <div class="row-actions">
@@ -212,10 +287,10 @@
           `;
           row.querySelector('.btn-delete').addEventListener('click', async () => {
             if (!confirm('Diese Frage wirklich löschen?')) return;
-            questions = await apiCall(apiBase() + '/' + q._idx, { method: 'DELETE' });
+            questions = await apiCall(apiBase() + '/' + q._globalIdx, { method: 'DELETE' });
             renderQuestions();
           });
-          row.querySelector('.btn-edit').addEventListener('click', () => startEdit(row, q, q._idx));
+          row.querySelector('.btn-edit').addEventListener('click', () => startEdit(row, q, q._globalIdx));
           body.appendChild(row);
         });
       }
@@ -227,7 +302,10 @@
   function startEdit(row, q, idx) {
     const isEstimate = category === 'estimate';
     row.innerHTML = `
-      <input class="q-text-edit" style="width:100%; margin-bottom:8px;" value="${escapeHtml(q.category || DEFAULT_CATEGORY)}" placeholder="Kategorie" />
+      <div class="field-row" style="margin-bottom:8px;">
+        <input class="q-cat-edit" value="${escapeHtml(q.category || DEFAULT_CATEGORY)}" placeholder="Kategorie" />
+        <input class="q-topic-edit" value="${escapeHtml(q.topic || DEFAULT_TOPIC)}" placeholder="Thema" />
+      </div>
       <textarea class="q-question-edit">${escapeHtml(q.question)}</textarea>
       <input class="a-text-edit" type="${isEstimate ? 'number' : 'text'}" step="any" value="${escapeHtml(String(q.answer))}" />
       <div class="row-actions">
@@ -236,13 +314,14 @@
       </div>
     `;
     row.querySelector('.btn-save').addEventListener('click', async () => {
-      const cat = row.querySelector('.q-text-edit').value.trim();
+      const cat = row.querySelector('.q-cat-edit').value.trim();
+      const topic = row.querySelector('.q-topic-edit').value.trim();
       const question = row.querySelector('.q-question-edit').value.trim();
       const answer = row.querySelector('.a-text-edit').value.trim();
       if (!question || !answer) return;
       questions = await apiCall(apiBase() + '/' + idx, {
         method: 'PUT',
-        body: JSON.stringify({ question, answer, category: cat || DEFAULT_CATEGORY }),
+        body: JSON.stringify({ question, answer, category: cat || DEFAULT_CATEGORY, topic: topic || DEFAULT_TOPIC }),
       });
       renderQuestions();
     });
@@ -251,6 +330,7 @@
 
   document.getElementById('btn-add-question').addEventListener('click', async () => {
     const cat = document.getElementById('new-category').value.trim() || DEFAULT_CATEGORY;
+    const topic = document.getElementById('new-topic').value.trim() || DEFAULT_TOPIC;
     const question = document.getElementById('new-question').value.trim();
     const answer = category === 'estimate'
       ? document.getElementById('new-answer-number').value.trim()
@@ -258,12 +338,12 @@
     if (!question || !answer) return alert('Bitte Frage und Antwort ausfüllen.');
     questions = await apiCall(apiBase(), {
       method: 'POST',
-      body: JSON.stringify({ question, answer, category: cat }),
+      body: JSON.stringify({ question, answer, category: cat, topic }),
     });
     document.getElementById('new-question').value = '';
     document.getElementById('new-answer').value = '';
     document.getElementById('new-answer-number').value = '';
-    openCategories.add(cat);
+    openTopics.add(topic);
     renderQuestions();
   });
 
@@ -272,13 +352,13 @@
     const lines = raw.split('\n').map(l => l.trim()).filter(Boolean);
     const items = lines.map(line => {
       const parts = line.split(';');
-      if (parts.length < 3) return null;
-      const [cat, q, ...rest] = parts;
-      return { category: cat.trim() || DEFAULT_CATEGORY, question: q.trim(), answer: rest.join(';').trim() };
+      if (parts.length < 4) return null;
+      const [cat, topic, q, ...rest] = parts;
+      return { category: cat.trim() || DEFAULT_CATEGORY, topic: topic.trim() || DEFAULT_TOPIC, question: q.trim(), answer: rest.join(';').trim() };
     }).filter(Boolean);
 
     if (items.length === 0) {
-      document.getElementById('import-result').textContent = 'Kein gültiges Format gefunden (Kategorie;Frage;Antwort pro Zeile).';
+      document.getElementById('import-result').textContent = 'Kein gültiges Format gefunden (Kategorie;Thema;Frage;Antwort pro Zeile).';
       return;
     }
     try {

@@ -117,6 +117,22 @@ vorne. Gilt getrennt für Bluff-Fragen und Schätzen-Fragen.
 
 Fragen-Verwaltung (`/admin.html`) zeigt Fragen nach Kategorie gruppiert und aufklappbar an.
 
+## Fragen-Verwaltung: Zweistufiges Filtersystem
+
+Jede Frage hat jetzt zwei Ebenen:
+- **Kategorie** (bleibt wie gehabt): Kuriositäten / Fremdwörter / Historischer Kontext
+- **Thema** (neu): thematische Einordnung quer über die Kategorien, z.B. "Tiere & Natur",
+  "Wissenschaft & Forschung", "Militär & Kriegsführung", "Kunst & Kultur", "Schifffahrt &
+  Entdeckung", "Sprache & Wortschatz", "Herrscher & Politik", "Aberglaube & Bräuche",
+  "Essen & Trinken", "Spiele & Freizeit", "Psychologie & Phobien", "Alltag & Technik"
+
+In `/admin.html` gibt es jetzt eine Filterleiste (Kategorie-Dropdown + Thema-Dropdown +
+Volltextsuche, beliebig kombinierbar), und die Fragenliste ist nach Thema gruppiert und
+aufklappbar. Beim Hinzufügen/Bearbeiten einer Frage lässt sich sowohl Kategorie als auch
+Thema frei vergeben (bestehende erscheinen als Vorschlag). Der Massen-Import nutzt jetzt das
+Format `Kategorie;Thema;Frage;Antwort` pro Zeile. Gedacht für einen künftig stark wachsenden
+Fragenpool (mehrere hundert bis tausende Fragen).
+
 ## Fragen-Verwaltung
 
 Unter `/admin.html` (z. B. `https://dein-link.onrender.com/admin.html`) gibt es eine separate
@@ -126,7 +142,7 @@ Verwaltungsseite, getrennt von der Spieler-App:
   `ADMIN_KEY` (Dashboard → Environment). Unbedingt ändern, bevor die App breiter geteilt wird –
   sonst kann jeder mit dem Link auch Fragen bearbeiten.
 - **Einzeln hinzufügen/bearbeiten/löschen:** direkt über die Oberfläche
-- **Massen-Import:** ein Eintrag pro Zeile im Format `Kategorie;Frage?;Echte Antwort`
+- **Massen-Import:** ein Eintrag pro Zeile im Format `Kategorie;Thema;Frage?;Echte Antwort`
 - **Export:** Button lädt die aktuelle `questions.json` herunter
 
 **Wichtig zu wissen:** Änderungen über `/admin.html` werden zwar sofort im laufenden Server
@@ -137,6 +153,24 @@ herunterladen und im Repo überschreiben, damit die Änderungen dauerhaft bleibe
 
 ## Änderungsprotokoll
 
+- **19.07.2026:** MongoDB Atlas als dauerhafter Fragen-Speicher vorbereitet. Sobald die
+  Umgebungsvariable `MONGODB_URI` auf Render gesetzt wird, speichert das Admin-Tool Fragen
+  direkt und dauerhaft in einer echten Datenbank (übersteht Deploys, kein Zurücksetzen mehr,
+  kein Export/Import-Umweg nötig). Beim ersten Start mit eingerichteter Datenbank werden die
+  bestehenden Fragen aus den lokalen Dateien automatisch einmalig importiert. Ist die
+  Variable nicht gesetzt oder die Verbindung fehlgeschlagen, läuft alles unverändert über die
+  bisherigen lokalen JSON-Dateien weiter (getestet: Server bricht auch bei ungültiger/
+  nicht erreichbarer Datenbank-Adresse nicht ab). Admin-Bereich zeigt jetzt an, welcher
+  Speicherort aktuell aktiv ist. Bild-/Medien-Speicher (z.B. Cloudinary) folgt separat, sobald
+  visuelle Inhalte hinzukommen.
+- **19.07.2026:** Fragen-Verwaltung um zweite Filter-Ebene "Thema" erweitert (z.B. Tiere &
+  Natur, Wissenschaft & Forschung, Militär & Kriegsführung, Kunst & Kultur, Sprache &
+  Wortschatz u.a., quer über die drei Hauptkategorien). Alle 37 bestehenden Fragen (Bluff +
+  Schätzen) entsprechend eingeordnet. Neue Filterleiste in /admin.html: Kategorie-Dropdown,
+  Thema-Dropdown und Volltextsuche, beliebig kombinierbar. Fragenliste jetzt nach Thema
+  gruppiert. Kategorie und Thema beim Hinzufügen/Bearbeiten frei änderbar. Massen-Import-
+  Format erweitert auf Kategorie;Thema;Frage;Antwort. Vorbereitet für einen künftig auf
+  mehrere hundert/tausend Fragen wachsenden Pool.
 - **19.07.2026:** Logo auf dem Startbildschirm zeigte fälschlich eine eckige Box um das
   eigentlich runde Logo (fehlende Abrundung im CSS) – behoben, sitzt jetzt sauber als Kreis.
 - **19.07.2026:** Wiedereinstieg nach Verbindungsverlust ohne gespeicherte Sitzung (z.B. Tab
