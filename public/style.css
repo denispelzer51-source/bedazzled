@@ -35,7 +35,7 @@ body {
 #app {
   max-width: 480px;
   margin: 0 auto;
-  padding: calc(16px + env(safe-area-inset-top)) 20px 20px;
+  padding: calc(64px + env(safe-area-inset-top)) 20px 20px;
   position: relative;
 }
 
@@ -54,11 +54,11 @@ body {
   width: 100%;
   max-width: 480px;
   padding: 12px 20px calc(12px + env(safe-area-inset-bottom));
-  background: var(--night);
-  box-shadow: 0 -8px 20px rgba(4,0,10,0.35);
+  background: none;
   z-index: 20;
+  pointer-events: none;
 }
-[data-theme="light"] .screen-footer { box-shadow: 0 -8px 20px rgba(140,57,247,0.12); }
+.screen-footer > * { pointer-events: auto; }
 /* Platz am Ende jedes Bildschirms lassen, damit Inhalt nicht unter dem fest angehefteten
    Fußbereich verschwindet */
 .screen-scroll { padding-bottom: 130px; }
@@ -391,17 +391,19 @@ h2 { font-family: var(--font-display); font-weight: 700; font-size: 24px; text-a
 .rules-section li strong { color: var(--ink); }
 
 .btn-back {
-  position: absolute;
-  top: 20px; left: 20px;
-  width: 38px; height: 38px;
+  position: fixed;
+  top: calc(16px + env(safe-area-inset-top));
+  left: 16px;
+  width: 46px; height: 46px;
   border-radius: 50%;
   border: 1.5px solid rgba(255,255,255,0.15);
   background: var(--night-2);
   color: var(--ink);
-  font-size: 18px;
+  font-size: 22px;
   cursor: pointer;
   display: flex; align-items: center; justify-content: center;
-  z-index: 5;
+  z-index: 30;
+  box-shadow: 0 4px 12px rgba(4,0,10,0.35);
 }
 .btn-back:hover { border-color: var(--gold); color: var(--gold); }
 #screen-lobby { position: relative; }
@@ -490,16 +492,18 @@ h2 { font-family: var(--font-display); font-weight: 700; font-size: 24px; text-a
 
 .theme-toggle {
   position: fixed;
-  top: 16px; right: 16px;
-  z-index: 100;
-  width: 40px; height: 40px;
+  top: calc(16px + env(safe-area-inset-top));
+  right: 16px;
+  z-index: 30;
+  width: 46px; height: 46px;
   border-radius: 50%;
   border: 1.5px solid rgba(172,88,249,0.3);
   background: var(--night-2);
   color: var(--ink);
-  font-size: 17px;
+  font-size: 19px;
   cursor: pointer;
   display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 4px 12px rgba(4,0,10,0.35);
 }
 .theme-toggle:hover { border-color: var(--gold); }
 

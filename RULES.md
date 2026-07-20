@@ -160,6 +160,8 @@ Fragen-Verwaltung (`/admin.html`) zeigt Fragen nach Kategorie gruppiert und aufk
   ändern möchte. Fehlermeldungen (falscher Code, Spielfigur vergeben, etc.) erscheinen jetzt
   automatisch auf dem gerade aktiven Bildschirm statt nur auf dem Startbildschirm.
 
+- **20.07.2026:** Vier Layout-Korrekturen: (1) Inhalte saßen zu weit oben/zu eng zusammengequetscht - mehr Abstand zum oberen Rand auf allen Bildschirmen ergänzt. (2) Heller/Dunkler-Button und Zurück-Pfeil waren zu klein und positionierten sich je nach Bildschirm uneinheitlich (lag an `position:absolute` relativ zum jeweiligen Bildschirm-Inhalt) - beide sind jetzt `position:fixed` mit exakt derselben Position auf jedem Bildschirm, größer (46×46px statt 38-40px) und weiter unten. (3) Zurück-Pfeil links, Heller/Dunkler-Button rechts, auf gleicher Höhe. (4) Der feste Button-Bereich unten (z.B. "Runde starten") hatte einen komplett deckenden Hintergrund, der wie ein abgetrennter schwarzer Balken über dem Text schwebte, sobald das aufgeklappte Regelwerk lang genug wurde - Hintergrund entfernt, nur der Button selbst behält seine eigene Farbe.
+
 ## Fragen-Verwaltung: Zweistufiges Filtersystem
 
 Jede Frage hat jetzt zwei Ebenen:
