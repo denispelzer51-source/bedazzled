@@ -35,9 +35,13 @@ body {
 #app {
   max-width: 480px;
   margin: 0 auto;
-  padding: calc(100px + env(safe-area-inset-top)) 20px 20px;
+  padding: calc(84px + env(safe-area-inset-top)) 20px 20px;
   position: relative;
 }
+/* Zusätzlicher Abstand nur für Start-/Setup-Bildschirm (wirken sonst zu weit oben/eng),
+   Bildschirme mit viel Inhalt (Antwort-Phase, Abstimmung, etc.) brauchen den Platz oben
+   dagegen selbst und bekommen ihn NICHT zusätzlich weggenommen */
+#screen-start .brand, #screen-setup .brand { margin-top: 40px; }
 
 .screen { display: none; animation: fadeIn 0.35s ease; }
 .screen.active { display: block; }
@@ -62,8 +66,9 @@ body {
 /* Platz am Ende jedes Bildschirms lassen, damit Inhalt nicht unter dem fest angehefteten
    Fußbereich verschwindet */
 .screen-scroll { padding-bottom: 130px; }
+#screen-lobby .screen-scroll, #screen-answering .screen-scroll { padding-bottom: 20px; }
 .screen.active { display: block; }
-@keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
 .brand { text-align: center; margin-bottom: 28px; }
 .brand-logo { width: 96px; height: 96px; display: block; margin: 0 auto 6px; border-radius: 50%; filter: drop-shadow(0 4px 16px rgba(172,88,249,0.45)); }
@@ -399,13 +404,16 @@ h2 { font-family: var(--font-display); font-weight: 700; font-size: 24px; text-a
   border: 1.5px solid rgba(255,255,255,0.15);
   background: var(--night-2);
   color: var(--ink);
-  font-size: 28px;
-  line-height: 1;
+  font-size: 26px;
+  line-height: 0;
+  text-align: center;
   cursor: pointer;
+  padding: 0;
   display: flex; align-items: center; justify-content: center;
   z-index: 30;
   box-shadow: 0 4px 12px rgba(4,0,10,0.35);
 }
+.btn-back svg { width: 24px; height: 24px; }
 .btn-back:hover { border-color: var(--gold); color: var(--gold); }
 #screen-lobby { position: relative; }
 

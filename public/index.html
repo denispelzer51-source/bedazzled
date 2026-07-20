@@ -40,7 +40,7 @@
   <!-- SETUP SCREEN: Name + Spielfigur wählen, dann bestätigen - hier passiert der eigentliche
        Beitritt/die Raum-Erstellung erst, nicht schon auf dem Startbildschirm -->
   <section id="screen-setup" class="screen">
-    <button id="btn-back-to-start" class="btn-back" title="Zurück">←</button>
+    <button id="btn-back-to-start" class="btn-back" title="Zurück"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></button>
     <div class="screen-scroll">
       <div class="brand">
         <img src="logo.png" alt="Bedazzled Logo" class="brand-logo" />
@@ -61,7 +61,7 @@
 
   <!-- LOBBY SCREEN -->
   <section id="screen-lobby" class="screen">
-    <button id="btn-leave-room" class="btn-back" title="Raum verlassen">←</button>
+    <button id="btn-leave-room" class="btn-back" title="Raum verlassen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></button>
     <div class="room-header">
       <span class="room-label">Raum</span>
       <span id="room-code-display" class="room-code">----</span>
@@ -76,6 +76,8 @@
       <h2>Wer ist dabei?</h2>
       <ul id="player-list" class="player-list"></ul>
       <p class="hint">Mindestens 3 Spieler nötig. Teile den Code, damit alle beitreten können.</p>
+      <button id="btn-start-round" class="btn btn-primary">Runde starten</button>
+      <p id="lobby-error-msg" class="error"></p>
 
       <details id="rules-panel" class="rules-panel">
         <summary class="rules-summary">📖 Regelwerk anzeigen</summary>
@@ -128,11 +130,6 @@
         </div>
       </details>
     </div>
-
-    <div class="screen-footer">
-      <button id="btn-start-round" class="btn btn-primary">Runde starten</button>
-      <p id="lobby-error-msg" class="error"></p>
-    </div>
   </section>
 
   <!-- ANSWERING SCREEN (Frage + Antwort-Eingabe in einer Phase) -->
@@ -154,9 +151,7 @@
       <p id="moderator-wait-box" class="waiting-msg hidden">Du bist Moderator:in. Hier siehst du live, wer was schreibt:</p>
       <div id="duplicate-conflict-box" class="duplicate-conflict-box hidden"></div>
       <div id="moderator-answers-preview" class="reveal-list hidden"></div>
-    </div>
 
-    <div class="screen-footer">
       <p class="progress-text"><span id="answered-count">0</span>/<span id="answering-total">0</span> haben geantwortet</p>
       <button id="btn-to-voting" class="btn btn-secondary mod-only">Weiter zur Abstimmung</button>
       <button id="btn-reveal-estimate" class="btn btn-secondary mod-only hidden">Auswerten</button>

@@ -174,6 +174,20 @@ Fragen-Verwaltung (`/admin.html`) zeigt Fragen nach Kategorie gruppiert und aufk
   Setup-Bildschirm oben sichtbar. Zurück-Pfeil und Heller/Dunkler-Button nochmal vergrößert
   (52×52px, größeres Pfeil-Symbol).
 
+- **20.07.2026:** Mehrere Layout-Korrekturen: (1) Pfeil-Sprung-Bug gefunden und behoben - die
+  Bildschirm-Einblend-Animation nutzte eine `transform`-Eigenschaft, wodurch fest
+  positionierte Elemente (Zurück-Pfeil, Heller/Dunkler-Button) kurz falsch positioniert
+  wurden, bevor sie an ihren richtigen Platz "sprangen" (CSS-Fallstrick: eine `transform`-
+  Animation auf einem Elternelement wird kurzzeitig zum Bezugspunkt für fest positionierte
+  Kind-Elemente). (2) Pfeil-Symbol durch ein echtes SVG-Symbol ersetzt (statt Text-Zeichen) -
+  zentriert sich dadurch zuverlässig und unabhängig von Schriftart-Eigenheiten. (3) Der große
+  obere Abstand gilt jetzt nur noch für Start-/Setup-Bildschirm (wo er der Zentrierung
+  dient) - Bildschirme mit viel Inhalt (Lobby, Antwort-Phase etc.) bekommen ihn nicht mehr
+  aufgezwungen und nutzen den Platz oben wieder voll aus. (4) "Runde starten" (Lobby) und
+  die Fortschrittsanzeige + Buttons (Antwort-Phase) sitzen jetzt wieder fest im normalen
+  Textfluss direkt unter der jeweils zugehörigen Liste, statt als schwebende, teils
+  überlappende Fußleiste in der Bildschirmmitte.
+
 ## Fragen-Verwaltung: Zweistufiges Filtersystem
 
 Jede Frage hat jetzt zwei Ebenen:
