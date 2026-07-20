@@ -1,3 +1,11 @@
+// In der echten App-Hülle (Capacitor) bleibt der Splash-Screen (Logo auf dunklem
+// Hintergrund) so lange sichtbar, bis wir ihn hier aktiv ausblenden - dadurch verschwindet
+// er erst, wenn die Seite wirklich fertig geladen ist, statt vorher schon wegzuspringen.
+// In einem normalen Browser passiert hier einfach nichts (kein Fehler).
+if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.SplashScreen) {
+  window.Capacitor.Plugins.SplashScreen.hide();
+}
+
 const socket = io({ timeout: 45000, reconnectionAttempts: 15 });
 
 let connectionTroubleShown = false;

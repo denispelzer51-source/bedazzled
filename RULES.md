@@ -188,6 +188,24 @@ Fragen-Verwaltung (`/admin.html`) zeigt Fragen nach Kategorie gruppiert und aufk
   Textfluss direkt unter der jeweils zugehörigen Liste, statt als schwebende, teils
   überlappende Fußleiste in der Bildschirmmitte.
 
+- **20.07.2026:** Weitere Layout-Korrekturen: Antwort-Phase (und Abstimmung/Auflösung/
+  Spielbrett) nutzen den Platz oben jetzt konsequent voll aus (Phase-Label sitzt jetzt
+  ungefähr auf Höhe der beiden Ecken-Buttons) - nur Start-/Setup-Bildschirm behalten den
+  großzügigen oberen Abstand für die zentrierte Optik. In der Abstimm-Phase saß dieselbe
+  Überlappung wie zuvor in der Antwort-Phase vor (Fortschrittsanzeige + "Auflösen" schwebten
+  fixiert in der Bildschirmmitte) - behoben, sitzen jetzt fest im normalen Textfluss direkt
+  unter der Live-Übersicht.
+- **20.07.2026:** Vorbereitung für zwei native Android-Anpassungen (wirken sich nur in der
+  App-Hülle aus, nicht im normalen Browser):
+  - **Splash-Screen:** `capacitor.config.json` um SplashScreen-Plugin-Konfiguration ergänzt
+    (dunkler Marken-Hintergrund #04000A statt Weiß, bleibt sichtbar bis die Seite fertig
+    geladen ist). Splash-Bild (`assets/splash.png`, Logo mittig auf dunklem Hintergrund)
+    erzeugt. `client.js` blendet den Splash-Screen jetzt aktiv erst aus, wenn die Seite
+    tatsächlich geladen ist.
+  - **Untere System-Leiste ausblenden:** Beispiel-`MainActivity.java` mit "Immersive Sticky
+    Mode" bereitgestellt (Standard-Ansatz, den praktisch jedes Spiel nutzt) - muss manuell
+    im lokalen Android-Studio-Projekt eingesetzt werden, siehe Chat-Anleitung.
+
 ## Fragen-Verwaltung: Zweistufiges Filtersystem
 
 Jede Frage hat jetzt zwei Ebenen:
