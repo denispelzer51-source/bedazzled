@@ -161,6 +161,7 @@ function avatarFor(player) {
 
 const screens = {
   start: document.getElementById('screen-start'),
+  setup: document.getElementById('screen-setup'),
   lobby: document.getElementById('screen-lobby'),
   answering: document.getElementById('screen-answering'),
   voting: document.getElementById('screen-voting'),
@@ -209,17 +210,16 @@ renderAvatarPicker();
 
 // Simulator-Komfort: Name + Spielfigur automatisch vorausfüllen, wenn als Test-Slot geöffnet
 if (testSlot) {
-  document.getElementById('input-name').value = 'Tester ' + testSlot;
+  document.getElementById('input-name-setup').value = 'Tester ' + testSlot;
   const slotIndex = (parseInt(testSlot, 10) - 1) % AVATAR_CHOICES.length;
   selectedAvatar = AVATAR_CHOICES[slotIndex] ? AVATAR_CHOICES[slotIndex].emoji : selectedAvatar;
   renderAvatarPicker();
 }
 
 // Komfort: Wenn der Link mit einem Raum-Code geöffnet wurde (z.B. per WhatsApp geteilt),
-// Code direkt vorausfüllen, damit nur noch der Name eingetippt werden muss
+// Code direkt vorausfüllen, damit nur noch "Raum beitreten" getippt werden muss
 if (roomFromLink && /^\d{4}$/.test(roomFromLink)) {
   document.getElementById('input-code').value = roomFromLink;
-  document.getElementById('input-name').focus();
   socket.emit('checkTakenAvatars', { code: roomFromLink });
 }
 
@@ -255,23 +255,55 @@ socket.on('avatarTaken', ({ takenAvatars: taken }) => {
   showError('Diese Spielfigur wurde gerade von jemand anderem gewählt. Bitte wähle eine andere.');
 });
 
-// ---------- START SCREEN ----------
+// ---------- START SCREEN: nur Auswahl, ob beitreten oder erstellen ----------
+let pendingIntent = null; // 'join' | 'create'
+let pendingJoinCode = null;
+
 document.getElementById('btn-create').addEventListener('click', () => {
-  const name = document.getElementById('input-name').value.trim();
-  if (!name) return showError('Bitte gib deinen Namen ein.');
-  socket.emit('createRoom', { name, avatar: selectedAvatar, token: myToken });
+  pendingIntent = 'create';
+  pendingJoinCode = null;
+  showError('');
+  document.getElementById('setup-error-msg').textContent = '';
+  showScreen('setup');
 });
 
 document.getElementById('btn-join').addEventListener('click', () => {
-  const name = document.getElementById('input-name').value.trim();
   const code = document.getElementById('input-code').value.trim();
-  if (!name) return showError('Bitte gib deinen Namen ein.');
   if (!code) return showError('Bitte gib einen Raum-Code ein.');
-  socket.emit('joinRoom', { name, code, avatar: selectedAvatar, token: myToken });
+  pendingIntent = 'join';
+  pendingJoinCode = code;
+  showError('');
+  document.getElementById('setup-error-msg').textContent = '';
+  showScreen('setup');
+});
+
+document.getElementById('btn-back-to-start').addEventListener('click', () => {
+  pendingIntent = null;
+  pendingJoinCode = null;
+  document.getElementById('setup-error-msg').textContent = '';
+  showScreen('start');
+});
+
+// ---------- SETUP SCREEN: Name + Spielfigur wählen, dann tatsächlich beitreten/erstellen ----------
+document.getElementById('btn-confirm-setup').addEventListener('click', () => {
+  const name = document.getElementById('input-name-setup').value.trim();
+  if (!name) return showError('Bitte gib deinen Namen ein.');
+
+  if (pendingIntent === 'create') {
+    socket.emit('createRoom', { name, avatar: selectedAvatar, token: myToken });
+  } else if (pendingIntent === 'join') {
+    socket.emit('joinRoom', { name, code: pendingJoinCode, avatar: selectedAvatar, token: myToken });
+  }
 });
 
 function showError(msg) {
-  document.getElementById('error-msg').textContent = msg;
+  const activeEntry = Object.entries(screens).find(([, el]) => el.classList.contains('active'));
+  const screenName = activeEntry ? activeEntry[0] : 'start';
+  const targetId = screenName === 'setup' ? 'setup-error-msg'
+    : screenName === 'lobby' ? 'lobby-error-msg'
+    : 'error-msg';
+  const el = document.getElementById(targetId);
+  if (el) el.textContent = msg;
 }
 
 function escapeHtml(str) {
@@ -315,6 +347,8 @@ document.getElementById('btn-leave-room').addEventListener('click', () => {
   currentCode = null;
   myId = null;
   lastState = null;
+  pendingIntent = null;
+  pendingJoinCode = null;
   document.getElementById('board-bar').classList.add('hidden');
   document.getElementById('input-code').value = '';
   showError('');
@@ -703,6 +737,8 @@ socket.on('kicked', () => {
   currentCode = null;
   myId = null;
   lastState = null;
+  pendingIntent = null;
+  pendingJoinCode = null;
   document.getElementById('board-bar').classList.add('hidden');
   showError('Du wurdest vom Host aus dem Raum entfernt.');
   showScreen('start');

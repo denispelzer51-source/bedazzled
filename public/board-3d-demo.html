@@ -1,0 +1,1040 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Bedazzled – 3D-Spielbrett Prototyp</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&family=Inter:wght@400;500;600;700&display=swap');
+
+  :root {
+    --void: #04000A;
+    --royal: #330D98;
+    --amethyst: #8C39F7;
+    --primary: #AC58F9;
+    --glow: #C577FB;
+    --lilac: #D5A1FB;
+    --white: #F7F1FA;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: radial-gradient(circle at 50% 0%, rgba(140,57,247,0.25), transparent 55%), var(--void);
+    color: var(--white);
+    font-family: 'Inter', sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 30px 16px 60px;
+  }
+
+  h1 {
+    font-family: 'Baloo 2', sans-serif;
+    font-size: 26px;
+    margin: 0 0 4px;
+    text-align: center;
+  }
+  .subtitle {
+    color: var(--lilac);
+    font-size: 14px;
+    margin: 0 0 28px;
+    text-align: center;
+    max-width: 480px;
+    opacity: 0.85;
+  }
+
+  /* ---------- 3D Bühne ---------- */
+  .stage-wrap {
+    width: 100%;
+    max-width: 300px;
+    perspective: 1900px;
+    perspective-origin: 50% 15%;
+    margin-bottom: 28px;
+    position: relative;
+  }
+
+  .camera-pan {
+    width: 100%;
+    height: 100%;
+    transform: translate(var(--camX, 0px), var(--camY, 0px)) scale(var(--camZoom, 0.92));
+    transition: transform 0.5s ease;
+  }
+
+  .table-tilt {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 10 / 17;
+    transform-style: preserve-3d;
+    transform:
+      rotateX(var(--tilt, 30deg))
+      rotateZ(var(--spin, 0deg));
+    transition: transform 0.5s ease;
+  }
+
+  /* Der eigentliche Tisch/Untergrund, gibt dem Brett räumliche Tiefe */
+  .table-surface {
+    position: absolute;
+    inset: -6% -4%;
+    border-radius: 28px;
+    background:
+      radial-gradient(circle at 50% 30%, rgba(140,57,247,0.35), transparent 70%),
+      linear-gradient(160deg, #150A2E, #04000A);
+    box-shadow:
+      0 60px 100px rgba(0,0,0,0.6),
+      inset 0 0 0 1px rgba(197,119,251,0.15);
+    transform: translateZ(-20px);
+  }
+
+  .board-ring {
+    position: absolute;
+    inset: 6%;
+    transform-style: preserve-3d;
+  }
+
+  .board-logo {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 40%;
+    /* Eigene, von der Kamera komplett unabhängige Gegen-Drehung: reagiert nur auf den
+       manuellen Neigungs-Regler (--base-tilt), NIEMALS auf die Zoom-Animation zu den
+       Spielfiguren. Dadurch bleibt das Logo immer unverzerrt und bewegt sich nicht mit,
+       wenn die Kamera zu einer Figur heranzoomt. */
+    transform: translate(-50%, -50%) scale(0.92) rotateX(calc(-1 * var(--base-tilt, 30deg)));
+    transition: transform 0.5s ease;
+    border-radius: 14px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.5), 0 0 0 2px rgba(197,119,251,0.3);
+    opacity: 0.92;
+  }
+
+  /* ---------- Fiktiver Kartenstapel auf dem Brett ---------- */
+  .card-deck {
+    position: absolute;
+    left: 50%;
+    top: 84%;
+    width: 13%;
+    aspect-ratio: 3 / 4.2;
+    transform: translate(-50%, -50%);
+    transform-style: preserve-3d;
+  }
+  .deck-card {
+    position: absolute;
+    inset: 0;
+    border-radius: 8px;
+    background: linear-gradient(160deg, var(--royal), #1B0940);
+    border: 1.5px solid rgba(197,119,251,0.5);
+    box-shadow: 0 6px 12px rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--glow);
+    font-size: 40%;
+    font-weight: 800;
+    transform:
+      translateZ(calc(var(--stack-z, 0) * 1px))
+      rotateX(calc(-1 * var(--tilt, 30deg)));
+    transition: transform 0.5s ease;
+  }
+  .deck-card-3 { --stack-z: 2; opacity: 0.7; }
+  .deck-card-2 { --stack-z: 5; opacity: 0.85; }
+  .deck-card-1 { --stack-z: 8; }
+
+  .field-tile {
+    position: absolute;
+    width: 13.5%;
+    aspect-ratio: 1;
+    /* Gegen-Rotation zur Brett-Neigung: das Feld "steht" so immer quadratisch zur Kamera,
+       statt sich mit dem Neigungswinkel des Bretts zu strecken/stauchen */
+    transform: translate(-50%, -50%) rotateX(calc(-1 * var(--tilt, 30deg)));
+    transition: transform 0.5s ease;
+    border-radius: 10px;
+    background: linear-gradient(160deg, var(--lilac), var(--primary) 70%);
+    border: 1px solid rgba(255,255,255,0.4);
+    box-shadow:
+      0 10px 0 rgba(120,40,200,0.85),
+      0 16px 22px rgba(140,57,247,0.35),
+      inset 0 2px 0 rgba(255,255,255,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 800;
+    color: var(--void);
+    opacity: 1;
+  }
+  .field-tile.start-finish {
+    width: 19%;
+    background: linear-gradient(135deg, #ffffff 0%, var(--lilac) 48%, var(--primary) 52%, var(--glow) 100%);
+    color: var(--void);
+    box-shadow:
+      0 10px 0 rgba(120,40,200,0.9),
+      0 16px 26px rgba(197,119,251,0.55),
+      inset 0 1px 0 rgba(255,255,255,0.4);
+    overflow: hidden;
+  }
+  .sf-icon {
+    position: absolute;
+    font-size: 15px;
+  }
+  .sf-start { top: 10%; left: 10%; }
+  .sf-finish { bottom: 10%; right: 10%; }
+  .sf-diag {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, transparent calc(50% - 1.5px), rgba(255,255,255,0.85) 50%, transparent calc(50% + 1.5px));
+  }
+  .field-tile.estimate {
+    background: linear-gradient(160deg, #6fe4c9, #2c8f7a);
+    border-color: rgba(255,255,255,0.5);
+    color: var(--void);
+  }
+
+  /* ---------- Glitzer-Animation beim Landen auf einem grünen Feld ---------- */
+  .sparkle-ring {
+    position: absolute;
+    width: 0;
+    height: 0;
+    pointer-events: none;
+    z-index: 6;
+    animation: ring-rise 1.3s ease-out forwards;
+  }
+  @keyframes ring-rise {
+    0% { transform: translateY(0); opacity: 1; }
+    70% { opacity: 1; }
+    100% { transform: translateY(-78px); opacity: 0; }
+  }
+  .sparkle-orbit {
+    position: absolute;
+    left: 0;
+    top: 0;
+    animation: orbit-spin 1.3s linear forwards;
+  }
+  @keyframes orbit-spin {
+    from { transform: rotate(var(--startAngle, 0deg)); }
+    to { transform: rotate(calc(var(--startAngle, 0deg) + 360deg)); }
+  }
+  .sparkle-particle {
+    position: absolute;
+    left: 0;
+    top: 0;
+    transform: translateX(var(--radius, 18px)) translate(-50%, -50%);
+    font-size: 17px;
+    filter: drop-shadow(0 0 4px rgba(255,255,255,0.8));
+  }
+
+  .token-3d {
+    position: absolute;
+    width: 13%;
+    aspect-ratio: 1;
+    /* translateZ schiebt die Figur näher zur Kamera, damit sie im echten 3D-Raum immer
+       vor den Feldern liegt (die Feld-Gegenrotation hatte ihre Tiefenposition verschoben) */
+    transform: translateZ(14px) translate(-50%, -100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 30px;
+    filter:
+      drop-shadow(0 2px 0 rgba(255,255,255,0.3))
+      drop-shadow(0 3px 4px rgba(0,0,0,0.45))
+      drop-shadow(0 20px 14px rgba(0,0,0,0.5));
+    transition: left 0.32s ease-out, top 0.32s ease-out;
+    z-index: 5;
+  }
+  .token-3d::after {
+    /* Schatten auf dem Feld darunter, verstärkt den 3D-Eindruck */
+    content: '';
+    position: absolute;
+    bottom: -10px;
+    left: 50%;
+    width: 65%;
+    height: 9px;
+    background: radial-gradient(ellipse, rgba(0,0,0,0.5), transparent 70%);
+    transform: translateX(-50%);
+    border-radius: 50%;
+    z-index: -1;
+  }
+
+  /* ---------- Steuerung (nur für die Demo, nicht Teil des echten Spiels) ---------- */
+  .controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    justify-content: center;
+    max-width: 520px;
+  }
+  .controls .btn {
+    font-family: 'Inter', sans-serif;
+    font-weight: 700;
+    font-size: 14px;
+    padding: 12px 20px;
+    border-radius: 100px;
+    border: 1.5px solid rgba(197,119,251,0.35);
+    background: rgba(255,255,255,0.04);
+    color: var(--white);
+    cursor: pointer;
+  }
+  .controls .btn.primary {
+    background: linear-gradient(135deg, var(--primary), var(--amethyst));
+    border: none;
+  }
+  .controls .btn:hover { border-color: var(--glow); filter: brightness(1.08); }
+
+  .slider-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    color: var(--lilac);
+    margin-top: 18px;
+  }
+  .slider-row input[type="range"] { width: 160px; }
+
+  .note {
+    max-width: 560px;
+    text-align: center;
+    font-size: 12.5px;
+    color: rgba(247,241,250,0.5);
+    margin-top: 26px;
+    line-height: 1.6;
+  }
+
+  /* ---------- Gewinner-Overlay ---------- */
+  .winner-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(4,0,10,0.8);
+    backdrop-filter: blur(6px);
+    overflow: hidden;
+  }
+  .winner-overlay.hidden { display: none; }
+
+  .confetti-layer {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+  .confetti-piece {
+    position: absolute;
+    top: -20px;
+    width: 9px;
+    height: 14px;
+    opacity: 0.95;
+    animation: confetti-fall linear forwards;
+  }
+  @keyframes confetti-fall {
+    0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+    100% { transform: translateY(115vh) rotate(var(--rot, 360deg)); opacity: 0.9; }
+  }
+
+  .winner-card {
+    position: relative;
+    text-align: center;
+    padding: 40px 30px;
+    z-index: 2;
+  }
+  .winner-glow {
+    position: absolute;
+    inset: -40px;
+    background: radial-gradient(circle, rgba(197,119,251,0.55), transparent 70%);
+    filter: blur(4px);
+    animation: glow-pulse 1.8s ease-in-out infinite;
+    z-index: -1;
+  }
+  @keyframes glow-pulse {
+    0%, 100% { transform: scale(1); opacity: 0.8; }
+    50% { transform: scale(1.15); opacity: 1; }
+  }
+  .winner-trophy {
+    font-size: 60px;
+    margin-bottom: 6px;
+    filter: drop-shadow(0 6px 16px rgba(197,119,251,0.6));
+    animation: trophy-bounce 1.2s ease-in-out infinite;
+  }
+  @keyframes trophy-bounce {
+    0%, 100% { transform: translateY(0) scale(1); }
+    50% { transform: translateY(-10px) scale(1.06); }
+  }
+  .winner-nameplate {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 32px;
+    margin: 6px 0 12px;
+    border-radius: 100px;
+    background: linear-gradient(135deg, rgba(140,57,247,0.3), rgba(197,119,251,0.15));
+    box-shadow:
+      0 0 0 2px var(--glow),
+      0 12px 32px rgba(140,57,247,0.55),
+      inset 0 1px 0 rgba(255,255,255,0.35);
+    overflow: hidden;
+  }
+  .winner-nameplate::before {
+    content: '';
+    position: absolute;
+    top: 0; left: -60%;
+    width: 40%; height: 100%;
+    background: linear-gradient(120deg, transparent, rgba(255,255,255,0.55), transparent);
+    animation: shimmer-sweep 2.4s ease-in-out infinite;
+  }
+  @keyframes shimmer-sweep {
+    0% { left: -60%; }
+    100% { left: 140%; }
+  }
+  .np-decor {
+    font-size: 20px;
+    filter: drop-shadow(0 0 6px rgba(255,255,255,0.7));
+    position: relative;
+    z-index: 1;
+  }
+  .winner-text {
+    font-family: 'Baloo 2', sans-serif;
+    font-weight: 800;
+    font-size: 32px;
+    background: linear-gradient(160deg, var(--white), var(--lilac) 50%, var(--glow));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    white-space: nowrap;
+    position: relative;
+    z-index: 1;
+  }
+  .winner-sub {
+    font-family: 'Baloo 2', sans-serif;
+    font-size: 18px;
+    color: var(--lilac);
+    margin: 4px 0 26px;
+  }
+  .winner-card .btn {
+    display: inline-block;
+    width: auto;
+    padding: 12px 26px;
+  }
+
+  /* ---------- Karte ziehen: EINE durchgehende Bewegung vom Stapel bis zum Vollbild ----------
+     Aufbau in zwei Ebenen:
+     - card-outer: übernimmt NUR Position + Größe (klein am Stapel -> Vollbild), per translate+scale
+     - card-flip:  übernimmt NUR die Drehung (rotateY), unabhängig von der Außengröße
+     Beide laufen exakt synchron auf derselben Zeitleiste - dadurch wirkt es als eine einzige,
+     ununterbrochene Bewegung statt mehrerer aneinandergesetzter Phasen. */
+  .card-flight-layer {
+    position: fixed;
+    inset: 0;
+    z-index: 90;
+    perspective: 1600px;
+    pointer-events: none;
+  }
+  .card-outer {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100vw;
+    height: 100vh;
+    transform-origin: 0 0;
+    transform-style: preserve-3d;
+    pointer-events: auto;
+    cursor: pointer;
+  }
+  .card-flip {
+    position: absolute;
+    inset: 0;
+    transform-style: preserve-3d;
+  }
+  .card-flip .face {
+    position: absolute;
+    inset: 0;
+    backface-visibility: hidden;
+    overflow: hidden;
+    border-radius: 130px;
+  }
+  .card-flip .face-back {
+    background: linear-gradient(160deg, var(--royal), #1B0940);
+    border: 1.5px solid rgba(197,119,251,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--glow);
+    font-weight: 800;
+    font-size: 15vh;
+  }
+  .card-flip .face-front {
+    background: var(--void);
+    transform: rotateY(180deg);
+  }
+  .ff-phase-tag {
+    position: absolute;
+    left: 50%;
+    top: 7%;
+    transform: translateX(-50%);
+    font-size: 3.2vw;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--void);
+    background: var(--primary);
+    padding: 1.4% 4%;
+    border-radius: 20px;
+    white-space: nowrap;
+  }
+  .ff-question {
+    position: absolute;
+    left: 50%;
+    top: 15%;
+    transform: translateX(-50%);
+    width: 84%;
+    font-family: 'Fraunces', serif;
+    font-weight: 700;
+    font-size: 5.5vw;
+    line-height: 1.4;
+    text-align: center;
+    color: var(--white);
+  }
+  .ff-answer-ui {
+    position: absolute;
+    left: 50%;
+    bottom: 8%;
+    transform: translateX(-50%);
+    width: 84%;
+    display: flex;
+    flex-direction: column;
+    gap: 2.5%;
+  }
+  .ff-answer-ui label { font-size: 3.2vw; color: var(--lilac); }
+  .ff-answer-ui textarea {
+    width: 100%;
+    min-height: 12vh;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.16);
+    border-radius: 12px;
+    padding: 3%;
+    color: var(--white);
+    font-family: 'Inter', sans-serif;
+    font-size: 4vw;
+    resize: none;
+  }
+  .ff-answer-ui .ff-submit {
+    width: 100%;
+    padding: 4%;
+    border-radius: 100px;
+    border: none;
+    font-weight: 700;
+    font-size: 3.8vw;
+    background: var(--primary);
+    color: var(--white);
+    cursor: pointer;
+  }
+  .ff-answer-ui .ff-back {
+    align-self: center;
+    margin-top: 2%;
+    background: none;
+    border: 1px solid rgba(255,255,255,0.25);
+    color: var(--lilac);
+    padding: 2% 5%;
+    border-radius: 100px;
+    font-size: 3vw;
+    cursor: pointer;
+  }
+
+  .demo-root {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    transition: opacity 0.5s ease;
+  }
+  .demo-root.faded-out {
+    opacity: 0;
+    pointer-events: none;
+  }
+</style>
+</head>
+<body>
+
+<div id="demoRoot" class="demo-root">
+<h1>🎲 3D-Spielbrett – Prototyp</h1>
+<p class="subtitle">Eigenständige Vorschau, komplett getrennt vom echten Spielcode. CSS-3D-Trick (Perspektive + Kippung), keine echten 3D-Modelle.</p>
+
+<div class="stage-wrap">
+  <img src="logo.png" alt="Bedazzled Logo" class="board-logo" />
+  <div class="camera-pan" id="cameraPan">
+    <div class="table-tilt" id="tableTilt">
+      <div class="table-surface"></div>
+      <div class="card-deck" id="cardDeck">
+        <div class="deck-card deck-card-3"></div>
+        <div class="deck-card deck-card-2"></div>
+        <div class="deck-card deck-card-1">❓</div>
+      </div>
+      <div class="board-ring" id="boardRing"></div>
+    </div>
+  </div>
+</div>
+
+<div class="controls">
+  <button class="btn primary" id="btnMove">▶️ Zug simulieren</button>
+  <button class="btn primary" id="btnDoubleMove">⏩ Doppelzug simulieren</button>
+  <button class="btn" id="btnCardDraw">🃏 Kartenzug → nächste Runde</button>
+  <button class="btn" id="btnSparkle">✨ Grünes Feld simulieren</button>
+  <button class="btn" id="btnWin">🏆 Sieg simulieren</button>
+  <button class="btn" id="btnReset">🔄 Zurücksetzen</button>
+</div>
+
+<div class="slider-row">
+  <span>Kamera-Neigung</span>
+  <input type="range" id="tiltSlider" min="30" max="70" value="30" />
+</div>
+<div class="slider-row">
+  <span>Kamera-Drehung</span>
+  <input type="range" id="spinSlider" min="-25" max="25" value="0" />
+</div>
+
+<p class="note">
+  Das ist ein früher Stil-Test für Tiefe, Beleuchtung und Kamera-Perspektive – noch keine finalen Positionen/Feldanzahlen.
+  Wird erst nach der APK-Fertigstellung in den echten Code übernommen.
+</p>
+</div>
+
+<div class="card-flight-layer" id="cardFlightLayer"></div>
+
+<div class="winner-overlay hidden" id="winnerOverlay">
+  <div class="confetti-layer" id="confettiLayer"></div>
+  <div class="winner-card">
+    <div class="winner-glow"></div>
+    <div class="winner-trophy">🏆</div>
+    <div class="winner-nameplate">
+      <span class="np-decor">✨</span>
+      <span class="winner-text" id="winnerName">Sascha</span>
+      <span class="np-decor">✨</span>
+    </div>
+    <div class="winner-sub">hat gewonnen!</div>
+    <button class="btn" id="btnCloseWinner">Schließen</button>
+  </div>
+</div>
+
+<script>
+  const BOARD_SLOTS = 28; // etwas mehr Felder, damit die Lücken bei größeren Feldern kleiner wirken
+  const START_FINISH_INDEX = 0; // Start- und Zielfeld sind im echten Spiel dasselbe Feld
+  const ESTIMATE_FIELDS = [5, 9, 18, 24];
+  const W = 1, H = 1.7; // Hochkant-Seitenverhältnis, passend zum schmaleren Brett
+
+  function buildFieldPositions(total, W, H) {
+    const perimeter = 2 * (W + H);
+    const edges = [
+      { len: W, from: { x: 0, y: 0 }, to: { x: 100, y: 0 } },
+      { len: H, from: { x: 100, y: 0 }, to: { x: 100, y: 100 } },
+      { len: W, from: { x: 100, y: 100 }, to: { x: 0, y: 100 } },
+      { len: H, from: { x: 0, y: 100 }, to: { x: 0, y: 0 } },
+    ];
+    const positions = [];
+    let remaining = total;
+    edges.forEach((edge, idx) => {
+      const isLast = idx === edges.length - 1;
+      const share = isLast ? remaining : Math.round(total * (edge.len / perimeter));
+      for (let k = 0; k < share; k++) {
+        const t = k / share;
+        positions.push({ x: edge.from.x + (edge.to.x - edge.from.x) * t, y: edge.from.y + (edge.to.y - edge.from.y) * t });
+      }
+      remaining -= share;
+    });
+    return positions;
+  }
+
+  const FIELD_POSITIONS = buildFieldPositions(BOARD_SLOTS, W, H);
+  function fieldPercent(i) {
+    return FIELD_POSITIONS[((i % BOARD_SLOTS) + BOARD_SLOTS) % BOARD_SLOTS];
+  }
+
+  const ring = document.getElementById('boardRing');
+  for (let i = 0; i < BOARD_SLOTS; i++) {
+    const pos = fieldPercent(i);
+    const tile = document.createElement('div');
+    let cls = 'field-tile';
+    if (i === START_FINISH_INDEX) cls += ' start-finish';
+    else if (ESTIMATE_FIELDS.includes(i)) cls += ' estimate';
+    tile.className = cls;
+    tile.style.left = pos.x + '%';
+    tile.style.top = pos.y + '%';
+    if (i === START_FINISH_INDEX) {
+      tile.innerHTML = `<span class="sf-icon sf-start">🚩</span><span class="sf-diag"></span><span class="sf-icon sf-finish">🏁</span>`;
+    } else {
+      tile.textContent = i;
+    }
+    ring.appendChild(tile);
+  }
+
+  const tokensData = [
+    { emoji: '💎', pos: 2, name: 'Sascha' },
+    { emoji: '🎭', pos: 6, name: 'Jamie' },
+    { emoji: '👑', pos: 6, name: 'Robin' },
+  ];
+  const tokenEls = tokensData.map(t => {
+    const el = document.createElement('div');
+    el.className = 'token-3d';
+    el.textContent = t.emoji;
+    ring.appendChild(el);
+    return el;
+  });
+
+  function placeTokens() {
+    // Mehrere Figuren auf demselben Feld leicht auffächern
+    const grouped = {};
+    tokensData.forEach((t, idx) => {
+      if (!grouped[t.pos]) grouped[t.pos] = [];
+      grouped[t.pos].push(idx);
+    });
+    Object.values(grouped).forEach(idxs => {
+      idxs.forEach((idx, i) => {
+        const pos = fieldPercent(tokensData[idx].pos);
+        const offsetX = idxs.length > 1 ? (i - (idxs.length - 1) / 2) * 6 : 0;
+        tokenEls[idx].style.left = (pos.x) + '%';
+        tokenEls[idx].style.top = (pos.y) + '%';
+        tokenEls[idx].style.marginLeft = offsetX + 'px';
+      });
+    });
+  }
+  placeTokens();
+
+  // Bewegt eine Figur in EINEM durchgehenden Bewegungsablauf von Start- zu Zielfeld
+  // (kein Feld-für-Feld-Ruckeln) und lässt die Kamera synchron mitfahren:
+  // 1) kurzer Sprung/Zoom zur Startposition, 2) durchgehendes Mitverfolgen bis zum
+  // Zielfeld, 3) sanftes Zurückzoomen zur Gesamtübersicht.
+  const SPARKLE_EMOJIS = ['✨', '⭐', '💫'];
+
+  const CONFETTI_COLORS = ['#AC58F9', '#C577FB', '#D5A1FB', '#8C39F7', '#F7F1FA', '#330D98'];
+
+  function spawnConfetti() {
+    const layer = document.getElementById('confettiLayer');
+    layer.innerHTML = '';
+    const count = 90;
+    for (let i = 0; i < count; i++) {
+      const piece = document.createElement('div');
+      piece.className = 'confetti-piece';
+      piece.style.left = Math.random() * 100 + 'vw';
+      piece.style.background = CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)];
+      piece.style.animationDuration = (2.6 + Math.random() * 2.2) + 's';
+      piece.style.animationDelay = (Math.random() * 0.7) + 's';
+      piece.style.setProperty('--rot', (280 + Math.random() * 400) + 'deg');
+      if (Math.random() > 0.5) piece.style.borderRadius = '50%';
+      layer.appendChild(piece);
+    }
+  }
+
+  function showWinnerOverlay(name) {
+    document.getElementById('winnerName').textContent = name;
+    document.getElementById('winnerOverlay').classList.remove('hidden');
+    spawnConfetti();
+  }
+
+  document.getElementById('btnWin').addEventListener('click', () => {
+    showWinnerOverlay('Sascha'); // Platzhaltername für die Demo
+  });
+  document.getElementById('btnCloseWinner').addEventListener('click', () => {
+    document.getElementById('winnerOverlay').classList.add('hidden');
+  });
+
+  // Erzeugt einen aufsteigenden Ring aus Glitzer-Partikeln um die Spielfigur herum -
+  // wird ausgelöst, sobald eine Figur auf einem Schätzen-Feld (grün) landet
+  function spawnSparkles(tokenEl) {
+    const wrap = document.createElement('div');
+    wrap.className = 'sparkle-ring';
+    wrap.style.left = tokenEl.style.left;
+    wrap.style.top = tokenEl.style.top;
+    ring.appendChild(wrap);
+
+    const count = 16;
+    for (let i = 0; i < count; i++) {
+      const orbit = document.createElement('div');
+      orbit.className = 'sparkle-orbit';
+      orbit.style.setProperty('--startAngle', (i / count) * 360 + 'deg');
+
+      const p = document.createElement('span');
+      p.className = 'sparkle-particle';
+      p.textContent = SPARKLE_EMOJIS[i % SPARKLE_EMOJIS.length];
+      p.style.setProperty('--radius', (16 + Math.random() * 8) + 'px');
+
+      orbit.appendChild(p);
+      wrap.appendChild(orbit);
+    }
+    setTimeout(() => wrap.remove(), 1500);
+  }
+
+  function easeInOutQuad(t) {
+    return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+  }
+
+  // Baut die Liste der tatsächlichen Wegpunkte entlang der Feld-Kette (nicht der Luftlinie!),
+  // damit die Bewegung bei Ecken wirklich außen herumgeht statt quer durch die Mitte zu schneiden
+  function buildPath(startPos, steps) {
+    const path = [];
+    for (let s = 0; s <= steps; s++) {
+      path.push(fieldPercent((startPos + s) % BOARD_SLOTS));
+    }
+    return path;
+  }
+
+  function animateTokenMove(tokenIdx, steps, onDone) {
+    const startPos = tokensData[tokenIdx].pos;
+    const endPos = (startPos + steps) % BOARD_SLOTS;
+    const path = buildPath(startPos, steps);
+    const segments = path.length - 1;
+    const glideDuration = 260 + steps * 260; // etwas länger bei mehr Feldern
+
+    // 1) Kamera springt kurz zur aktuellen Position der ziehenden Figur (schneller Sprung)
+    moveCameraToward(path[0], 380);
+
+    setTimeout(() => {
+      // 2) Figur UND Kamera folgen gemeinsam, frameweise, exakt der echten Feld-Kette entlang
+      //    des Rechteck-Rands - kein Abkürzen quer durchs Brett, kein Ruckeln zwischen Feldern
+      const tokenEl = tokenEls[tokenIdx];
+      tokenEl.style.transition = 'none'; // während der manuellen Animation keine CSS-Transition
+      cameraPan.style.transition = 'none';
+      tableTilt.style.transition = 'none';
+      tableTilt.style.setProperty('--tilt', ZOOM_TILT_DEG + 'deg');
+
+      const startTime = performance.now();
+      function frame(now) {
+        const rawProgress = Math.min((now - startTime) / glideDuration, 1);
+        const progress = easeInOutQuad(rawProgress);
+        const segFloat = progress * segments;
+        const segIndex = Math.min(Math.floor(segFloat), segments - 1);
+        const segProgress = segFloat - segIndex;
+        const a = path[segIndex], b = path[segIndex + 1];
+        const x = a.x + (b.x - a.x) * segProgress;
+        const y = a.y + (b.y - a.y) * segProgress;
+
+        tokenEl.style.left = x + '%';
+        tokenEl.style.top = y + '%';
+        applyCameraOffset({ x, y });
+
+        if (rawProgress < 1) {
+          requestAnimationFrame(frame);
+        } else {
+          tokensData[tokenIdx].pos = endPos;
+          placeTokens();
+          tokenEl.style.transition = '';
+          if (ESTIMATE_FIELDS.includes(endPos)) {
+            spawnSparkles(tokenEl);
+          }
+          const crossedStartFinish = Array.from({ length: steps }, (_, s) => (startPos + s + 1) % BOARD_SLOTS)
+            .includes(START_FINISH_INDEX);
+          if (crossedStartFinish) {
+            setTimeout(() => showWinnerOverlay(tokensData[tokenIdx].name), 700);
+          }
+          // 3) Wieder zur Gesamtübersicht herauszoomen
+          resetCamera(600);
+          if (onDone) setTimeout(onDone, 650);
+        }
+      }
+      requestAnimationFrame(frame);
+    }, 420);
+  }
+
+  function doSingleMove(onDone) {
+    // Abwechselnd "Spieler A" (Diamant) und "Spieler B" (Krone) ziehen lassen
+    activeTurn = activeTurn === 0 ? 2 : 0;
+    const steps = activeTurn === 0 ? 3 : 5;
+    animateTokenMove(activeTurn, steps, onDone);
+  }
+
+  document.getElementById('btnMove').addEventListener('click', () => doSingleMove());
+
+  document.getElementById('btnDoubleMove').addEventListener('click', () => {
+    // Zwei Spieler nacheinander ziehen lassen, ohne dass man zweimal klicken muss
+    document.getElementById('btnDoubleMove').disabled = true;
+    doSingleMove(() => {
+      doSingleMove(() => {
+        document.getElementById('btnDoubleMove').disabled = false;
+      });
+    });
+  });
+
+  document.getElementById('btnSparkle').addEventListener('click', () => {
+    // Direkter Test des Glitzer-Rings, ohne dass eine Figur erst dorthin ziehen muss
+    const demoTokenIdx = 0;
+    const tokenEl = tokenEls[demoTokenIdx];
+    spawnSparkles(tokenEl);
+  });
+
+  const DEMO_QUESTION = 'Wie viele Stufen hat der Eiffelturm bis zur obersten Plattform?';
+
+  // Zieht die oberste Karte vom Stapel: sie hebt sich ab, fliegt zum Bildschirm und dreht
+  // sich dabei ein paarmal um die eigene Achse, bis am Ende die Frage sichtbar wird
+  function simulateCardDraw() {
+    const deckEl = document.getElementById('cardDeck');
+    const deckRect = deckEl.getBoundingClientRect();
+    const layer = document.getElementById('cardFlightLayer');
+
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    // Wichtig: Der Stapel hat ein anderes Seitenverhältnis als der Bildschirm - eine einzige,
+    // einheitliche Skalierung würde die Karte am Anfang falsch (zu hoch/zu niedrig) verzerren.
+    // Deshalb X und Y getrennt skalieren, damit sie zu Beginn wirklich exakt die Form und
+    // Größe der obersten Stapel-Karte hat.
+    const initialScaleX = deckRect.width / vw;
+    const initialScaleY = deckRect.height / vh;
+    const deckLeft = deckRect.left;
+    const deckTop = deckRect.top;
+
+    // Ein Zwischenpunkt auf halbem Weg, an dem die Karte schon deutlich größer, aber noch
+    // nicht ganz bildschirmfüllend ist - sorgt für eine erkennbare Flugkurve statt einer
+    // reinen Geraden
+    const midScale = 0.42;
+    const midLeft = vw / 2 - (vw * midScale) / 2;
+    const midTop = vh / 2 - (vh * midScale) / 2 - vh * 0.03;
+
+    const outer = document.createElement('div');
+    outer.className = 'card-outer';
+    outer.innerHTML = `
+      <div class="card-flip" id="cardFlip">
+        <div class="face face-back">❓</div>
+        <div class="face face-front">
+          <div class="ff-phase-tag">Antwort-Phase</div>
+          <p class="ff-question">${DEMO_QUESTION}</p>
+          <div class="ff-answer-ui">
+            <label>Denk dir eine überzeugende Antwort aus:</label>
+            <textarea placeholder="Deine erfundene Antwort …"></textarea>
+            <button class="ff-submit">Antwort abschicken</button>
+            <button class="ff-back">🔙 Zurück zur Brett-Demo</button>
+          </div>
+        </div>
+      </div>
+    `;
+    layer.appendChild(outer);
+    const flip = outer.querySelector('#cardFlip');
+
+    // Startzustand explizit fixieren, BEVOR die Animation beginnt - so kann es keinen
+    // Zwischenschritt/Sprung geben, egal wie schnell der Browser die Animation aufgreift
+    outer.style.transform = `translate(${deckLeft}px, ${deckTop}px) scale(${initialScaleX}, ${initialScaleY})`;
+    flip.style.transform = 'rotateY(0deg)';
+    outer.offsetHeight; // erzwingt ein Neu-Layout, damit der Startzustand sicher gerendert wird
+
+    // Zwei Ebenen, EXAKT dieselbe Zeitleiste (Dauer + Kurve + Offsets) - dadurch wirkt es
+    // als eine einzige, ununterbrochene Bewegung: Abheben, Drehen und Wachsen bis zum
+    // kompletten Bildschirm laufen gemeinsam ineinander, statt als getrennte Schritte.
+    const timing = { duration: 3200, easing: 'cubic-bezier(.45, .05, .18, 1)', fill: 'forwards' };
+
+    outer.animate([
+      { transform: `translate(${deckLeft}px, ${deckTop}px) scale(${initialScaleX}, ${initialScaleY})`, offset: 0 },
+      { transform: `translate(${deckLeft}px, ${deckTop - vh * 0.025}px) scale(${initialScaleX * 1.18}, ${initialScaleY * 1.18})`, offset: 0.18 },
+      { transform: `translate(${midLeft}px, ${midTop}px) scale(${midScale}, ${midScale})`, offset: 0.62 },
+      { transform: 'translate(0px, 0px) scale(1, 1)', offset: 1 },
+    ], timing);
+
+    flip.animate([
+      { transform: 'rotateY(0deg)', offset: 0 },
+      { transform: 'rotateY(0deg)', offset: 0.18 },
+      { transform: 'rotateY(300deg)', offset: 0.62 },
+      { transform: 'rotateY(540deg)', offset: 1 },
+    ], timing);
+
+    // Die Ecken-Rundung wandert von "wie die Karte auf dem Stapel" (deutlich rund) zu
+    // "kompletter Bildschirm" (kantig) - läuft auf derselben Zeitleiste synchron mit.
+    // Wichtig: border-radius wird VOR der Skalierung angewendet, deshalb braucht es hier
+    // deutlich größere Werte, damit nach dem Verkleinern optisch dieselbe Rundung wie beim
+    // echten Stapel-Symbol entsteht.
+    const radiusKeyframes = [
+      { borderRadius: `${10 / initialScaleX}px`, offset: 0 },
+      { borderRadius: `${10 / (initialScaleX * 1.18)}px`, offset: 0.18 },
+      { borderRadius: `${18 / midScale}px`, offset: 0.62 },
+      { borderRadius: '0px', offset: 1 },
+    ];
+    outer.querySelectorAll('.face').forEach(faceEl => {
+      faceEl.animate(radiusKeyframes, timing);
+    });
+
+    // Den Stapel kurz ausblenden, damit sich das Abheben nicht wie ein "Sprung" anfühlt,
+    // sondern die fliegende Karte nahtlos an seine Stelle tritt
+    deckEl.style.transition = 'opacity 0.25s ease';
+    deckEl.style.opacity = '0';
+
+    outer.querySelector('.ff-back').addEventListener('click', (e) => {
+      e.stopPropagation();
+      resetCardDrawDemo(outer);
+    });
+
+    setTimeout(() => {
+      document.getElementById('demoRoot').classList.add('faded-out');
+    }, timing.duration * 0.62);
+  }
+
+  function resetCardDrawDemo(cardOuter) {
+    if (cardOuter) cardOuter.remove();
+    document.getElementById('cardFlightLayer').innerHTML = '';
+    document.getElementById('demoRoot').classList.remove('faded-out');
+    const deckEl = document.getElementById('cardDeck');
+    deckEl.style.opacity = '1';
+  }
+
+  document.getElementById('btnCardDraw').addEventListener('click', simulateCardDraw);
+
+  document.getElementById('btnReset').addEventListener('click', () => {
+    tokensData[0].pos = 2; tokensData[1].pos = 6; tokensData[2].pos = 6;
+    placeTokens();
+    resetCamera(400);
+  });
+
+  let activeTurn = 2; // wird beim ersten Klick zu 0
+  let currentTiltDeg = 30;
+
+  // Wichtig: camera-pan liegt AUSSERHALB der 3D-Rotation (table-tilt), verschiebt also in
+  // normalem 2D-Bildschirmraum - genau das war vorher der Bug (Verschiebung passierte
+  // versehentlich INNERHALB der gekippten Ebene und landete dadurch an falscher Stelle).
+  function applyCameraOffset(pos) {
+    // Die Tiefen-Achse (y) wirkt durch die Kippung leicht gestaucht - das gleichen wir aus,
+    // damit die Kamera wirklich exakt auf den Spielstein zentriert, auch wenn's dabei weit
+    // über den Brettrand (und sogar über den Bildschirmrand) hinausgeht.
+    const tiltRad = ZOOM_TILT_DEG * Math.PI / 180;
+    const foreshorten = Math.cos(tiltRad);
+    const offsetX = (50 - pos.x) * 2.3;
+    const offsetY = (50 - pos.y) * 2.3 * foreshorten;
+    cameraPan.style.setProperty('--camX', offsetX + 'px');
+    cameraPan.style.setProperty('--camY', (offsetY + 10) + 'px');
+    cameraPan.style.setProperty('--camZoom', '1.7');
+  }
+
+  function moveCameraToward(pos, durationMs) {
+    if (durationMs) {
+      // Exakt dieselbe Dauer UND Timing-Funktion für Neigung und Kamera-Pan, damit beide
+      // Bewegungen im Gleichschritt laufen statt gegeneinander zu "eiern"
+      cameraPan.style.transitionDuration = durationMs + 'ms';
+      cameraPan.style.transitionTimingFunction = 'ease-in-out';
+      tableTilt.style.transitionDuration = durationMs + 'ms';
+      tableTilt.style.transitionTimingFunction = 'ease-in-out';
+    }
+    tableTilt.style.setProperty('--tilt', ZOOM_TILT_DEG + 'deg');
+    applyCameraOffset(pos);
+  }
+  function resetCamera(durationMs) {
+    const dur = durationMs || 500;
+    // transition-property wurde während der frameweisen Pfad-Animation auf 'none' gesetzt -
+    // hier wird sie wieder aktiv gesetzt, sonst würde gar kein Übergang mehr stattfinden
+    cameraPan.style.transition = `transform ${dur}ms ease-in-out`;
+    tableTilt.style.transition = `transform ${dur}ms ease-in-out`;
+    tableTilt.style.setProperty('--tilt', currentTiltDeg + 'deg');
+    cameraPan.style.setProperty('--camX', '0px');
+    cameraPan.style.setProperty('--camY', '0px');
+    cameraPan.style.setProperty('--camZoom', '0.92');
+  }
+  const ZOOM_TILT_DEG = 45; // flacherer Blickwinkel beim Ranzoomen, um die Figur über die Felder laufen zu sehen
+
+  const cameraPan = document.getElementById('cameraPan');
+  const tableTilt = document.getElementById('tableTilt');
+  document.documentElement.style.setProperty('--base-tilt', currentTiltDeg + 'deg');
+  document.getElementById('tiltSlider').addEventListener('input', (e) => {
+    currentTiltDeg = Number(e.target.value);
+    tableTilt.style.setProperty('--tilt', e.target.value + 'deg');
+    document.documentElement.style.setProperty('--base-tilt', e.target.value + 'deg');
+  });
+  document.getElementById('spinSlider').addEventListener('input', (e) => {
+    tableTilt.style.setProperty('--spin', e.target.value + 'deg');
+  });
+</script>
+
+</body>
+</html>

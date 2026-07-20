@@ -16,7 +16,7 @@
   <p id="reconnect-banner" class="reconnect-banner hidden">🔄 Verbinde dich wieder mit deinem Raum …</p>
   <p id="connection-issue-banner" class="connection-issue-banner hidden"></p>
 
-  <!-- START SCREEN -->
+  <!-- START SCREEN: nur Raum-Code beitreten oder neuen Raum erstellen, sonst nichts -->
   <section id="screen-start" class="screen active">
     <div class="screen-scroll">
       <div class="brand">
@@ -26,12 +26,6 @@
       </div>
 
       <div class="card">
-        <label>Dein Name</label>
-        <input id="input-name" type="text" maxlength="16" placeholder="z.B. Sascha" />
-
-        <label>Deine Spielfigur</label>
-        <div id="avatar-picker" class="avatar-picker"></div>
-
         <div class="actions">
           <input id="input-code" type="text" maxlength="4" inputmode="numeric" placeholder="Raum-Code" class="input-code-prominent" />
           <button id="btn-join" class="btn btn-join-prominent">Raum beitreten</button>
@@ -39,6 +33,24 @@
           <button id="btn-create" class="btn btn-secondary">Neuen Raum erstellen</button>
         </div>
         <p id="error-msg" class="error"></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- SETUP SCREEN: Name + Spielfigur wählen, dann bestätigen - hier passiert der eigentliche
+       Beitritt/die Raum-Erstellung erst, nicht schon auf dem Startbildschirm -->
+  <section id="screen-setup" class="screen">
+    <button id="btn-back-to-start" class="btn-back" title="Zurück">←</button>
+    <div class="screen-scroll">
+      <div class="card">
+        <label>Dein Name</label>
+        <input id="input-name-setup" type="text" maxlength="16" placeholder="z.B. Sascha" />
+
+        <label>Deine Spielfigur</label>
+        <div id="avatar-picker" class="avatar-picker"></div>
+
+        <button id="btn-confirm-setup" class="btn btn-primary">Los geht's</button>
+        <p id="setup-error-msg" class="error"></p>
       </div>
     </div>
   </section>
@@ -115,6 +127,7 @@
 
     <div class="screen-footer">
       <button id="btn-start-round" class="btn btn-primary">Runde starten</button>
+      <p id="lobby-error-msg" class="error"></p>
     </div>
   </section>
 

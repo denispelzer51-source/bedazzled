@@ -150,6 +150,16 @@ Fragen-Verwaltung (`/admin.html`) zeigt Fragen nach Kategorie gruppiert und aufk
   erreichbar, ohne auf fragile CSS-Höhen-Verkettungen angewiesen zu sein.
 - **20.07.2026:** Grundlegender Layout-Umbau für die native App (siehe Korrektur oben)
 
+- **20.07.2026:** Startbildschirm in zwei Schritte aufgeteilt. Schritt 1 (Startbildschirm):
+  nur noch Raum-Code-Feld + "Raum beitreten" darüber angeordnet, sowie "Neuen Raum
+  erstellen" darunter - kein Name, keine Spielfigur mehr sichtbar. Schritt 2 (neuer
+  Setup-Bildschirm): erscheint nach Klick auf einen der beiden Buttons, hier werden Name und
+  Spielfigur gewählt, bestätigt über "Los geht's" - erst dann findet der eigentliche
+  Beitritt/die Rundenerstellung statt (vorher passierte das schon beim ersten Klick auf dem
+  Startbildschirm). Ein Zurück-Pfeil führt zum Startbildschirm zurück, falls man Code/Auswahl
+  ändern möchte. Fehlermeldungen (falscher Code, Spielfigur vergeben, etc.) erscheinen jetzt
+  automatisch auf dem gerade aktiven Bildschirm statt nur auf dem Startbildschirm.
+
 ## Fragen-Verwaltung: Zweistufiges Filtersystem
 
 Jede Frage hat jetzt zwei Ebenen:
