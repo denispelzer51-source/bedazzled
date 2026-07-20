@@ -202,6 +202,15 @@ h2 { font-family: var(--font-display); font-weight: 700; font-size: 24px; text-a
 .reveal-item.my-wrong .my-vote-badge { background: var(--pink); color: var(--night); }
 .reveal-item.typing-preview { opacity: 0.75; border-style: dashed; border-color: rgba(255,255,255,0.15); }
 .typing-tag { display: block; font-size: 11px; color: var(--gold); font-style: italic; margin-top: 4px; }
+
+/* Kompaktere Darstellung für die Live-Übersicht + Antwortmöglichkeiten während der
+   Abstimm-Phase (Moderator-Ansicht) - sonst verschwindet der "Auflösen"-Button unten */
+#moderator-vote-preview.reveal-list,
+#moderator-answer-options.reveal-list { gap: 6px; margin-bottom: 12px; }
+#moderator-vote-preview .reveal-item,
+#moderator-answer-options .reveal-item { padding: 8px 12px; font-size: 14px; line-height: 1.3; }
+#moderator-vote-preview .typing-tag { display: inline; margin-top: 0; margin-left: 6px; }
+#moderator-vote-preview .reveal-item .owner { font-size: 11px; margin-top: 2px; }
 .placeholder-text { color: var(--ink-dim); font-style: italic; }
 
 .reconnect-banner {

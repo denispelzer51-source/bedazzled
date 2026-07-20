@@ -854,6 +854,8 @@ socket.on('state', (state) => {
     if (iAmModerator) {
       document.getElementById('vote-options').classList.add('hidden');
       document.getElementById('btn-submit-vote').classList.add('hidden');
+      document.getElementById('vote-submitted-msg').classList.add('hidden');
+      document.getElementById('vote-question-hint').classList.add('hidden');
       document.getElementById('moderator-vote-wait').classList.remove('hidden');
 
       const optionsBox = document.getElementById('moderator-answer-options');
@@ -882,6 +884,7 @@ socket.on('state', (state) => {
       document.getElementById('moderator-vote-wait').classList.add('hidden');
       document.getElementById('moderator-answer-options').classList.add('hidden');
       document.getElementById('moderator-vote-preview').classList.add('hidden');
+      document.getElementById('vote-question-hint').classList.remove('hidden');
       if (enteringVoting) {
         document.getElementById('vote-options').classList.remove('hidden');
         renderVoteOptions(state.shuffledAnswers);

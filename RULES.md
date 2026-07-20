@@ -123,6 +123,13 @@ Fragen-Verwaltung (`/admin.html`) zeigt Fragen nach Kategorie gruppiert und aufk
   bottom)` sauber abgesetzt - wirkt sich nur in der echten App-Hülle aus, im normalen
   Browser unverändert.
 
+- **20.07.2026:** Abstimm-Phase für den Moderator aufgeräumt: "Welche Antwort ist die
+  echte?" und "Deine Stimme wurde abgeschickt ✓" ergaben für die Moderation keinen Sinn und
+  wurden entfernt, ebenso das überflüssige "Antwortmöglichkeiten:"-Label (die Liste selbst
+  bleibt). Die Live-Übersicht ("wer worauf tippt") ist jetzt deutlich kompakter (kleinere
+  Kästchen, weniger Abstand), damit der "Auflösen"-Button am Ende nicht mehr aus dem
+  sichtbaren Bereich rutscht.
+
 ## Fragen-Verwaltung: Zweistufiges Filtersystem
 
 Jede Frage hat jetzt zwei Ebenen:
