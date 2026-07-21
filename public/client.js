@@ -1243,20 +1243,27 @@ document.getElementById('btn-intro-next').addEventListener('click', () => {
   }
 });
 
-// ---- DEMO: Simulierte Runde mit Bots ----
-const DEMO_QUESTION = 'Wie viele Knochen hat ein erwachsener Mensch?';
-const DEMO_REAL_ANSWER = '206';
-const DEMO_BOTS = [
-  { name: 'Mia', avatar: '💎', answer: '198', vote: 1 },   // tippt auf Bot 2s Antwort
-  { name: 'Leo', avatar: '🎭', answer: '212', vote: 2 },   // tippt auf echte Antwort
-  { name: 'Zoe', avatar: '🔮', answer: '196', vote: 0 },   // tippt auf Mias Antwort
-];
+// Swipe-Gesten für Intro-Slides
+(function() {
+  let touchStartX = 0;
+  const el = document.getElementById('screen-intro');
+  el.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; }, { passive: true });
+  el.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - touchStartX;
+    if (Math.abs(dx) < 40) return; // zu kurze Geste ignorieren
+    if (dx < 0 && introSlide < INTRO_TOTAL - 1) { introSlide++; showIntroSlide(introSlide); }
+    if (dx > 0 && introSlide > 0) { introSlide--; showIntroSlide(introSlide); }
+  }, { passive: true });
+})();
 
-// Antworten: [0]=Mia, [1]=Leo, [2]=Zoe, [3]=Echte Antwort (shuffled in Phase 3)
-// Demo-Phasen: 0=Lobby, 1=Frage/Antworten tippen, 2=Abstimmung, 3=Auflösung, 4=Ergebnis
-let demoPhase = 0;
-let demoUserAnswer = null;
-let demoUserVote = null;
+// ---- DEMO: Simulierte Runde mit Bots ----
+const DEMO_QUESTION = 'Welchen ungewöhnlichen Trick nutzte Victor Hugo, als er unbedingt sein Buch „Der Glöckner von Notre-Dame" fertigschreiben musste?';
+const DEMO_REAL_ANSWER = 'Er ließ fast seine gesamte Kleidung wegschließen, damit er das Haus nicht verlassen konnte';
+const DEMO_BOTS = [
+  { name: 'Mia', avatar: '💎', answer: 'Er schloss sich für Wochen in einen Klosterkeller ein', vote: 1 },
+  { name: 'Leo', avatar: '🎭', answer: 'Er ließ sich die Hände mit Seide bandagieren', vote: 2 },
+  { name: 'Zoe', avatar: '🔮', answer: 'Sein Verleger pfändete all seine Möbel als Druckmittel', vote: 0 },
+];
 
 const DEMO_SHUFFLED = [
   { text: DEMO_BOTS[0].answer, ownerId: 'bot0', isReal: false },
@@ -1265,18 +1272,29 @@ const DEMO_SHUFFLED = [
   { text: DEMO_BOTS[2].answer, ownerId: 'bot2',  isReal: false },
 ];
 
+// Demo-Phasen: 0=Lobby, 1=Frage/Antworten tippen, 2=Abstimmung, 3=Auflösung, 4=Ergebnis
+let demoPhase = 0;
+let demoUserVote = null;
+
 function renderDemo() {
   const content = document.getElementById('demo-content');
   const nextBtn  = document.getElementById('btn-demo-next');
   nextBtn.classList.remove('hidden');
 
   if (demoPhase === 0) {
-    // Lobby
+    // Lobby – User als erster Spieler mit aufführen
+    const userAvatar = selectedAvatar || '⭐';
+    const userName = document.getElementById('input-name-setup')?.value?.trim() || 'Du';
     content.innerHTML = `
       <p class="demo-phase-label">Demo-Lobby</p>
       <h2 style="text-align:center;">Tutorial-Runde</h2>
-      <p style="text-align:center;color:rgba(255,255,255,0.6);font-size:14px;">Du spielst mit 3 Demo-Spielern. <strong>Du bist der/die Moderator:in</strong> in dieser Runde – du liest die Frage vor.</p>
+      <p style="text-align:center;color:rgba(255,255,255,0.6);font-size:14px;margin-bottom:20px;"><strong>Du bist der/die Moderator:in</strong> in dieser Runde – du liest die Frage vor, die anderen tippen ihre Antworten.</p>
       <div class="demo-bots">
+        <div class="demo-bot active" style="border:1.5px solid rgba(172,88,249,0.5);border-radius:12px;padding:8px 12px;">
+          <div class="demo-bot-avatar">${userAvatar}</div>
+          <div style="font-weight:700;">${escapeHtml(userName)}</div>
+          <div style="font-size:11px;color:var(--color-primary,#AC58F9);">Moderator:in</div>
+        </div>
         ${DEMO_BOTS.map(b => `<div class="demo-bot active"><div class="demo-bot-avatar">${b.avatar}</div><div>${b.name}</div></div>`).join('')}
       </div>
       <p class="demo-hint">Tippe auf „Weiter" um die Runde zu starten.</p>`;
