@@ -37,24 +37,34 @@
 
       <div class="tutorial-entry">
         <button id="btn-tutorial-toggle" class="btn btn-tutorial-toggle">🎓 Spielablauf &amp; Tutorial</button>
-        <div id="tutorial-submenu" class="tutorial-submenu hidden">
-          <button id="btn-go-intro" class="btn btn-secondary">📖 Spielablauf (3 Slides)</button>
-          <button id="btn-go-demo" class="btn btn-secondary">🕹️ Tutorial mit Demo-Runde</button>
-        </div>
       </div>
     </div>
   </section>
 
   <!-- SETUP SCREEN: Name + Spielfigur wählen, dann bestätigen - hier passiert der eigentliche
-       Beitritt/die Raum-Erstellung erst, nicht schon auf dem Startbildschirm -->
+  <!-- SETUP SCREEN -->
   <section id="screen-setup" class="screen">
+    <button id="btn-back-to-start" class="btn-back" title="Zurück"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></button>
+    <div class="screen-scroll">
+      <div class="brand">
+        <img src="logo.png" alt="Bedazzled Logo" class="brand-logo" />
+      </div>
+      <div class="card">
+        <label>Dein Name</label>
+        <input id="input-name-setup" type="text" maxlength="16" placeholder="z.B. Sascha" />
+        <label>Deine Spielfigur</label>
+        <div id="avatar-picker" class="avatar-picker"></div>
+        <button id="btn-confirm-setup" class="btn btn-primary">Los geht's</button>
+        <p id="setup-error-msg" class="error"></p>
+      </div>
+    </div>
+  </section>
 
-  <!-- INTRO SCREEN: 3 Slides die das Spielprinzip erklären -->
+  <!-- INTRO SCREEN: 3 Slides -->
   <section id="screen-intro" class="screen">
     <button class="btn-back" id="btn-intro-back" title="Zurück"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></button>
     <div class="screen-scroll intro-screen">
       <div class="intro-slides">
-
         <div class="intro-slide" data-slide="0">
           <div class="intro-icon">🎭</div>
           <h2 class="intro-title">Das Prinzip</h2>
@@ -68,7 +78,6 @@
             </ul>
           </div>
         </div>
-
         <div class="intro-slide hidden" data-slide="1">
           <div class="intro-icon">🗳️</div>
           <h2 class="intro-title">Die Abstimmung</h2>
@@ -77,7 +86,6 @@
             <p>💡 <strong>Tipp:</strong> Formulier deine erfundene Antwort so, dass sie klingt wie ein echtes Faktum. Je überzeugender, desto mehr Punkte.</p>
           </div>
         </div>
-
         <div class="intro-slide hidden" data-slide="2">
           <div class="intro-icon">🏆</div>
           <h2 class="intro-title">Die Punkte</h2>
@@ -100,10 +108,7 @@
           </div>
           <p class="intro-body" style="margin-top:18px;">Der/Die Moderator:in rotiert jede Runde – alle kommen dran!</p>
         </div>
-
       </div>
-
-      <!-- Navigation -->
       <div class="intro-nav">
         <button id="btn-intro-prev" class="btn btn-secondary intro-nav-btn" disabled>← Zurück</button>
         <div class="intro-dots">
@@ -116,7 +121,7 @@
     </div>
   </section>
 
-  <!-- DEMO SCREEN: Simulierte Runde mit Bots -->
+  <!-- DEMO SCREEN -->
   <section id="screen-demo" class="screen">
     <button class="btn-back" id="btn-demo-back" title="Zurück"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></button>
     <div class="screen-scroll">
@@ -125,24 +130,7 @@
       <button id="btn-demo-exit" class="btn btn-secondary" style="margin-top:10px;">Tutorial beenden</button>
     </div>
   </section>
-    <button id="btn-back-to-start" class="btn-back" title="Zurück"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></button>
-    <div class="screen-scroll">
-      <div class="brand">
-        <img src="logo.png" alt="Bedazzled Logo" class="brand-logo" />
-      </div>
 
-      <div class="card">
-        <label>Dein Name</label>
-        <input id="input-name-setup" type="text" maxlength="16" placeholder="z.B. Sascha" />
-
-        <label>Deine Spielfigur</label>
-        <div id="avatar-picker" class="avatar-picker"></div>
-
-        <button id="btn-confirm-setup" class="btn btn-primary">Los geht's</button>
-        <p id="setup-error-msg" class="error"></p>
-      </div>
-    </div>
-  </section>
 
   <!-- PENDING JOIN SCREEN: Spieler ist vorgemerkt und wartet auf Lobby -->
   <section id="screen-pending" class="screen">
@@ -336,6 +324,19 @@
     </div>
   </div>
 </div>
+<!-- Tutorial-Menü-Overlay -->
+<div id="tutorial-overlay" class="overlay hidden">
+  <div class="overlay-card" style="text-align:center;max-width:320px;width:92%;">
+    <h2 style="margin:0 0 8px;">🎓 Spielablauf &amp; Tutorial</h2>
+    <p style="font-size:14px;color:rgba(255,255,255,0.5);margin:0 0 22px;">Was möchtest du tun?</p>
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <button id="btn-go-intro" class="btn btn-primary">📖 Spielablauf (3 Slides)</button>
+      <button id="btn-go-demo" class="btn btn-secondary">🕹️ Tutorial mit Demo-Runde</button>
+      <button id="btn-tutorial-close" class="btn btn-secondary">Schließen</button>
+    </div>
+  </div>
+</div>
+
 <!-- Invite-Popup -->
 <div id="invite-overlay" class="overlay hidden">
   <div class="overlay-card invite-card">

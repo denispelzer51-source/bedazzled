@@ -1198,10 +1198,12 @@ socket.on('state', (state) => {
 // SPIELABLAUF & TUTORIAL
 // ============================================================
 
-// ---- Toggle Sub-Menü auf dem Startscreen ----
+// ---- Toggle Tutorial-Overlay ----
 document.getElementById('btn-tutorial-toggle').addEventListener('click', () => {
-  const sub = document.getElementById('tutorial-submenu');
-  sub.classList.toggle('hidden');
+  document.getElementById('tutorial-overlay').classList.toggle('hidden');
+});
+document.getElementById('btn-tutorial-close').addEventListener('click', () => {
+  document.getElementById('tutorial-overlay').classList.add('hidden');
 });
 
 // ---- SPIELABLAUF: 3-Slide Intro ----
@@ -1223,6 +1225,7 @@ function showIntroSlide(n) {
 }
 
 document.getElementById('btn-go-intro').addEventListener('click', () => {
+  document.getElementById('tutorial-overlay').classList.add('hidden');
   introSlide = 0;
   showIntroSlide(0);
   showScreen('intro');
@@ -1237,7 +1240,6 @@ document.getElementById('btn-intro-next').addEventListener('click', () => {
     showIntroSlide(introSlide);
   } else {
     showScreen('start');
-    document.getElementById('tutorial-submenu').classList.add('hidden');
   }
 });
 
@@ -1359,6 +1361,7 @@ function renderDemo() {
 }
 
 document.getElementById('btn-go-demo').addEventListener('click', () => {
+  document.getElementById('tutorial-overlay').classList.add('hidden');
   demoPhase = 0;
   demoUserVote = null;
   renderDemo();
@@ -1372,6 +1375,5 @@ document.getElementById('btn-demo-next').addEventListener('click', () => {
     renderDemo();
   } else {
     showScreen('start');
-    document.getElementById('tutorial-submenu').classList.add('hidden');
   }
 });
