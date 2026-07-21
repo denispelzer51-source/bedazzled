@@ -17,11 +17,14 @@ socket.on('connect_error', () => {
 
 // ---------- SOUNDEFFEKTE (dezent, per Web Audio erzeugt, keine externen Dateien nötig) ----------
 let audioCtx = null;
+let soundMuted = localStorage.getItem('bedazzled_muted') === 'true';
+
 function getAudioCtx() {
   if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   return audioCtx;
 }
 function beep(freq, duration, volume, type) {
+  if (soundMuted) return;
   try {
     const ctx = getAudioCtx();
     const osc = ctx.createOscillator();
@@ -42,6 +45,7 @@ function playRevealSound() {
   setTimeout(() => beep(760, 0.16, 0.06, 'sine'), 90);
 }
 function playHopSound() {
+  if (soundMuted) return;
   try {
     const ctx = getAudioCtx();
     const now = ctx.currentTime;
@@ -103,7 +107,28 @@ document.getElementById('theme-toggle').addEventListener('click', () => {
 });
 
 // ---------- EINSTELLUNGEN ----------
+function applySoundMuted(muted) {
+  soundMuted = muted;
+  localStorage.setItem('bedazzled_muted', muted);
+  const btn = document.getElementById('btn-toggle-sound');
+  if (btn) btn.textContent = muted ? '🔇 Aus' : '🔊 An';
+}
+applySoundMuted(soundMuted);
+
+document.getElementById('btn-toggle-sound').addEventListener('click', () => {
+  applySoundMuted(!soundMuted);
+});
+
 document.getElementById('btn-settings').addEventListener('click', () => {
+  // Raumcode im Settings-Overlay anzeigen, wenn man gerade in einem Raum ist
+  const roomRow = document.getElementById('settings-room-row');
+  const roomCodeEl = document.getElementById('settings-room-code');
+  if (currentCode) {
+    roomCodeEl.textContent = currentCode;
+    roomRow.classList.remove('hidden');
+  } else {
+    roomRow.classList.add('hidden');
+  }
   document.getElementById('settings-overlay').classList.remove('hidden');
 });
 document.getElementById('btn-close-settings').addEventListener('click', () => {
@@ -190,7 +215,6 @@ const screens = {
 function showScreen(name) {
   Object.values(screens).forEach(s => s.classList.remove('active'));
   screens[name].classList.add('active');
-  document.getElementById('btn-settings').classList.toggle('visible', name === 'start');
   updateBoardBarHeightVar();
 }
 

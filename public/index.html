@@ -264,14 +264,22 @@
   </div>
 </div>
 
-<!-- Settings-Overlay (nur vom Start-Screen aus erreichbar) -->
+<!-- Settings-Overlay (jederzeit erreichbar) -->
 <div id="settings-overlay" class="overlay hidden">
   <div class="overlay-card settings-card">
     <h2>⚙️ Einstellungen</h2>
     <div id="settings-content" class="settings-content">
+      <div id="settings-room-row" class="settings-row settings-room-row hidden">
+        <span>Raum-Code</span>
+        <span id="settings-room-code" class="settings-code">----</span>
+      </div>
       <div class="settings-row">
-        <span>Helles / Dunkles Design</span>
+        <span>Hell / Dunkel</span>
         <button id="theme-toggle" class="btn btn-secondary btn-theme-toggle">🌙 Dunkel</button>
+      </div>
+      <div class="settings-row">
+        <span>Soundeffekte</span>
+        <button id="btn-toggle-sound" class="btn btn-secondary btn-theme-toggle">🔊 An</button>
       </div>
     </div>
     <button id="btn-close-settings" class="btn btn-primary">Schließen</button>

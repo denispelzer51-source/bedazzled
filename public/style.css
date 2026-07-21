@@ -357,7 +357,7 @@ h2 { font-family: var(--font-display); font-weight: 700; font-size: 24px; text-a
 
 /* Einstellungen-Zahnrad: nur auf dem Startbildschirm sichtbar, oben links (wo sonst der
    Zurück-Pfeil sitzt - auf dem Startbildschirm gibt's den ja nicht) */
-#btn-settings { display: none; font-size: 22px; }
+#btn-settings { display: flex; font-size: 22px; position: fixed; top: calc(16px + env(safe-area-inset-top)); right: 16px; left: auto; z-index: 31; }
 #btn-settings.visible { display: flex; }
 .settings-card { text-align: left; max-width: 380px; width: 100%; }
 .settings-card h2 { text-align: center; }
@@ -660,22 +660,21 @@ h2 { font-family: var(--font-display); font-weight: 700; font-size: 24px; text-a
 .invite-card .share-buttons { flex-direction: column; gap: 10px; margin: 0 0 12px; }
 .invite-card .btn-share { font-size: 15px; padding: 14px 16px; width: 100%; }
 
-/* ---- Spiel-verlassen-Button (Text-Link-Style, in allen Game-Screens unten) ---- */
+/* ---- Spiel-verlassen-Button (in allen Game-Screens unten) ---- */
 .btn-leave-game {
   background: none;
-  border: none;
-  color: rgba(255,255,255,0.35);
-  font-size: 13px;
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 10px;
+  color: rgba(255,255,255,0.55);
+  font-size: 14px;
   cursor: pointer;
-  padding: 10px 0 6px;
-  text-decoration: underline;
-  text-underline-offset: 3px;
+  padding: 12px 20px;
   display: block;
   width: 100%;
   text-align: center;
-  margin-top: 8px;
+  margin-top: 16px;
 }
-.btn-leave-game:hover { color: var(--pink, #e8547a); }
+.btn-leave-game:hover { border-color: var(--pink, #e8547a); color: var(--pink, #e8547a); }
 
 /* ---- Settings-Row: Zeile innerhalb des Settings-Overlays ---- */
 .settings-row {
@@ -692,3 +691,13 @@ h2 { font-family: var(--font-display); font-weight: 700; font-size: 24px; text-a
 /* Frage-Text bekommt rechts Platz, damit er nicht unter den (jetzt fehlenden) Mond läuft –
    der Puffer bleibt als genereller Rand zum rechten Rand */
 .question-text { padding-right: 8px; }
+
+/* ---- Settings: Raumcode-Zeile ---- */
+.settings-room-row { border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 14px; margin-bottom: 4px; }
+.settings-code {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--color-primary, #AC58F9);
+  letter-spacing: 0.08em;
+}
