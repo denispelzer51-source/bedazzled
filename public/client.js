@@ -486,6 +486,14 @@ document.getElementById('btn-quit-cancel').addEventListener('click', () => {
   document.getElementById('quit-overlay').classList.add('hidden');
 });
 
+// ---- Spieler einladen: Popup öffnen/schließen ----
+document.getElementById('btn-invite').addEventListener('click', () => {
+  document.getElementById('invite-overlay').classList.remove('hidden');
+});
+document.getElementById('btn-invite-close').addEventListener('click', () => {
+  document.getElementById('invite-overlay').classList.add('hidden');
+});
+
 document.getElementById('btn-copy-link').addEventListener('click', async () => {
   const link = `${window.location.origin}/?room=${currentCode}`;
   try {
