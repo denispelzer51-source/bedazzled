@@ -582,6 +582,13 @@ io.on('connection', (socket) => {
       socket.emit('avatarTaken', { takenAvatars: taken });
       return;
     }
+    // Name darf in der Lobby nicht doppelt vorkommen
+    const nameNorm = (name || '').trim().toLowerCase();
+    const nameTaken = room.players.some(p => p.name.trim().toLowerCase() === nameNorm);
+    if (nameTaken) {
+      socket.emit('nameTaken', { name: (name || '').trim() });
+      return;
+    }
     const playerId = token || crypto.randomUUID();
     socket.data.token = playerId;
     socket.data.roomCode = code;
@@ -840,9 +847,12 @@ io.on('connection', (socket) => {
 
     // Wenn das Spiel doch schon in der Lobby ist, direkt beitreten
     if (room.phase === 'lobby') {
-      // Wiederverwendung der joinRoom-Logik
       const taken = getTakenAvatars(room);
       if (taken.includes(avatar)) { socket.emit('avatarTaken', { takenAvatars: taken }); return; }
+      const nameNorm = (name || '').trim().toLowerCase();
+      if (room.players.some(p => p.name.trim().toLowerCase() === nameNorm)) {
+        socket.emit('nameTaken', { name: (name || '').trim() }); return;
+      }
       const playerId = token || crypto.randomUUID();
       socket.data.token = playerId;
       socket.data.roomCode = code;
@@ -856,6 +866,14 @@ io.on('connection', (socket) => {
     // Spiel läuft noch → Vormerken
     if (!room.pendingPlayers) room.pendingPlayers = [];
 
+    // Name darf nicht doppelt vorkommen (aktiv oder pending)
+    const nameNorm = (name || '').trim().toLowerCase();
+    const nameByActive = room.players.some(p => p.name.trim().toLowerCase() === nameNorm);
+    const nameByPending = room.pendingPlayers.some(p => p.name.trim().toLowerCase() === nameNorm);
+    if (nameByActive || nameByPending) {
+      socket.emit('nameTaken', { name: (name || '').trim() }); return;
+    }
+
     // Avatar darf nicht doppelt vergeben sein (aktiv oder pending)
     const takenByActive = getTakenAvatars(room);
     const takenByPending = room.pendingPlayers.map(p => p.avatar);
@@ -868,12 +886,10 @@ io.on('connection', (socket) => {
     const playerId = token || crypto.randomUUID();
     socket.data.token = playerId;
     socket.data.roomCode = code;
-    // Socket dem Raum hinzufügen, damit er State-Updates bekommt (z.B. Spielbrett beobachten)
     socket.join(code);
 
     room.pendingPlayers.push({ id: playerId, name: name || 'Spieler', avatar: avatar || '💎', socketId: socket.id });
     socket.emit('pendingJoinQueued', { code, playerId });
-    // Allen anderen Spielern zeigen, dass jemand wartet (optional Info)
     broadcastState(code);
   });
 
@@ -914,6 +930,16 @@ io.on('connection', (socket) => {
   socket.on('revealResults', ({ code }) => {
     const room = rooms[code];
     if (!room || !isModerator(room, socket) || room.roundType === 'estimate') return;
+
+    // Alle Nicht-Moderatoren müssen abgestimmt haben
+    const moderatorId = room.players[room.moderatorIndex].id;
+    const voters = room.players.filter(p => p.id !== moderatorId);
+    const missingVotes = voters.filter(p => room.votes[p.id] === undefined);
+    if (missingVotes.length > 0) {
+      const names = missingVotes.map(p => p.name).join(', ');
+      socket.emit('errorMsg', `Noch nicht alle haben abgestimmt: ${names}`);
+      return;
+    }
 
     const prevPositions = {};
     room.players.forEach(p => { prevPositions[p.id] = p.position; });

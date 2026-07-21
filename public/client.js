@@ -186,10 +186,14 @@ const screens = {
   board: document.getElementById('screen-board'),
 };
 
+// Screens auf denen der X-Button erscheint (kein eigener Zurück-Pfeil)
+const QUIT_BTN_SCREENS = new Set(['answering', 'voting', 'reveal', 'board']);
+
 function showScreen(name) {
   Object.values(screens).forEach(s => s.classList.remove('active'));
   screens[name].classList.add('active');
   document.getElementById('btn-settings').classList.toggle('visible', name === 'start');
+  document.getElementById('btn-quit').classList.toggle('hidden', !QUIT_BTN_SCREENS.has(name));
   updateBoardBarHeightVar();
 }
 
@@ -235,9 +239,14 @@ if (testSlot) {
 }
 
 // Komfort: Wenn der Link mit einem Raum-Code geöffnet wurde (z.B. per WhatsApp geteilt),
-// Code direkt vorausfüllen, damit nur noch "Raum beitreten" getippt werden muss
+// direkt zum Setup-Screen springen – kein manueller "Raum beitreten"-Klick nötig
 if (roomFromLink && /^\d{4}$/.test(roomFromLink)) {
   document.getElementById('input-code').value = roomFromLink;
+  // awaitingJoinConfirmation setzen, damit der takenAvatars-Response
+  // automatisch zum Setup-Screen weiterleitet (genau wie beim Button-Klick)
+  awaitingJoinConfirmation = true;
+  pendingJoinCodeCheck = roomFromLink;
+  document.getElementById('btn-join').disabled = true;
   socket.emit('checkTakenAvatars', { code: roomFromLink });
 }
 
@@ -295,6 +304,13 @@ socket.on('avatarTaken', ({ takenAvatars: taken }) => {
   if (free) selectedAvatar = free.emoji;
   renderAvatarPicker();
   showError('Diese Spielfigur wurde gerade von jemand anderem gewählt. Bitte wähle eine andere.');
+});
+
+socket.on('nameTaken', ({ name }) => {
+  showError(`Der Name "${name}" ist in diesem Raum bereits vergeben. Bitte wähle einen anderen Namen.`);
+  // Namensfeld fokussieren und Text markieren, damit man sofort tippen kann
+  const nameInput = document.getElementById('input-name-setup');
+  if (nameInput) { nameInput.focus(); nameInput.select(); }
 });
 
 // ---------- START SCREEN: nur Auswahl, ob beitreten oder erstellen ----------
@@ -441,6 +457,33 @@ document.getElementById('btn-leave-room').addEventListener('click', () => {
   document.getElementById('input-code').value = '';
   showError('');
   showScreen('start');
+});
+
+// ---- X-Button: Spiel verlassen (mit Bestätigung) ----
+function doLeaveRoom() {
+  if (currentCode) socket.emit('leaveRoom', { code: currentCode });
+  clearSession();
+  currentCode = null;
+  myId = null;
+  lastState = null;
+  pendingIntent = null;
+  pendingJoinCode = null;
+  gameWasInProgress = false;
+  document.getElementById('board-bar').classList.add('hidden');
+  document.getElementById('input-code').value = '';
+  showError('');
+  showScreen('start');
+}
+
+document.getElementById('btn-quit').addEventListener('click', () => {
+  document.getElementById('quit-overlay').classList.remove('hidden');
+});
+document.getElementById('btn-quit-confirm').addEventListener('click', () => {
+  document.getElementById('quit-overlay').classList.add('hidden');
+  doLeaveRoom();
+});
+document.getElementById('btn-quit-cancel').addEventListener('click', () => {
+  document.getElementById('quit-overlay').classList.add('hidden');
 });
 
 document.getElementById('btn-copy-link').addEventListener('click', async () => {
@@ -1016,6 +1059,13 @@ socket.on('state', (state) => {
         div.innerHTML = `${text}${statusTag}<br><span class="owner">${escapeHtml(v.name)}</span>`;
         previewBox.appendChild(div);
       });
+
+      // "Auflösen"-Button erst freigeben, wenn alle abgestimmt haben
+      const totalVoters = Math.max(state.players.length - 1, 0);
+      const allVoted = state.votedCount >= totalVoters && totalVoters > 0;
+      const revealBtn = document.getElementById('btn-to-reveal');
+      revealBtn.disabled = !allVoted;
+      revealBtn.title = allVoted ? '' : 'Warten bis alle abgestimmt haben …';
     } else {
       document.getElementById('moderator-vote-wait').classList.add('hidden');
       document.getElementById('moderator-answer-options').classList.add('hidden');
@@ -1059,7 +1109,7 @@ socket.on('state', (state) => {
 
     if (state.roundType === 'estimate') {
       realBox.classList.remove('hidden');
-      realBox.textContent = 'Echte Zahl: ' + state.estimateRealAnswer;
+      realBox.innerHTML = `<span class="answer-label">Antwort:</span> <span class="answer-value">${state.estimateRealAnswer}</span>`;
       const medals = ['🥇', '🥈', '🥉'];
       const closenessCallouts = ['🎯 Am nächsten dran!', '👏 Ziemlich nah dran', '👍 Auch nicht schlecht'];
       (state.estimateResults || []).forEach(r => {
