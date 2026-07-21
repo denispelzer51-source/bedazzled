@@ -653,3 +653,9 @@ h2 { font-family: var(--font-display); font-weight: 700; font-size: 24px; text-a
   flex-direction: column;
   gap: 10px;
 }
+
+/* ---- Invite-Card (wie overlay-card, aber zentriert für die Share-Buttons) ---- */
+.invite-card { text-align: center; max-width: 320px; width: 92%; }
+.invite-card h2 { margin: 0 0 20px; }
+.invite-card .share-buttons { flex-direction: column; gap: 10px; margin: 0 0 12px; }
+.invite-card .btn-share { font-size: 15px; padding: 14px 16px; width: 100%; }

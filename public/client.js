@@ -869,6 +869,10 @@ function renderLobbyPlayerList(state) {
     }
     list.appendChild(li);
   });
+
+  // Hint "Mindestens 3 Spieler nötig" nur zeigen, wenn noch zu wenige da sind
+  const hintEl = document.getElementById('min-players-hint');
+  if (hintEl) hintEl.classList.toggle('hidden', state.players.length >= 3);
 }
 
 socket.on('kicked', () => {
