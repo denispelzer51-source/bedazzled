@@ -120,6 +120,12 @@ document.getElementById('btn-toggle-sound').addEventListener('click', () => {
 });
 
 document.getElementById('btn-settings').addEventListener('click', () => {
+  const overlay = document.getElementById('settings-overlay');
+  // Nochmal auf ⚙️ drücken schließt das Overlay wieder
+  if (!overlay.classList.contains('hidden')) {
+    overlay.classList.add('hidden');
+    return;
+  }
   // Raumcode im Settings-Overlay anzeigen, wenn man gerade in einem Raum ist
   const roomRow = document.getElementById('settings-room-row');
   const roomCodeEl = document.getElementById('settings-room-code');
@@ -129,7 +135,7 @@ document.getElementById('btn-settings').addEventListener('click', () => {
   } else {
     roomRow.classList.add('hidden');
   }
-  document.getElementById('settings-overlay').classList.remove('hidden');
+  overlay.classList.remove('hidden');
 });
 document.getElementById('btn-close-settings').addEventListener('click', () => {
   document.getElementById('settings-overlay').classList.add('hidden');
@@ -205,6 +211,8 @@ const screens = {
   start: document.getElementById('screen-start'),
   setup: document.getElementById('screen-setup'),
   pending: document.getElementById('screen-pending'),
+  intro: document.getElementById('screen-intro'),
+  demo: document.getElementById('screen-demo'),
   lobby: document.getElementById('screen-lobby'),
   answering: document.getElementById('screen-answering'),
   voting: document.getElementById('screen-voting'),
@@ -1186,3 +1194,184 @@ socket.on('state', (state) => {
   }
 });
 
+// ============================================================
+// SPIELABLAUF & TUTORIAL
+// ============================================================
+
+// ---- Toggle Sub-Menü auf dem Startscreen ----
+document.getElementById('btn-tutorial-toggle').addEventListener('click', () => {
+  const sub = document.getElementById('tutorial-submenu');
+  sub.classList.toggle('hidden');
+});
+
+// ---- SPIELABLAUF: 3-Slide Intro ----
+let introSlide = 0;
+const INTRO_TOTAL = 3;
+
+function showIntroSlide(n) {
+  document.querySelectorAll('.intro-slide').forEach((el, i) => el.classList.toggle('hidden', i !== n));
+  document.querySelectorAll('.intro-dot').forEach((d, i) => d.classList.toggle('active', i === n));
+  document.getElementById('btn-intro-prev').disabled = n === 0;
+  const nextBtn = document.getElementById('btn-intro-next');
+  if (n === INTRO_TOTAL - 1) {
+    nextBtn.textContent = '✓ Verstanden!';
+    nextBtn.classList.add('btn-primary');
+    nextBtn.classList.remove('btn-secondary');
+  } else {
+    nextBtn.textContent = 'Weiter →';
+  }
+}
+
+document.getElementById('btn-go-intro').addEventListener('click', () => {
+  introSlide = 0;
+  showIntroSlide(0);
+  showScreen('intro');
+});
+document.getElementById('btn-intro-back').addEventListener('click', () => showScreen('start'));
+document.getElementById('btn-intro-prev').addEventListener('click', () => {
+  if (introSlide > 0) { introSlide--; showIntroSlide(introSlide); }
+});
+document.getElementById('btn-intro-next').addEventListener('click', () => {
+  if (introSlide < INTRO_TOTAL - 1) {
+    introSlide++;
+    showIntroSlide(introSlide);
+  } else {
+    showScreen('start');
+    document.getElementById('tutorial-submenu').classList.add('hidden');
+  }
+});
+
+// ---- DEMO: Simulierte Runde mit Bots ----
+const DEMO_QUESTION = 'Wie viele Knochen hat ein erwachsener Mensch?';
+const DEMO_REAL_ANSWER = '206';
+const DEMO_BOTS = [
+  { name: 'Mia', avatar: '💎', answer: '198', vote: 1 },   // tippt auf Bot 2s Antwort
+  { name: 'Leo', avatar: '🎭', answer: '212', vote: 2 },   // tippt auf echte Antwort
+  { name: 'Zoe', avatar: '🔮', answer: '196', vote: 0 },   // tippt auf Mias Antwort
+];
+
+// Antworten: [0]=Mia, [1]=Leo, [2]=Zoe, [3]=Echte Antwort (shuffled in Phase 3)
+// Demo-Phasen: 0=Lobby, 1=Frage/Antworten tippen, 2=Abstimmung, 3=Auflösung, 4=Ergebnis
+let demoPhase = 0;
+let demoUserAnswer = null;
+let demoUserVote = null;
+
+const DEMO_SHUFFLED = [
+  { text: DEMO_BOTS[0].answer, ownerId: 'bot0', isReal: false },
+  { text: DEMO_REAL_ANSWER,    ownerId: 'REAL',  isReal: true  },
+  { text: DEMO_BOTS[1].answer, ownerId: 'bot1',  isReal: false },
+  { text: DEMO_BOTS[2].answer, ownerId: 'bot2',  isReal: false },
+];
+
+function renderDemo() {
+  const content = document.getElementById('demo-content');
+  const nextBtn  = document.getElementById('btn-demo-next');
+  nextBtn.classList.remove('hidden');
+
+  if (demoPhase === 0) {
+    // Lobby
+    content.innerHTML = `
+      <p class="demo-phase-label">Demo-Lobby</p>
+      <h2 style="text-align:center;">Tutorial-Runde</h2>
+      <p style="text-align:center;color:rgba(255,255,255,0.6);font-size:14px;">Du spielst mit 3 Demo-Spielern. <strong>Du bist der/die Moderator:in</strong> in dieser Runde – du liest die Frage vor.</p>
+      <div class="demo-bots">
+        ${DEMO_BOTS.map(b => `<div class="demo-bot active"><div class="demo-bot-avatar">${b.avatar}</div><div>${b.name}</div></div>`).join('')}
+      </div>
+      <p class="demo-hint">Tippe auf „Weiter" um die Runde zu starten.</p>`;
+    nextBtn.textContent = 'Runde starten →';
+
+  } else if (demoPhase === 1) {
+    // Antwort-Phase
+    content.innerHTML = `
+      <p class="demo-phase-label">Antwort-Phase</p>
+      <p class="question-text small" style="margin-bottom:16px;">${DEMO_QUESTION}</p>
+      <p style="font-size:14px;color:rgba(255,255,255,0.6);">Du bist Moderator:in – die anderen tippen gerade ihre Antworten …</p>
+      <div class="demo-bots" style="margin:20px 0;">
+        ${DEMO_BOTS.map((b, i) => `<div class="demo-bot active"><div class="demo-bot-avatar">${b.avatar}</div><div>${b.name}</div><div class="demo-typing">${i < 2 ? '✓ fertig' : '…tippt'}</div></div>`).join('')}
+      </div>
+      <p class="demo-hint">Im echten Spiel siehst du hier live, wer schon fertig ist.</p>`;
+    nextBtn.textContent = 'Zur Abstimmung →';
+
+  } else if (demoPhase === 2) {
+    // Abstimmungs-Phase
+    demoUserVote = null;
+    content.innerHTML = `
+      <p class="demo-phase-label">Abstimm-Phase</p>
+      <p class="question-text small" style="margin-bottom:16px;">${DEMO_QUESTION}</p>
+      <p style="font-size:14px;margin-bottom:12px;">Welche Antwort ist die <strong>echte</strong>?</p>
+      <div class="demo-answer-list">
+        ${DEMO_SHUFFLED.map((a, i) => `<button class="demo-answer-btn" data-idx="${i}">${a.text}</button>`).join('')}
+      </div>
+      <p class="demo-hint">Tippe auf eine Antwort, dann auf Weiter.</p>`;
+    nextBtn.textContent = 'Abstimmen →';
+    nextBtn.classList.add('hidden');
+
+    content.querySelectorAll('.demo-answer-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        content.querySelectorAll('.demo-answer-btn').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        demoUserVote = parseInt(btn.dataset.idx, 10);
+        nextBtn.classList.remove('hidden');
+      });
+    });
+
+  } else if (demoPhase === 3) {
+    // Auflösung
+    const userChose = demoUserVote !== null ? DEMO_SHUFFLED[demoUserVote] : null;
+    const userRight = userChose && userChose.isReal;
+    content.innerHTML = `
+      <p class="demo-phase-label">Auflösung</p>
+      <p class="question-text small" style="margin-bottom:16px;">${DEMO_QUESTION}</p>
+      <div class="demo-answer-list">
+        ${DEMO_SHUFFLED.map((a, i) => {
+          let cls = 'demo-answer-btn';
+          if (a.isReal) cls += ' correct';
+          else if (i === demoUserVote && !a.isReal) cls += ' wrong';
+          const owner = a.isReal ? '✅ Echte Antwort' : `😈 von ${DEMO_BOTS[['bot0','bot1','bot2'].indexOf(a.ownerId)]?.name || '?'}`;
+          return `<div class="${cls}">${a.text} <span style="font-size:12px;opacity:0.7;">${owner}</span></div>`;
+        }).join('')}
+      </div>
+      <p style="margin-top:16px;font-weight:700;text-align:center;font-size:1.1rem;color:${userRight ? 'var(--teal,#00E5A0)' : 'var(--pink,#e8547a)'}">
+        ${userRight ? '🎉 Richtig! Du bekommst +3 Punkte!' : '😅 Nicht ganz – die echte Antwort war 206!'}
+      </p>`;
+    nextBtn.textContent = 'Ergebnis ansehen →';
+
+  } else if (demoPhase === 4) {
+    // Ergebnis
+    const userRight = demoUserVote !== null && DEMO_SHUFFLED[demoUserVote].isReal;
+    content.innerHTML = `
+      <p class="demo-phase-label">Spielbrett</p>
+      <h2 style="text-align:center;">Nach dieser Runde</h2>
+      <div class="demo-bots" style="margin:20px 0 10px;">
+        <div class="demo-bot active" style="flex-direction:row;gap:10px;background:rgba(255,255,255,0.05);border-radius:12px;padding:10px 16px;width:100%;justify-content:space-between;">
+          <span>Du</span><span>${userRight ? '+3 Punkte' : '+0 Punkte'}</span>
+        </div>
+        ${DEMO_BOTS.map((b, i) => {
+          const botVote = DEMO_SHUFFLED[b.vote];
+          const pts = botVote.isReal ? 3 : 0;
+          // Wenn Bot auf dich getippt hätte wäre das +2 für dich, aber du bist Mod
+          return `<div class="demo-bot active" style="flex-direction:row;gap:10px;background:rgba(255,255,255,0.05);border-radius:12px;padding:10px 16px;width:100%;justify-content:space-between;"><span>${b.avatar} ${b.name}</span><span>+${pts} Punkte</span></div>`;
+        }).join('')}
+      </div>
+      <p class="demo-hint">Im echten Spiel ziehen die Figuren jetzt animiert über das Spielfeld!</p>`;
+    nextBtn.textContent = '✓ Tutorial beenden';
+  }
+}
+
+document.getElementById('btn-go-demo').addEventListener('click', () => {
+  demoPhase = 0;
+  demoUserVote = null;
+  renderDemo();
+  showScreen('demo');
+});
+document.getElementById('btn-demo-back').addEventListener('click', () => showScreen('start'));
+document.getElementById('btn-demo-exit').addEventListener('click', () => showScreen('start'));
+document.getElementById('btn-demo-next').addEventListener('click', () => {
+  if (demoPhase < 4) {
+    demoPhase++;
+    renderDemo();
+  } else {
+    showScreen('start');
+    document.getElementById('tutorial-submenu').classList.add('hidden');
+  }
+});
