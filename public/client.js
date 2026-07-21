@@ -1260,9 +1260,9 @@ document.getElementById('btn-intro-next').addEventListener('click', () => {
 const DEMO_QUESTION = 'Welchen ungewöhnlichen Trick nutzte Victor Hugo, als er unbedingt sein Buch „Der Glöckner von Notre-Dame" fertigschreiben musste?';
 const DEMO_REAL_ANSWER = 'Er ließ fast seine gesamte Kleidung wegschließen, damit er das Haus nicht verlassen konnte';
 const DEMO_BOTS = [
-  { name: 'Mia', avatar: '💎', answer: 'Er schloss sich für Wochen in einen Klosterkeller ein', vote: 1 },
-  { name: 'Leo', avatar: '🎭', answer: 'Er ließ sich die Hände mit Seide bandagieren', vote: 2 },
-  { name: 'Zoe', avatar: '🔮', answer: 'Sein Verleger pfändete all seine Möbel als Druckmittel', vote: 0 },
+  { name: 'Mia', avatar: '🎭', answer: 'Er schloss sich für Wochen in einen Klosterkeller ein', vote: 1 },
+  { name: 'Leo', avatar: '🔮', answer: 'Er ließ sich die Hände mit Seide bandagieren', vote: 2 },
+  { name: 'Zoe', avatar: '🃏', answer: 'Sein Verleger pfändete all seine Möbel als Druckmittel', vote: 0 },
 ];
 
 const DEMO_SHUFFLED = [
@@ -1282,50 +1282,50 @@ function renderDemo() {
   nextBtn.classList.remove('hidden');
 
   if (demoPhase === 0) {
-    // Lobby – User als erster Spieler mit aufführen
-    const userAvatar = selectedAvatar || '⭐';
+    const userAvatar = '👑'; // Fest für Demo – kein Clash mit Bot-Avataren
     const userName = document.getElementById('input-name-setup')?.value?.trim() || 'Du';
     content.innerHTML = `
       <p class="demo-phase-label">Demo-Lobby</p>
-      <h2 style="text-align:center;">Tutorial-Runde</h2>
-      <p style="text-align:center;color:rgba(255,255,255,0.6);font-size:14px;margin-bottom:20px;"><strong>Du bist der/die Moderator:in</strong> in dieser Runde – du liest die Frage vor, die anderen tippen ihre Antworten.</p>
-      <div class="demo-bots">
-        <div class="demo-bot active" style="border:1.5px solid rgba(172,88,249,0.5);border-radius:12px;padding:8px 12px;">
+      <h2 style="text-align:center;color:var(--ink);">Tutorial-Runde</h2>
+      <p style="text-align:center;color:var(--ink-dim);font-size:14px;margin-bottom:20px;"><strong>Du bist Moderator:in</strong> – du liest die Frage vor, die anderen tippen ihre Antworten.</p>
+      <div class="demo-bots" style="align-items:center;gap:14px;">
+        <div class="demo-bot active" style="border:1.5px solid rgba(172,88,249,0.5);border-radius:12px;padding:10px 14px;">
           <div class="demo-bot-avatar">${userAvatar}</div>
-          <div style="font-weight:700;">${escapeHtml(userName)}</div>
+          <div style="font-weight:700;color:var(--ink);">${escapeHtml(userName)}</div>
           <div style="font-size:11px;color:var(--color-primary,#AC58F9);">Moderator:in</div>
         </div>
-        ${DEMO_BOTS.map(b => `<div class="demo-bot active"><div class="demo-bot-avatar">${b.avatar}</div><div>${b.name}</div></div>`).join('')}
+        ${DEMO_BOTS.map(b => `
+          <div class="demo-bot active">
+            <div class="demo-bot-avatar">${b.avatar}</div>
+            <div>${b.name}</div>
+          </div>`).join('')}
       </div>
       <p class="demo-hint">Tippe auf „Weiter" um die Runde zu starten.</p>`;
     nextBtn.textContent = 'Runde starten →';
 
   } else if (demoPhase === 1) {
-    // Antwort-Phase
     content.innerHTML = `
       <p class="demo-phase-label">Antwort-Phase</p>
-      <p class="question-text small" style="margin-bottom:16px;">${DEMO_QUESTION}</p>
-      <p style="font-size:14px;color:rgba(255,255,255,0.6);">Du bist Moderator:in – die anderen tippen gerade ihre Antworten …</p>
+      <p class="question-text small" style="margin-bottom:16px;color:var(--ink);">${DEMO_QUESTION}</p>
+      <p style="font-size:14px;color:var(--ink-dim);">Du bist Moderator:in – die anderen tippen gerade ihre Antworten …</p>
       <div class="demo-bots" style="margin:20px 0;">
         ${DEMO_BOTS.map((b, i) => `<div class="demo-bot active"><div class="demo-bot-avatar">${b.avatar}</div><div>${b.name}</div><div class="demo-typing">${i < 2 ? '✓ fertig' : '…tippt'}</div></div>`).join('')}
       </div>
-      <p class="demo-hint">Im echten Spiel siehst du hier live, wer schon fertig ist.</p>`;
+      <p class="demo-hint">Im echten Spiel siehst du live, wer schon fertig ist.</p>`;
     nextBtn.textContent = 'Zur Abstimmung →';
 
   } else if (demoPhase === 2) {
-    // Abstimmungs-Phase
     demoUserVote = null;
     content.innerHTML = `
       <p class="demo-phase-label">Abstimm-Phase</p>
-      <p class="question-text small" style="margin-bottom:16px;">${DEMO_QUESTION}</p>
-      <p style="font-size:14px;margin-bottom:12px;">Welche Antwort ist die <strong>echte</strong>?</p>
+      <p class="question-text small" style="margin-bottom:16px;color:var(--ink);">${DEMO_QUESTION}</p>
+      <p style="font-size:14px;margin-bottom:12px;color:var(--ink);">Welche Antwort ist die <strong>echte</strong>?</p>
       <div class="demo-answer-list">
         ${DEMO_SHUFFLED.map((a, i) => `<button class="demo-answer-btn" data-idx="${i}">${a.text}</button>`).join('')}
       </div>
       <p class="demo-hint">Tippe auf eine Antwort, dann auf Weiter.</p>`;
     nextBtn.textContent = 'Abstimmen →';
     nextBtn.classList.add('hidden');
-
     content.querySelectorAll('.demo-answer-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         content.querySelectorAll('.demo-answer-btn').forEach(b => b.classList.remove('selected'));
@@ -1336,45 +1336,103 @@ function renderDemo() {
     });
 
   } else if (demoPhase === 3) {
-    // Auflösung
     const userChose = demoUserVote !== null ? DEMO_SHUFFLED[demoUserVote] : null;
     const userRight = userChose && userChose.isReal;
     content.innerHTML = `
       <p class="demo-phase-label">Auflösung</p>
-      <p class="question-text small" style="margin-bottom:16px;">${DEMO_QUESTION}</p>
+      <p class="question-text small" style="margin-bottom:16px;color:var(--ink);">${DEMO_QUESTION}</p>
       <div class="demo-answer-list">
         ${DEMO_SHUFFLED.map((a, i) => {
           let cls = 'demo-answer-btn';
           if (a.isReal) cls += ' correct';
           else if (i === demoUserVote && !a.isReal) cls += ' wrong';
           const owner = a.isReal ? '✅ Echte Antwort' : `😈 von ${DEMO_BOTS[['bot0','bot1','bot2'].indexOf(a.ownerId)]?.name || '?'}`;
-          return `<div class="${cls}">${a.text} <span style="font-size:12px;opacity:0.7;">${owner}</span></div>`;
+          return `<div class="${cls}" style="color:var(--ink);">${a.text} <span style="font-size:12px;opacity:0.7;">${owner}</span></div>`;
         }).join('')}
       </div>
       <p style="margin-top:16px;font-weight:700;text-align:center;font-size:1.1rem;color:${userRight ? 'var(--teal,#00E5A0)' : 'var(--pink,#e8547a)'}">
-        ${userRight ? '🎉 Richtig! Du bekommst +3 Punkte!' : '😅 Nicht ganz – die echte Antwort war 206!'}
+        ${userRight ? '🎉 Richtig! Du bekommst +3 Punkte!' : '😅 Nicht ganz – schau dir die echte Antwort an!'}
       </p>`;
-    nextBtn.textContent = 'Ergebnis ansehen →';
+    nextBtn.textContent = 'Spielbrett ansehen →';
 
   } else if (demoPhase === 4) {
-    // Ergebnis
     const userRight = demoUserVote !== null && DEMO_SHUFFLED[demoUserVote].isReal;
+    const allPlayers = [
+      { name: 'Du 👑', pts: userRight ? 3 : 0 },
+      { name: 'Mia 🎭', pts: DEMO_SHUFFLED[DEMO_BOTS[0].vote].isReal ? 3 : 0 },
+      { name: 'Leo 🔮', pts: DEMO_SHUFFLED[DEMO_BOTS[1].vote].isReal ? 3 : 0 },
+      { name: 'Zoe 🃏', pts: DEMO_SHUFFLED[DEMO_BOTS[2].vote].isReal ? 3 : 0 },
+    ];
+
     content.innerHTML = `
       <p class="demo-phase-label">Spielbrett</p>
-      <h2 style="text-align:center;">Nach dieser Runde</h2>
-      <div class="demo-bots" style="margin:20px 0 10px;">
-        <div class="demo-bot active" style="flex-direction:row;gap:10px;background:rgba(255,255,255,0.05);border-radius:12px;padding:10px 16px;width:100%;justify-content:space-between;">
-          <span>Du</span><span>${userRight ? '+3 Punkte' : '+0 Punkte'}</span>
-        </div>
-        ${DEMO_BOTS.map((b, i) => {
-          const botVote = DEMO_SHUFFLED[b.vote];
-          const pts = botVote.isReal ? 3 : 0;
-          // Wenn Bot auf dich getippt hätte wäre das +2 für dich, aber du bist Mod
-          return `<div class="demo-bot active" style="flex-direction:row;gap:10px;background:rgba(255,255,255,0.05);border-radius:12px;padding:10px 16px;width:100%;justify-content:space-between;"><span>${b.avatar} ${b.name}</span><span>+${pts} Punkte</span></div>`;
-        }).join('')}
+      <h2 style="text-align:center;color:var(--ink);margin-bottom:4px;">Figuren ziehen!</h2>
+      <p style="text-align:center;color:var(--ink-dim);font-size:13px;margin-bottom:12px;">So bewegen sich die Figuren nach einer Runde.</p>
+      <canvas id="demo-board-canvas" width="320" height="110"></canvas>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-top:16px;">
+        ${allPlayers.map(p => `
+          <div style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,0.05);border-radius:10px;padding:10px 14px;color:var(--ink);">
+            <span>${p.name}</span><span style="font-weight:700;color:${p.pts > 0 ? 'var(--teal,#00E5A0)' : 'var(--ink-dim)'};">${p.pts > 0 ? '+' + p.pts + ' Felder' : '±0'}</span>
+          </div>`).join('')}
       </div>
-      <p class="demo-hint">Im echten Spiel ziehen die Figuren jetzt animiert über das Spielfeld!</p>`;
+      <p class="demo-hint" style="margin-top:12px;">Im echten Spiel siehst du die Figuren animiert übers Spielbrett hüpfen!</p>`;
     nextBtn.textContent = '✓ Tutorial beenden';
+
+    // Mini-Spielbrett animieren
+    requestAnimationFrame(() => {
+      const canvas = document.getElementById('demo-board-canvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const W = canvas.width, H = canvas.height;
+      const FIELDS = 12, FW = (W - 20) / FIELDS, FH = H - 20;
+      const TOKENS = ['👑','🎭','🔮','🃏'];
+      const TARGET_POS = [userRight ? 3 : 0, 3, 3, 3]; // simplified
+      const colors = ['#AC58F9','#C577FB','#8C39F7','#D5A1FB'];
+      let positions = [0, 0, 0, 0];
+      let frame = 0;
+      const TOTAL_FRAMES = 60;
+
+      function drawBoard() {
+        const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
+        ctx.clearRect(0, 0, W, H);
+        // Felder
+        for (let i = 0; i < FIELDS; i++) {
+          const x = 10 + i * FW;
+          ctx.fillStyle = i === 0 ? '#8C39F7' : (i % 3 === 0 ? '#00C896' : (isDark ? '#1a0a2e' : '#e8dff8'));
+          ctx.strokeStyle = isDark ? 'rgba(255,255,255,0.15)' : 'rgba(100,50,200,0.2)';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.roundRect(x + 1, 10, FW - 2, FH - 10, 4);
+          ctx.fill();
+          ctx.stroke();
+          // Feldnummer
+          ctx.fillStyle = isDark ? 'rgba(255,255,255,0.4)' : 'rgba(100,50,200,0.5)';
+          ctx.font = '8px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText(i + 1, x + FW / 2, FH + 8);
+        }
+        // Tokens
+        TOKENS.forEach((tok, i) => {
+          const pos = Math.round(positions[i]);
+          const x = 10 + pos * FW + FW / 2;
+          const yOffset = Math.sin(frame * 0.3 + i) * 2;
+          ctx.font = '14px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText(tok, x, 30 + i * 16 + yOffset);
+        });
+      }
+
+      function animate() {
+        frame++;
+        const p = Math.min(frame / TOTAL_FRAMES, 1);
+        const ease = 1 - Math.pow(1 - p, 3);
+        positions = TARGET_POS.map(t => t * ease);
+        drawBoard();
+        if (p < 1) requestAnimationFrame(animate);
+      }
+      drawBoard();
+      setTimeout(animate, 400);
+    });
   }
 }
 

@@ -719,8 +719,9 @@ h2 { font-family: var(--font-display); font-weight: 700; font-size: 24px; text-a
 .tutorial-submenu { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; animation: fadeIn 0.2s ease; }
 
 /* ===== INTRO SLIDES ===== */
-.intro-screen { padding-top: 72px; padding-bottom: 110px; }
+.intro-screen { padding-top: 20px; padding-bottom: 110px; }
 .intro-slides { position: relative; min-height: 340px; }
+
 
 .intro-slide { animation: fadeIn 0.25s ease; }
 .intro-slide.hidden { display: none; }
@@ -729,11 +730,20 @@ h2 { font-family: var(--font-display); font-weight: 700; font-size: 24px; text-a
 .intro-body { font-size: 15px; line-height: 1.6; color: var(--ink); text-align: center; margin-bottom: 18px; }
 
 .intro-example { padding: 16px 18px; text-align: left; }
-.intro-example-q { font-style: italic; color: rgba(255,255,255,0.6); font-size: 13px; margin: 0 0 10px; }
+.intro-example-q { font-style: italic; color: var(--ink-dim, rgba(255,255,255,0.6)); font-size: 13px; margin: 0 0 10px; }
 .intro-example-answers { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 7px; }
 .intro-example-answers li { display: flex; justify-content: space-between; align-items: center; font-size: 15px; font-weight: 600; }
 .intro-ans-real { color: var(--teal, #00E5A0); }
 .intro-ans-fake { color: var(--ink); }
+.intro-tip p { color: var(--ink); }
+
+/* Demo-Screen: alle Texte theme-aware */
+.demo-phase-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--gold); margin-bottom: 12px; }
+.demo-screen-text { color: var(--ink); }
+.demo-bots { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin: 16px 0; align-items: center; }
+.demo-bot { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 12px; opacity: 0.7; color: var(--ink); }
+.demo-bot-avatar { font-size: 2rem; }
+.demo-bot.active { opacity: 1; }
 .intro-tag { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 20px; letter-spacing: 0.04em; }
 .intro-tag.bluff { background: rgba(232,84,122,0.2); color: var(--pink,#e8547a); }
 .intro-tag.real { background: rgba(0,229,160,0.15); color: var(--teal,#00E5A0); }
@@ -753,11 +763,7 @@ h2 { font-family: var(--font-display); font-weight: 700; font-size: 24px; text-a
 .intro-dot.active { background: var(--color-primary,#AC58F9); }
 
 /* ===== DEMO SCREEN ===== */
-.demo-phase-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--gold); margin-bottom: 12px; }
-.demo-bots { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin: 16px 0; }
-.demo-bot { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 12px; opacity: 0.7; }
-.demo-bot-avatar { font-size: 2rem; }
-.demo-bot.active { opacity: 1; }
+
 .demo-typing { color: var(--teal,#00E5A0); font-size: 13px; }
 .demo-answer-list { display: flex; flex-direction: column; gap: 8px; margin: 12px 0; }
 .demo-answer-btn { background: rgba(255,255,255,0.07); border: 1.5px solid rgba(255,255,255,0.15); border-radius: 12px; padding: 14px 16px; text-align: left; font-size: 15px; cursor: pointer; color: var(--ink); transition: border-color 0.15s, background 0.15s; }
@@ -766,3 +772,13 @@ h2 { font-family: var(--font-display); font-weight: 700; font-size: 24px; text-a
 .demo-answer-btn.correct { border-color: var(--teal,#00E5A0); background: rgba(0,229,160,0.12); }
 .demo-answer-btn.wrong { border-color: var(--pink,#e8547a); background: rgba(232,84,122,0.12); }
 .demo-hint { font-size: 13px; color: rgba(255,255,255,0.5); text-align: center; margin-top: 8px; font-style: italic; }
+
+/* Demo + Intro: light-mode fixes */
+[data-theme="light"] .intro-example-q { color: rgba(36,26,56,0.55); }
+[data-theme="light"] .demo-answer-btn { color: var(--ink); background: rgba(36,26,56,0.05); border-color: rgba(36,26,56,0.15); }
+[data-theme="light"] .demo-answer-btn:hover { background: rgba(172,88,249,0.1); }
+[data-theme="light"] .demo-hint { color: rgba(36,26,56,0.45); }
+[data-theme="light"] .demo-bot { color: var(--ink); }
+
+/* Demo board canvas */
+#demo-board-canvas { border-radius: 12px; display: block; margin: 12px auto 0; max-width: 100%; }
