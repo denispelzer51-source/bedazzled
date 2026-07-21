@@ -659,3 +659,36 @@ h2 { font-family: var(--font-display); font-weight: 700; font-size: 24px; text-a
 .invite-card h2 { margin: 0 0 20px; }
 .invite-card .share-buttons { flex-direction: column; gap: 10px; margin: 0 0 12px; }
 .invite-card .btn-share { font-size: 15px; padding: 14px 16px; width: 100%; }
+
+/* ---- Spiel-verlassen-Button (Text-Link-Style, in allen Game-Screens unten) ---- */
+.btn-leave-game {
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.35);
+  font-size: 13px;
+  cursor: pointer;
+  padding: 10px 0 6px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  display: block;
+  width: 100%;
+  text-align: center;
+  margin-top: 8px;
+}
+.btn-leave-game:hover { color: var(--pink, #e8547a); }
+
+/* ---- Settings-Row: Zeile innerhalb des Settings-Overlays ---- */
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+  font-size: 15px;
+  color: var(--ink);
+}
+.btn-theme-toggle { font-size: 14px; padding: 8px 14px; white-space: nowrap; }
+
+/* Frage-Text bekommt rechts Platz, damit er nicht unter den (jetzt fehlenden) Mond läuft –
+   der Puffer bleibt als genereller Rand zum rechten Rand */
+.question-text { padding-right: 8px; }

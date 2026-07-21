@@ -91,7 +91,8 @@ function playWinSound() {
 // ---------- DARK/LIGHT THEME ----------
 function applyTheme(theme) {
   document.documentElement.setAttribute('data-theme', theme);
-  document.getElementById('theme-toggle').textContent = theme === 'light' ? '☀️' : '🌙';
+  const btn = document.getElementById('theme-toggle');
+  if (btn) btn.textContent = theme === 'light' ? '☀️ Hell' : '🌙 Dunkel';
   localStorage.setItem('bedazzled_theme', theme);
 }
 const savedTheme = localStorage.getItem('bedazzled_theme') || 'dark';
@@ -186,14 +187,10 @@ const screens = {
   board: document.getElementById('screen-board'),
 };
 
-// Screens auf denen der X-Button erscheint (kein eigener Zurück-Pfeil)
-const QUIT_BTN_SCREENS = new Set(['answering', 'voting', 'reveal', 'board']);
-
 function showScreen(name) {
   Object.values(screens).forEach(s => s.classList.remove('active'));
   screens[name].classList.add('active');
   document.getElementById('btn-settings').classList.toggle('visible', name === 'start');
-  document.getElementById('btn-quit').classList.toggle('hidden', !QUIT_BTN_SCREENS.has(name));
   updateBoardBarHeightVar();
 }
 
@@ -475,8 +472,11 @@ function doLeaveRoom() {
   showScreen('start');
 }
 
-document.getElementById('btn-quit').addEventListener('click', () => {
-  document.getElementById('quit-overlay').classList.remove('hidden');
+// ---- Spiel verlassen (alle .btn-leave-game Buttons + Quit-Modal) ----
+document.addEventListener('click', e => {
+  if (e.target.closest('.btn-leave-game')) {
+    document.getElementById('quit-overlay').classList.remove('hidden');
+  }
 });
 document.getElementById('btn-quit-confirm').addEventListener('click', () => {
   document.getElementById('quit-overlay').classList.add('hidden');

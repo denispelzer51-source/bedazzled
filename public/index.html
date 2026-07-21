@@ -11,7 +11,6 @@
 
 <div id="app">
 
-  <button id="theme-toggle" class="theme-toggle" title="Helles/dunkles Design umschalten">🌙</button>
   <button id="btn-settings" class="btn-back visible" title="Einstellungen">⚙️</button>
 
   <p id="reconnect-banner" class="reconnect-banner hidden">🔄 Verbinde dich wieder mit deinem Raum …</p>
@@ -171,6 +170,7 @@
       <p class="progress-text"><span id="answered-count">0</span>/<span id="answering-total">0</span> haben geantwortet</p>
       <button id="btn-to-voting" class="btn btn-secondary mod-only">Weiter zur Abstimmung</button>
       <button id="btn-reveal-estimate" class="btn btn-secondary mod-only hidden">Auswerten</button>
+      <button class="btn-leave-game">Spiel verlassen</button>
     </div>
   </section>
 
@@ -191,6 +191,7 @@
 
       <p class="progress-text"><span id="voted-count">0</span>/<span id="voting-total">0</span> haben abgestimmt</p>
       <button id="btn-to-reveal" class="btn btn-secondary mod-only">Auflösen</button>
+      <button class="btn-leave-game">Spiel verlassen</button>
     </div>
   </section>
 
@@ -208,6 +209,7 @@
     <div class="screen-footer">
       <button id="btn-to-board" class="btn btn-primary mod-only">Weiter zum Spielbrett</button>
       <p class="waiting-msg mod-hide">Warte auf den Moderator …</p>
+      <button class="btn-leave-game">Spiel verlassen</button>
     </div>
   </section>
 
@@ -227,6 +229,7 @@
     <div class="screen-footer">
       <button id="btn-next-round" class="btn btn-primary mod-only">Nächste Runde</button>
       <p class="waiting-msg mod-hide">Warte auf den Moderator …</p>
+      <button class="btn-leave-game">Spiel verlassen</button>
     </div>
   </section>
 
@@ -236,13 +239,6 @@
   </div>
 
 </div>
-
-<!-- Globaler X-Button: sichtbar auf Spiel-Screens ohne eigenen Zurück-Pfeil -->
-<button id="btn-quit" class="btn-back btn-quit hidden" title="Spiel verlassen">
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-  </svg>
-</button>
 
 <!-- Bestätigungs-Modal für Raum verlassen -->
 <div id="quit-overlay" class="overlay hidden">
@@ -273,7 +269,10 @@
   <div class="overlay-card settings-card">
     <h2>⚙️ Einstellungen</h2>
     <div id="settings-content" class="settings-content">
-      <p class="hint">Hier kommen gleich die Einstellungen rein.</p>
+      <div class="settings-row">
+        <span>Helles / Dunkles Design</span>
+        <button id="theme-toggle" class="btn btn-secondary btn-theme-toggle">🌙 Dunkel</button>
+      </div>
     </div>
     <button id="btn-close-settings" class="btn btn-primary">Schließen</button>
   </div>
