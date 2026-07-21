@@ -546,6 +546,7 @@ io.on('connection', (socket) => {
       roundType: 'question',
       pendingRoundType: 'question',
       removalTimers: {},
+      pendingPlayers: [],
       catchUpBonusGiven: false,
       catchUpAnnouncement: null,
     };
@@ -563,8 +564,7 @@ io.on('connection', (socket) => {
       return;
     }
     if (room.phase !== 'lobby') {
-      // Spiel läuft schon - prüfen, ob der Name zu einem getrennten Spieler passt,
-      // der sich möglicherweise wieder anmelden möchte (z.B. Tab geschlossen, App beendet)
+      // Spiel läuft schon - prüfen, ob der Name zu einem getrennten Spieler passt
       const nameNormalized = (name || '').trim().toLowerCase();
       const disconnectedMatch = room.players.find(
         p => !p.socketId && p.name.trim().toLowerCase() === nameNormalized
@@ -573,7 +573,8 @@ io.on('connection', (socket) => {
         socket.emit('reclaimAvailable', { code, existingPlayerId: disconnectedMatch.id, existingName: disconnectedMatch.name });
         return;
       }
-      socket.emit('errorMsg', 'Spiel läuft schon. Bitte warte auf die nächste Runde.');
+      // Kein Reconnect-Match → als Pending-Spieler vormerken (joinWhenReady-Flow)
+      socket.emit('errorMsg', 'Spiel läuft schon. Nutze "Vormerken" um der nächsten Runde beizutreten.');
       return;
     }
     const taken = getTakenAvatars(room);
@@ -592,7 +593,14 @@ io.on('connection', (socket) => {
 
   socket.on('checkTakenAvatars', ({ code }) => {
     const room = rooms[code];
-    socket.emit('takenAvatars', { takenAvatars: room ? getTakenAvatars(room) : [], roomExists: !!room });
+    const activeTaken = room ? getTakenAvatars(room) : [];
+    const pendingTaken = room ? (room.pendingPlayers || []).map(p => p.avatar) : [];
+    const allTaken = [...new Set([...activeTaken, ...pendingTaken])];
+    socket.emit('takenAvatars', {
+      takenAvatars: allTaken,
+      roomExists: !!room,
+      gameInProgress: room ? room.phase !== 'lobby' : false,
+    });
   });
 
   socket.on('rejoinRoom', ({ code, token }) => {
@@ -822,6 +830,65 @@ io.on('connection', (socket) => {
     startVotingPhase(room, code);
   });
 
+  // ---- PENDING JOIN: Beitreten vormerken, solange Spiel läuft ----
+  // Spieler kann Name + Avatar wählen und wird gemerkt. Sobald nextRound
+  // aufgerufen wird und alle in die Lobby zurückkehren, wird er automatisch
+  // eingelassen und bekommt sein 'joined'-Event.
+  socket.on('joinWhenReady', ({ name, code, avatar, token }) => {
+    const room = rooms[code];
+    if (!room) { socket.emit('errorMsg', 'Raum nicht gefunden.'); return; }
+
+    // Wenn das Spiel doch schon in der Lobby ist, direkt beitreten
+    if (room.phase === 'lobby') {
+      // Wiederverwendung der joinRoom-Logik
+      const taken = getTakenAvatars(room);
+      if (taken.includes(avatar)) { socket.emit('avatarTaken', { takenAvatars: taken }); return; }
+      const playerId = token || crypto.randomUUID();
+      socket.data.token = playerId;
+      socket.data.roomCode = code;
+      room.players.push({ id: playerId, name: name || 'Spieler', avatar: avatar || '💎', position: 0, socketId: socket.id });
+      socket.join(code);
+      socket.emit('joined', { code, playerId });
+      broadcastState(code);
+      return;
+    }
+
+    // Spiel läuft noch → Vormerken
+    if (!room.pendingPlayers) room.pendingPlayers = [];
+
+    // Avatar darf nicht doppelt vergeben sein (aktiv oder pending)
+    const takenByActive = getTakenAvatars(room);
+    const takenByPending = room.pendingPlayers.map(p => p.avatar);
+    if (takenByActive.includes(avatar) || takenByPending.includes(avatar)) {
+      const all = [...new Set([...takenByActive, ...takenByPending])];
+      socket.emit('avatarTaken', { takenAvatars: all });
+      return;
+    }
+
+    const playerId = token || crypto.randomUUID();
+    socket.data.token = playerId;
+    socket.data.roomCode = code;
+    // Socket dem Raum hinzufügen, damit er State-Updates bekommt (z.B. Spielbrett beobachten)
+    socket.join(code);
+
+    room.pendingPlayers.push({ id: playerId, name: name || 'Spieler', avatar: avatar || '💎', socketId: socket.id });
+    socket.emit('pendingJoinQueued', { code, playerId });
+    // Allen anderen Spielern zeigen, dass jemand wartet (optional Info)
+    broadcastState(code);
+  });
+
+  socket.on('cancelPendingJoin', ({ code }) => {
+    const room = rooms[code];
+    if (!room) return;
+    const token = socket.data.token;
+    if (room.pendingPlayers) {
+      room.pendingPlayers = room.pendingPlayers.filter(p => p.id !== token);
+    }
+    socket.leave(code);
+    socket.data.roomCode = null;
+    broadcastState(code);
+  });
+
   // Zeigt der Moderation schon vor dem Abschicken, welche Antwort ein Spieler gerade antippt
   socket.on('previewVote', ({ code, chosenOwnerId }) => {
     const room = rooms[code];
@@ -950,6 +1017,26 @@ io.on('connection', (socket) => {
     room.liveTyping = {};
     room.shuffledAnswers = [];
     room.phase = 'lobby';
+
+    // Vorgemerkte Spieler jetzt automatisch einlassen
+    if (room.pendingPlayers && room.pendingPlayers.length > 0) {
+      room.pendingPlayers.forEach(pending => {
+        room.players.push({
+          id: pending.id,
+          name: pending.name,
+          avatar: pending.avatar,
+          position: 0,
+          socketId: pending.socketId,
+        });
+        // Dem wartenden Spieler sagen: du bist drin!
+        const pendingSocket = io.sockets.sockets.get(pending.socketId);
+        if (pendingSocket) {
+          pendingSocket.emit('joined', { code, playerId: pending.id });
+        }
+      });
+      room.pendingPlayers = [];
+    }
+
     broadcastState(code);
   });
 
@@ -984,6 +1071,17 @@ io.on('connection', (socket) => {
     if (!code || !token) return;
     const room = rooms[code];
     if (!room) return;
+
+    // Pending-Spieler: einfach aus der Warteschlange entfernen
+    if (room.pendingPlayers) {
+      const wasPending = room.pendingPlayers.some(p => p.id === token);
+      if (wasPending) {
+        room.pendingPlayers = room.pendingPlayers.filter(p => p.id !== token);
+        broadcastState(code);
+        return;
+      }
+    }
+
     const player = room.players.find(p => p.id === token);
     if (!player || player.socketId !== socket.id) return; // schon durch neuere Verbindung ersetzt
 

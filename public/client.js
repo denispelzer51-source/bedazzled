@@ -178,6 +178,7 @@ function avatarFor(player) {
 const screens = {
   start: document.getElementById('screen-start'),
   setup: document.getElementById('screen-setup'),
+  pending: document.getElementById('screen-pending'),
   lobby: document.getElementById('screen-lobby'),
   answering: document.getElementById('screen-answering'),
   voting: document.getElementById('screen-voting'),
@@ -255,13 +256,20 @@ document.getElementById('input-code').addEventListener('input', () => {
   }, 300);
 });
 
-socket.on('takenAvatars', ({ takenAvatars: taken, roomExists }) => {
+socket.on('takenAvatars', ({ takenAvatars: taken, roomExists, gameInProgress }) => {
   takenAvatars = taken || [];
+  gameWasInProgress = !!gameInProgress;
   if (takenAvatars.includes(selectedAvatar)) {
     const free = AVATAR_CHOICES.find(a => !takenAvatars.includes(a.emoji));
     if (free) selectedAvatar = free.emoji;
   }
   renderAvatarPicker();
+
+  // Setup-Button-Text anpassen: zeigen ob normales Beitreten oder Vormerken
+  const btn = document.getElementById('btn-confirm-setup');
+  if (btn && pendingIntent === 'join') {
+    btn.textContent = gameInProgress ? '⏳ Vormerken für nächste Runde' : 'Los geht\'s';
+  }
 
   // Falls diese Antwort die Folge eines bewussten Klicks auf "Raum beitreten" war:
   // erst jetzt tatsächlich zum Setup-Bildschirm wechseln, und nur wenn der Raum existiert
@@ -317,11 +325,16 @@ document.getElementById('btn-join').addEventListener('click', () => {
 document.getElementById('btn-back-to-start').addEventListener('click', () => {
   pendingIntent = null;
   pendingJoinCode = null;
+  gameWasInProgress = false;
   document.getElementById('setup-error-msg').textContent = '';
+  const btn = document.getElementById('btn-confirm-setup');
+  if (btn) btn.textContent = 'Los geht\'s';
   showScreen('start');
 });
 
 // ---------- SETUP SCREEN: Name + Spielfigur wählen, dann tatsächlich beitreten/erstellen ----------
+let gameWasInProgress = false; // true wenn checkTakenAvatars gemeldet hat, dass Spiel läuft
+
 document.getElementById('btn-confirm-setup').addEventListener('click', () => {
   const name = document.getElementById('input-name-setup').value.trim();
   if (!name) return showError('Bitte gib deinen Namen ein.');
@@ -329,7 +342,12 @@ document.getElementById('btn-confirm-setup').addEventListener('click', () => {
   if (pendingIntent === 'create') {
     socket.emit('createRoom', { name, avatar: selectedAvatar, token: myToken });
   } else if (pendingIntent === 'join') {
-    socket.emit('joinRoom', { name, code: pendingJoinCode, avatar: selectedAvatar, token: myToken });
+    if (gameWasInProgress) {
+      // Spiel läuft → als Pending vormerken statt sofort joinRoom
+      socket.emit('joinWhenReady', { name, code: pendingJoinCode, avatar: selectedAvatar, token: myToken });
+    } else {
+      socket.emit('joinRoom', { name, code: pendingJoinCode, avatar: selectedAvatar, token: myToken });
+    }
   }
 });
 
@@ -371,6 +389,39 @@ socket.on('reclaimAvailable', ({ code, existingPlayerId, existingName }) => {
   } else {
     showError('Bitte wähle einen anderen Namen, um als neuer Spieler beizutreten (sofern das Spiel das noch zulässt).');
   }
+});
+
+// Server hat den Spieler erfolgreich vorgemerkt → Wartescreen zeigen
+socket.on('pendingJoinQueued', ({ code, playerId }) => {
+  currentCode = code;
+  myId = playerId;
+  myToken = playerId;
+  sessionStorage.setItem(TOKEN_KEY, playerId);
+  saveSession(code);
+  showReconnecting(false);
+  showError('');
+  // Infoanzeige im Wartescreen: wer wartet?
+  const nameEl = document.getElementById('pending-name-display');
+  if (nameEl) {
+    const name = document.getElementById('input-name-setup').value.trim();
+    const avatar = selectedAvatar || '💎';
+    nameEl.textContent = `${avatar} ${name} wartet auf den nächsten Einlass …`;
+  }
+  showScreen('pending');
+});
+
+document.getElementById('btn-cancel-pending').addEventListener('click', () => {
+  if (currentCode) socket.emit('cancelPendingJoin', { code: currentCode });
+  clearSession();
+  currentCode = null;
+  myId = null;
+  lastState = null;
+  pendingIntent = null;
+  pendingJoinCode = null;
+  gameWasInProgress = false;
+  document.getElementById('input-code').value = '';
+  showError('');
+  showScreen('start');
 });
 
 // ---------- LOBBY ----------

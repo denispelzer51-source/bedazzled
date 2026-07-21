@@ -587,3 +587,27 @@ h2 { font-family: var(--font-display); font-weight: 700; font-size: 24px; text-a
 }
 .btn-dc-remove { background: var(--pink); color: var(--void); }
 .btn-dc-keep { background: rgba(255,255,255,0.1); color: var(--ink); }
+
+/* ---- Pending-Join Wartescreen ---- */
+@keyframes pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.15); opacity: 0.7; }
+}
+.dots-waiting {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+.dots-waiting span {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--color-primary, #AC58F9);
+  animation: dots-bounce 1.2s ease-in-out infinite;
+}
+.dots-waiting span:nth-child(2) { animation-delay: 0.2s; }
+.dots-waiting span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes dots-bounce {
+  0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
+  40% { transform: translateY(-8px); opacity: 1; }
+}

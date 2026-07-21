@@ -60,6 +60,25 @@
     </div>
   </section>
 
+  <!-- PENDING JOIN SCREEN: Spieler ist vorgemerkt und wartet auf Lobby -->
+  <section id="screen-pending" class="screen">
+    <div class="screen-scroll" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:80vh;gap:1.5rem;text-align:center;padding:2rem;">
+      <div class="brand">
+        <img src="logo.png" alt="Bedazzled Logo" class="brand-logo" />
+      </div>
+      <div style="font-size:3rem;animation:pulse 1.5s ease-in-out infinite;">⏳</div>
+      <h2 style="color:var(--color-primary);margin:0;">Du bist vorgemerkt!</h2>
+      <p id="pending-name-display" style="color:var(--color-text-muted);margin:0;font-size:0.95rem;"></p>
+      <p style="color:var(--color-text-muted);font-size:0.9rem;max-width:280px;line-height:1.5;">
+        Sobald die aktuelle Runde endet und alle wieder in der Lobby sind, trittst du <strong>automatisch</strong> bei.
+      </p>
+      <div class="dots-waiting">
+        <span></span><span></span><span></span>
+      </div>
+      <button id="btn-cancel-pending" class="btn btn-secondary" style="margin-top:0.5rem;">Abbrechen</button>
+    </div>
+  </section>
+
   <!-- LOBBY SCREEN -->
   <section id="screen-lobby" class="screen">
     <button id="btn-leave-room" class="btn-back" title="Raum verlassen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></button>
