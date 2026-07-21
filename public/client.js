@@ -1279,7 +1279,11 @@ let demoUserVote = null;
 function renderDemo() {
   const content = document.getElementById('demo-content');
   const nextBtn  = document.getElementById('btn-demo-next');
+  const exitBtn  = document.getElementById('btn-demo-exit');
   nextBtn.classList.remove('hidden');
+  // Auf dem letzten Schritt übernimmt der obere Button ("✓ Tutorial beenden") das Beenden -
+  // der separate Abbrechen-Button wird dort ausgeblendet, um doppelte Buttons zu vermeiden.
+  exitBtn.classList.toggle('hidden', demoPhase === 4);
 
   if (demoPhase === 0) {
     const userAvatar = '👑'; // Fest für Demo – kein Clash mit Bot-Avataren
@@ -1367,71 +1371,26 @@ function renderDemo() {
     content.innerHTML = `
       <p class="demo-phase-label">Spielbrett</p>
       <h2 style="text-align:center;color:var(--ink);margin-bottom:4px;">Figuren ziehen!</h2>
-      <p style="text-align:center;color:var(--ink-dim);font-size:13px;margin-bottom:12px;">So bewegen sich die Figuren nach einer Runde.</p>
-      <canvas id="demo-board-canvas" width="320" height="110"></canvas>
-      <div style="display:flex;flex-direction:column;gap:8px;margin-top:16px;">
-        ${allPlayers.map(p => `
-          <div style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,0.05);border-radius:10px;padding:10px 14px;color:var(--ink);">
-            <span>${p.name}</span><span style="font-weight:700;color:${p.pts > 0 ? 'var(--teal,#00E5A0)' : 'var(--ink-dim)'};">${p.pts > 0 ? '+' + p.pts + ' Felder' : '±0'}</span>
-          </div>`).join('')}
+      <p style="text-align:center;color:var(--ink-dim);font-size:13px;margin-bottom:12px;">So bewegen sich die Figuren nach einer Runde – das echte Spielbrett aus dem Spiel.</p>
+      <div id="board-rect" class="board-rect">
+        <div id="board-fields-large"></div>
+        <div id="board-tokens-large"></div>
       </div>
+      <div id="board-legend" class="board-legend"></div>
       <p class="demo-hint" style="margin-top:12px;">Im echten Spiel siehst du die Figuren animiert übers Spielbrett hüpfen!</p>`;
     nextBtn.textContent = '✓ Tutorial beenden';
 
-    // Mini-Spielbrett animieren
+    // Echtes Spielbrett wiederverwenden (gleiche Komponente wie im echten Spiel),
+    // mit vier Demo-Figuren, die von Feld 0 aus starten und je nach Ergebnis ziehen.
+    const demoPlayers = [
+      { id: 'you',  name: 'Du',        avatar: '👑', position: userRight ? 3 : 0 },
+      { id: 'bot0', name: DEMO_BOTS[0].name, avatar: DEMO_BOTS[0].avatar, position: DEMO_SHUFFLED[DEMO_BOTS[0].vote].isReal ? 3 : 0 },
+      { id: 'bot1', name: DEMO_BOTS[1].name, avatar: DEMO_BOTS[1].avatar, position: DEMO_SHUFFLED[DEMO_BOTS[1].vote].isReal ? 3 : 0 },
+      { id: 'bot2', name: DEMO_BOTS[2].name, avatar: DEMO_BOTS[2].avatar, position: DEMO_SHUFFLED[DEMO_BOTS[2].vote].isReal ? 3 : 0 },
+    ];
+    const demoFromPositions = { you: 0, bot0: 0, bot1: 0, bot2: 0 };
     requestAnimationFrame(() => {
-      const canvas = document.getElementById('demo-board-canvas');
-      if (!canvas) return;
-      const ctx = canvas.getContext('2d');
-      const W = canvas.width, H = canvas.height;
-      const FIELDS = 12, FW = (W - 20) / FIELDS, FH = H - 20;
-      const TOKENS = ['👑','🎭','🔮','🃏'];
-      const TARGET_POS = [userRight ? 3 : 0, 3, 3, 3]; // simplified
-      const colors = ['#AC58F9','#C577FB','#8C39F7','#D5A1FB'];
-      let positions = [0, 0, 0, 0];
-      let frame = 0;
-      const TOTAL_FRAMES = 60;
-
-      function drawBoard() {
-        const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
-        ctx.clearRect(0, 0, W, H);
-        // Felder
-        for (let i = 0; i < FIELDS; i++) {
-          const x = 10 + i * FW;
-          ctx.fillStyle = i === 0 ? '#8C39F7' : (i % 3 === 0 ? '#00C896' : (isDark ? '#1a0a2e' : '#e8dff8'));
-          ctx.strokeStyle = isDark ? 'rgba(255,255,255,0.15)' : 'rgba(100,50,200,0.2)';
-          ctx.lineWidth = 1;
-          ctx.beginPath();
-          ctx.roundRect(x + 1, 10, FW - 2, FH - 10, 4);
-          ctx.fill();
-          ctx.stroke();
-          // Feldnummer
-          ctx.fillStyle = isDark ? 'rgba(255,255,255,0.4)' : 'rgba(100,50,200,0.5)';
-          ctx.font = '8px sans-serif';
-          ctx.textAlign = 'center';
-          ctx.fillText(i + 1, x + FW / 2, FH + 8);
-        }
-        // Tokens
-        TOKENS.forEach((tok, i) => {
-          const pos = Math.round(positions[i]);
-          const x = 10 + pos * FW + FW / 2;
-          const yOffset = Math.sin(frame * 0.3 + i) * 2;
-          ctx.font = '14px sans-serif';
-          ctx.textAlign = 'center';
-          ctx.fillText(tok, x, 30 + i * 16 + yOffset);
-        });
-      }
-
-      function animate() {
-        frame++;
-        const p = Math.min(frame / TOTAL_FRAMES, 1);
-        const ease = 1 - Math.pow(1 - p, 3);
-        positions = TARGET_POS.map(t => t * ease);
-        drawBoard();
-        if (p < 1) requestAnimationFrame(animate);
-      }
-      drawBoard();
-      setTimeout(animate, 400);
+      renderBoardLarge(demoPlayers, demoFromPositions, true);
     });
   }
 }
