@@ -12,6 +12,7 @@
 <div id="app">
 
   <button id="theme-toggle" class="theme-toggle" title="Helles/dunkles Design umschalten">🌙</button>
+  <button id="btn-settings" class="btn-back visible" title="Einstellungen">⚙️</button>
 
   <p id="reconnect-banner" class="reconnect-banner hidden">🔄 Verbinde dich wieder mit deinem Raum …</p>
   <p id="connection-issue-banner" class="connection-issue-banner hidden"></p>
@@ -219,6 +220,16 @@
     <div id="board-track" class="board-track"></div>
   </div>
 
+</div>
+
+<div id="settings-overlay" class="overlay hidden">
+  <div class="overlay-card settings-card">
+    <h2>⚙️ Einstellungen</h2>
+    <div id="settings-content" class="settings-content">
+      <p class="hint">Hier kommen gleich die Einstellungen rein.</p>
+    </div>
+    <button id="btn-close-settings" class="btn btn-primary">Schließen</button>
+  </div>
 </div>
 
 <div id="winner-overlay" class="overlay hidden">

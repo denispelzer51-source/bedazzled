@@ -133,10 +133,13 @@
     color: var(--glow);
     font-size: 40%;
     font-weight: 800;
-    transform:
-      translateZ(calc(var(--stack-z, 0) * 1px))
-      rotateX(calc(-1 * var(--tilt, 30deg)));
+    transform: translateZ(calc(var(--stack-z, 0) * 1px));
     transition: transform 0.5s ease;
+  }
+  /* Echtes Kartenrücken-Design (von dir geliefert) auf der obersten Stapel-Karte */
+  .deck-card-1 {
+    background: url('card-back.png') center / cover no-repeat;
+    border: none;
   }
   .deck-card-3 { --stack-z: 2; opacity: 0.7; }
   .deck-card-2 { --stack-z: 5; opacity: 0.85; }
@@ -146,17 +149,20 @@
     position: absolute;
     width: 13.5%;
     aspect-ratio: 1;
-    /* Gegen-Rotation zur Brett-Neigung: das Feld "steht" so immer quadratisch zur Kamera,
-       statt sich mit dem Neigungswinkel des Bretts zu strecken/stauchen */
-    transform: translate(-50%, -50%) rotateX(calc(-1 * var(--tilt, 30deg)));
-    transition: transform 0.5s ease;
+    /* WICHTIG: Keine Gegen-Drehung mehr! Die Felder sind fest auf dem Brett montierte
+       3D-Objekte - sie dürfen sich NICHT verändern, nur die Kamera-Perspektive ändert
+       sich. Vorher hat die Gegen-Drehung dazu geführt, dass sich die Felder bei starker
+       Kamera-Neigung sichtbar "aufgestellt" haben, statt einfach am Brett befestigt zu
+       bleiben. */
+    transform: translate(-50%, -50%);
     border-radius: 10px;
-    background: linear-gradient(160deg, var(--lilac), var(--primary) 70%);
-    border: 1px solid rgba(255,255,255,0.4);
+    background: linear-gradient(165deg, var(--lilac) 0%, var(--primary) 55%, var(--royal) 100%);
+    border: 1px solid rgba(255,255,255,0.35);
     box-shadow:
-      0 10px 0 rgba(120,40,200,0.85),
-      0 16px 22px rgba(140,57,247,0.35),
-      inset 0 2px 0 rgba(255,255,255,0.5);
+      0 3px 0 rgba(51,13,152,0.95),
+      0 9px 14px rgba(20,5,50,0.55),
+      inset 0 2px 1px rgba(255,255,255,0.65),
+      inset 0 -3px 4px rgba(51,13,152,0.5);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -229,29 +235,62 @@
     position: absolute;
     width: 13%;
     aspect-ratio: 1;
-    /* translateZ schiebt die Figur näher zur Kamera, damit sie im echten 3D-Raum immer
-       vor den Feldern liegt (die Feld-Gegenrotation hatte ihre Tiefenposition verschoben) */
-    transform: translateZ(14px) translate(-50%, -100%);
+    /* Deutlich geringerer Abstand zum Feld (vorher viel zu weit weg) - die Gegen-Drehung
+       gegen --tilt bleibt der Kern-Fix fürs Sichtbarbleiben aus jedem Blickwinkel. */
+    transform: translateZ(26px) translate(-50%, -100%) rotateX(calc(-1 * var(--tilt, 30deg)));
+    transition: left 0.32s ease-out, top 0.32s ease-out, transform 0.5s ease;
+    transform-style: preserve-3d;
     display: flex;
+    flex-direction: column;
     align-items: center;
-    justify-content: center;
-    font-size: 30px;
-    filter:
-      drop-shadow(0 2px 0 rgba(255,255,255,0.3))
-      drop-shadow(0 3px 4px rgba(0,0,0,0.45))
-      drop-shadow(0 20px 14px rgba(0,0,0,0.5));
-    transition: left 0.32s ease-out, top 0.32s ease-out;
     z-index: 5;
+  }
+  .token-glyph {
+    font-size: 28px;
+    filter:
+      drop-shadow(0 2px 0 rgba(255,255,255,0.35))
+      drop-shadow(0 3px 4px rgba(0,0,0,0.55));
+    position: relative;
+    z-index: 3;
+  }
+  .token-base {
+    width: 82%;
+    height: 26%;
+    margin-top: -10%;
+    border-radius: 50%;
+    background: linear-gradient(180deg, var(--lilac) 0%, var(--primary) 55%, var(--royal) 100%);
+    box-shadow:
+      0 4px 8px rgba(0,0,0,0.55),
+      inset 0 2px 3px rgba(255,255,255,0.6),
+      inset 0 -4px 5px rgba(51,13,152,0.65);
+    border: 1px solid rgba(255,255,255,0.35);
+    position: relative;
+    transform-style: preserve-3d;
+    z-index: 1;
+  }
+  .token-base-under {
+    /* Zweite, tiefer liegende Ebene (echter Z-Versatz, keine reine Schatten-Illusion) -
+       gibt dem Sockel wirkliche Dicke/Volumen statt nur einer flachen Scheibe */
+    position: absolute;
+    left: 50%;
+    bottom: -3px;
+    width: 68%;
+    height: 16%;
+    transform: translateX(-50%) translateZ(-6px);
+    border-radius: 50%;
+    background: var(--royal);
+    opacity: 0.9;
+    z-index: 0;
   }
   .token-3d::after {
     /* Schatten auf dem Feld darunter, verstärkt den 3D-Eindruck */
     content: '';
     position: absolute;
-    bottom: -10px;
+    bottom: -8px;
     left: 50%;
-    width: 65%;
-    height: 9px;
-    background: radial-gradient(ellipse, rgba(0,0,0,0.5), transparent 70%);
+    width: 60%;
+    height: 8px;
+    background: radial-gradient(ellipse, rgba(0,0,0,0.55), transparent 70%);
     transform: translateX(-50%);
     border-radius: 50%;
     z-index: -1;
@@ -439,6 +478,7 @@
     height: 100vh;
     transform-origin: 0 0;
     transform-style: preserve-3d;
+    will-change: transform;
     pointer-events: auto;
     cursor: pointer;
   }
@@ -446,23 +486,18 @@
     position: absolute;
     inset: 0;
     transform-style: preserve-3d;
+    will-change: transform;
   }
   .card-flip .face {
     position: absolute;
     inset: 0;
     backface-visibility: hidden;
+    will-change: transform;
     overflow: hidden;
     border-radius: 130px;
   }
   .card-flip .face-back {
-    background: linear-gradient(160deg, var(--royal), #1B0940);
-    border: 1.5px solid rgba(197,119,251,0.5);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--glow);
-    font-weight: 800;
-    font-size: 15vh;
+    background: url('card-back.png') center / cover no-repeat;
   }
   .card-flip .face-front {
     background: var(--void);
@@ -569,7 +604,7 @@
       <div class="card-deck" id="cardDeck">
         <div class="deck-card deck-card-3"></div>
         <div class="deck-card deck-card-2"></div>
-        <div class="deck-card deck-card-1">❓</div>
+        <div class="deck-card deck-card-1"></div>
       </div>
       <div class="board-ring" id="boardRing"></div>
     </div>
@@ -676,7 +711,7 @@
   const tokenEls = tokensData.map(t => {
     const el = document.createElement('div');
     el.className = 'token-3d';
-    el.textContent = t.emoji;
+    el.innerHTML = `<div class="token-glyph">${t.emoji}</div><div class="token-base"><div class="token-base-under"></div></div>`;
     ring.appendChild(el);
     return el;
   });
@@ -811,6 +846,7 @@
         tokenEl.style.left = x + '%';
         tokenEl.style.top = y + '%';
         applyCameraOffset({ x, y });
+        tableTilt.style.setProperty('--spin', (currentSpinDeg + (50 - x) * 1.1) + 'deg');
 
         if (rawProgress < 1) {
           requestAnimationFrame(frame);
@@ -892,7 +928,7 @@
     outer.className = 'card-outer';
     outer.innerHTML = `
       <div class="card-flip" id="cardFlip">
-        <div class="face face-back">❓</div>
+        <div class="face face-back"></div>
         <div class="face face-front">
           <div class="ff-phase-tag">Antwort-Phase</div>
           <p class="ff-question">${DEMO_QUESTION}</p>
@@ -981,6 +1017,7 @@
 
   let activeTurn = 2; // wird beim ersten Klick zu 0
   let currentTiltDeg = 30;
+  let currentSpinDeg = 0;
 
   // Wichtig: camera-pan liegt AUSSERHALB der 3D-Rotation (table-tilt), verschiebt also in
   // normalem 2D-Bildschirmraum - genau das war vorher der Bug (Verschiebung passierte
@@ -1008,6 +1045,14 @@
       tableTilt.style.transitionTimingFunction = 'ease-in-out';
     }
     tableTilt.style.setProperty('--tilt', ZOOM_TILT_DEG + 'deg');
+    // Leichter seitlicher Schwenk beim Ranzoomen, damit die Kamera nicht rein frontal auf
+    // die Felder draufschaut, sondern leicht von der Seite - dadurch bleiben Feld-Nummern
+    // eher lesbar, statt bei reiner Frontalansicht auf Kante zu klappen
+    // Seitlicher Kamera-Schwenk richtet sich jetzt nach der Position der Figur auf dem
+    // Brett: rechte Seite -> Kamera schaut von links nach rechts (und umgekehrt), auf der
+    // vorderen/hinteren Reihe (mittige x-Position) bleibt es dagegen frontal
+    const dynamicYaw = (50 - pos.x) * 1.1;
+    tableTilt.style.setProperty('--spin', (currentSpinDeg + dynamicYaw) + 'deg');
     applyCameraOffset(pos);
   }
   function resetCamera(durationMs) {
@@ -1017,11 +1062,12 @@
     cameraPan.style.transition = `transform ${dur}ms ease-in-out`;
     tableTilt.style.transition = `transform ${dur}ms ease-in-out`;
     tableTilt.style.setProperty('--tilt', currentTiltDeg + 'deg');
+    tableTilt.style.setProperty('--spin', currentSpinDeg + 'deg');
     cameraPan.style.setProperty('--camX', '0px');
     cameraPan.style.setProperty('--camY', '0px');
     cameraPan.style.setProperty('--camZoom', '0.92');
   }
-  const ZOOM_TILT_DEG = 45; // flacherer Blickwinkel beim Ranzoomen, um die Figur über die Felder laufen zu sehen
+  const ZOOM_TILT_DEG = 80; // fast waagerechter Blickwinkel beim Ranzoomen - Figuren schweben über die Felder, wie gewünscht
 
   const cameraPan = document.getElementById('cameraPan');
   const tableTilt = document.getElementById('tableTilt');
@@ -1032,6 +1078,7 @@
     document.documentElement.style.setProperty('--base-tilt', e.target.value + 'deg');
   });
   document.getElementById('spinSlider').addEventListener('input', (e) => {
+    currentSpinDeg = Number(e.target.value);
     tableTilt.style.setProperty('--spin', e.target.value + 'deg');
   });
 </script>

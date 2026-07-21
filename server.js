@@ -532,6 +532,7 @@ io.on('connection', (socket) => {
       duplicateConflicts: [],
       excludeFromPoolPlayerIds: [],
       suppressRealEntry: false,
+      canonicalPlayerAnswerIds: [],
       players: [player],
       moderatorIndex: 0,
       phase: 'lobby',
@@ -675,6 +676,7 @@ io.on('connection', (socket) => {
     room.duplicateConflicts = [];
     room.excludeFromPoolPlayerIds = [];
     room.suppressRealEntry = false;
+    room.canonicalPlayerAnswerIds = [];
     room.currentQuestionObj = pickNextQuestion(room, roundType);
     broadcastState(code);
   });
@@ -761,9 +763,13 @@ io.on('connection', (socket) => {
       if (!room.excludeFromPoolPlayerIds) room.excludeFromPoolPlayerIds = [];
       if (!room.excludeFromPoolPlayerIds.includes(playerId)) room.excludeFromPoolPlayerIds.push(playerId);
     } else if (action === 'keepPlayerVersion') {
-      // Die Antwort des Spielers bleibt im Pool, die separate offizielle Antwort wird
-      // diese Runde nicht zusätzlich aufgeführt - es bleibt nur der eine, gemeinsame Eintrag
+      // Die Antwort des Spielers gilt als 'echte' Antwort (sinngleich zur offiziellen).
+      // Die offizielle Antwort wird nicht zusaetzlich aufgefuehrt.
       room.suppressRealEntry = true;
+      if (!room.canonicalPlayerAnswerIds) room.canonicalPlayerAnswerIds = [];
+      if (!room.canonicalPlayerAnswerIds.includes(playerId)) {
+        room.canonicalPlayerAnswerIds.push(playerId);
+      }
     }
 
     broadcastState(code);
@@ -777,9 +783,11 @@ io.on('connection', (socket) => {
     if (!room.suppressRealEntry) {
       combined.push({ ownerId: 'REAL', text: room.currentQuestionObj.answer, isReal: true });
     }
+    const canonicals = room.canonicalPlayerAnswerIds || [];
     room.players.forEach(p => {
       if (p.id !== moderator.id && room.answers[p.id] !== undefined && !excluded.includes(p.id)) {
-        combined.push({ ownerId: p.id, text: room.answers[p.id], isReal: false });
+        const isCanonical = canonicals.includes(p.id);
+        combined.push({ ownerId: p.id, text: room.answers[p.id], isReal: isCanonical });
       }
     });
     for (let i = combined.length - 1; i > 0; i--) {
@@ -843,12 +851,22 @@ io.on('connection', (socket) => {
     const prevPositions = {};
     room.players.forEach(p => { prevPositions[p.id] = p.position; });
 
+    // Kanonische Spieler-Antworten: der Mod hat eine Spieler-Version als sinngleich zur
+    // echten Antwort akzeptiert und die offizielle verworfen. Stimmen darauf zaehlen als
+    // "richtig geraten" (Wähler +Punkte), NICHT als "geblendet".
+    const canonicals = room.canonicalPlayerAnswerIds || [];
+    function isCorrectAnswer(chosenOwnerId) {
+      return chosenOwnerId === 'REAL' || canonicals.includes(chosenOwnerId);
+    }
+
     // Punkte berechnen
     for (const [voterId, chosenOwnerId] of Object.entries(room.votes)) {
-      if (chosenOwnerId === 'REAL') {
+      if (isCorrectAnswer(chosenOwnerId)) {
+        // Richtige Antwort gewählt -> Wähler bekommt Punkte
         const player = room.players.find(p => p.id === voterId);
         if (player) player.position = Math.min(BOARD_LENGTH, player.position + POINTS_CORRECT_GUESS);
       } else {
+        // Erfundene Antwort gewählt -> Antworter bekommt Bluff-Punkte
         const fooledOwner = room.players.find(p => p.id === chosenOwnerId);
         if (fooledOwner && fooledOwner.id !== voterId) {
           fooledOwner.position = Math.min(BOARD_LENGTH, fooledOwner.position + POINTS_PER_FOOLED_PLAYER);

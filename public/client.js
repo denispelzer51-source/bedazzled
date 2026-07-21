@@ -101,6 +101,14 @@ document.getElementById('theme-toggle').addEventListener('click', () => {
   applyTheme(current === 'light' ? 'dark' : 'light');
 });
 
+// ---------- EINSTELLUNGEN ----------
+document.getElementById('btn-settings').addEventListener('click', () => {
+  document.getElementById('settings-overlay').classList.remove('hidden');
+});
+document.getElementById('btn-close-settings').addEventListener('click', () => {
+  document.getElementById('settings-overlay').classList.add('hidden');
+});
+
 let myId = null;
 let currentCode = null;
 let lastState = null;
@@ -180,6 +188,7 @@ const screens = {
 function showScreen(name) {
   Object.values(screens).forEach(s => s.classList.remove('active'));
   screens[name].classList.add('active');
+  document.getElementById('btn-settings').classList.toggle('visible', name === 'start');
   updateBoardBarHeightVar();
 }
 

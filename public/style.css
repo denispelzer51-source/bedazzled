@@ -353,6 +353,14 @@ h2 { font-family: var(--font-display); font-weight: 700; font-size: 24px; text-a
 .overlay-card { background: var(--night-2); border-radius: var(--radius); padding: 32px; text-align: center; max-width: 340px; }
 .overlay-card h2 { margin: 10px 0 20px; }
 
+/* Einstellungen-Zahnrad: nur auf dem Startbildschirm sichtbar, oben links (wo sonst der
+   Zurück-Pfeil sitzt - auf dem Startbildschirm gibt's den ja nicht) */
+#btn-settings { display: none; font-size: 22px; }
+#btn-settings.visible { display: flex; }
+.settings-card { text-align: left; max-width: 380px; width: 100%; }
+.settings-card h2 { text-align: center; }
+.settings-content { margin-bottom: 20px; }
+
 @media (max-width: 380px) {
   h1 { font-size: 34px; }
   #board-fields-large, #board-tokens-large { top: 18px; left: 18px; right: 18px; bottom: 18px; }

@@ -216,6 +216,14 @@ Fragen-Verwaltung (`/admin.html`) zeigt Fragen nach Kategorie gruppiert und aufk
   ein"-Verhalten (`BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE`), inkl. Rückfalloption für ältere
   Android-Versionen.
 
+- **20.07.2026:** Einstellungs-Zahnrad auf dem Startbildschirm ergänzt (oben links, wo sonst
+  der Zurück-Pfeil sitzt) - öffnet ein Einstellungen-Fenster, aktuell noch als Platzhalter,
+  konkrete Einstellungen folgen als nächster Schritt.
+- **20.07.2026:** Splash-Screen-Hinweis: Die Konfiguration allein reicht nicht - die
+  eigentlichen nativen Bild-Ressourcen müssen einmalig per `npx capacitor-assets generate
+  --android` aus `assets/splash.png` erzeugt werden (analog zum App-Icon vorher), danach
+  `npx cap sync android` und neu bauen.
+
 ## Fragen-Verwaltung: Zweistufiges Filtersystem
 
 Jede Frage hat jetzt zwei Ebenen:
