@@ -31,12 +31,10 @@
           <button id="btn-join" class="btn btn-join-prominent">Raum beitreten</button>
           <div class="divider"><span>oder</span></div>
           <button id="btn-create" class="btn btn-secondary">Neuen Raum erstellen</button>
+          <div class="divider"><span>oder</span></div>
+          <button id="btn-tutorial-toggle" class="btn btn-tutorial-toggle">🎓 Spielablauf &amp; Tutorial</button>
         </div>
         <p id="error-msg" class="error"></p>
-      </div>
-
-      <div class="tutorial-entry">
-        <button id="btn-tutorial-toggle" class="btn btn-tutorial-toggle">🎓 Spielablauf &amp; Tutorial</button>
       </div>
     </div>
   </section>
@@ -70,11 +68,11 @@
           <h2 class="intro-title">Das Prinzip</h2>
           <p class="intro-body">Eine wechselnde Moderator:in liest eine kuriose Frage vor – alle anderen erfinden eine möglichst <strong>überzeugende Antwort</strong>. Die echte Antwort mischt sich unbemerkt darunter.</p>
           <div class="intro-example card">
-            <p class="intro-example-q">„Wie viele Knochen hat ein erwachsener Mensch?"</p>
+            <p class="intro-example-q">„Welches Tier hat das größte Gehirn im Verhältnis zum Körpergewicht?"</p>
             <ul class="intro-example-answers">
-              <li class="intro-ans-fake">196 <span class="intro-tag bluff">Erfunden</span></li>
-              <li class="intro-ans-fake">212 <span class="intro-tag bluff">Erfunden</span></li>
-              <li class="intro-ans-real">206 <span class="intro-tag real">Echt</span></li>
+              <li class="intro-ans-fake">Delfin <span class="intro-tag bluff">Erfunden</span></li>
+              <li class="intro-ans-fake">Schimpanse <span class="intro-tag bluff">Erfunden</span></li>
+              <li class="intro-ans-real">Ameise <span class="intro-tag real">Echt</span></li>
             </ul>
           </div>
         </div>
@@ -123,7 +121,6 @@
 
   <!-- DEMO SCREEN -->
   <section id="screen-demo" class="screen">
-    <button class="btn-back" id="btn-demo-back" title="Zurück"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></button>
     <div class="screen-scroll">
       <div id="demo-content"></div>
       <button id="btn-demo-next" class="btn btn-primary" style="margin-top:20px;">Weiter →</button>
@@ -331,7 +328,7 @@
     <p style="font-size:14px;color:rgba(255,255,255,0.5);margin:0 0 22px;">Was möchtest du tun?</p>
     <div style="display:flex;flex-direction:column;gap:12px;">
       <button id="btn-go-intro" class="btn btn-primary">📖 Spielablauf (3 Slides)</button>
-      <button id="btn-go-demo" class="btn btn-secondary">🕹️ Tutorial mit Demo-Runde</button>
+      <button id="btn-go-demo" class="btn btn-primary">🕹️ Tutorial mit Demo-Runde</button>
       <button id="btn-tutorial-close" class="btn btn-secondary">Schließen</button>
     </div>
   </div>

@@ -1367,7 +1367,6 @@ document.getElementById('btn-go-demo').addEventListener('click', () => {
   renderDemo();
   showScreen('demo');
 });
-document.getElementById('btn-demo-back').addEventListener('click', () => showScreen('start'));
 document.getElementById('btn-demo-exit').addEventListener('click', () => showScreen('start'));
 document.getElementById('btn-demo-next').addEventListener('click', () => {
   if (demoPhase < 4) {

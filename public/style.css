@@ -719,8 +719,9 @@ h2 { font-family: var(--font-display); font-weight: 700; font-size: 24px; text-a
 .tutorial-submenu { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; animation: fadeIn 0.2s ease; }
 
 /* ===== INTRO SLIDES ===== */
-.intro-screen { padding-top: 72px; }
-.intro-slides { position: relative; }
+.intro-screen { padding-top: 72px; padding-bottom: 110px; }
+.intro-slides { position: relative; min-height: 340px; }
+
 .intro-slide { animation: fadeIn 0.25s ease; }
 .intro-slide.hidden { display: none; }
 .intro-icon { font-size: 3.2rem; text-align: center; margin-bottom: 10px; }
@@ -745,7 +746,7 @@ h2 { font-family: var(--font-display); font-weight: 700; font-size: 24px; text-a
 .pts-desc { flex: 1; font-size: 14px; line-height: 1.4; }
 .pts-val { font-family: var(--font-display); font-size: 1.1rem; font-weight: 700; color: var(--color-primary,#AC58F9); flex-shrink: 0; }
 
-.intro-nav { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 24px; padding-bottom: 16px; }
+.intro-nav { position: fixed; bottom: 0; left: 0; right: 0; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 20px calc(14px + env(safe-area-inset-bottom)); background: var(--night, #0e0920); border-top: 1px solid rgba(255,255,255,0.07); z-index: 10; }
 .intro-nav-btn { flex: 1; }
 .intro-dots { display: flex; gap: 8px; }
 .intro-dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,0.2); transition: background 0.2s; }
