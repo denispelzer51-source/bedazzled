@@ -528,7 +528,7 @@ function removePlayerForGood(roomCode, playerId) {
 const matchmakingQueues = { 4: [], 6: [] };
 const queueStartTimes = { 4: null, 6: null };
 const MATCHMAKING_WAIT_MS = 60000;
-const MATCHMAKING_COUNTDOWN_MS = 6000;
+const MATCHMAKING_COUNTDOWN_MS = 15000;
 const MATCHMAKING_MIN_PLAYERS = 3;
 
 function createRoomFromMatchmaking(entries) {
@@ -576,14 +576,15 @@ function createRoomFromMatchmaking(entries) {
 function broadcastMatchmakingStatus(size) {
   const queue = matchmakingQueues[size];
   if (queue.length === 0) return;
-  const elapsed = Date.now() - (queueStartTimes[size] || Date.now());
-  const secondsLeft = Math.max(0, Math.ceil((MATCHMAKING_WAIT_MS - elapsed) / 1000));
+  const timerRunning = !!queueStartTimes[size];
+  const elapsed = timerRunning ? Date.now() - queueStartTimes[size] : 0;
+  const secondsLeft = timerRunning ? Math.max(0, Math.ceil((MATCHMAKING_WAIT_MS - elapsed) / 1000)) : null;
   queue.forEach(e => {
     e.socket.emit('matchmakingStatus', {
       waitingCount: queue.length,
       targetSize: size,
       secondsLeft,
-      showCountdown: secondsLeft * 1000 <= MATCHMAKING_COUNTDOWN_MS,
+      showCountdown: timerRunning && secondsLeft * 1000 <= MATCHMAKING_COUNTDOWN_MS,
     });
   });
 }
@@ -596,25 +597,27 @@ setInterval(() => {
       queueStartTimes[size] = null;
       return;
     }
-    if (!queueStartTimes[size]) queueStartTimes[size] = Date.now();
 
     if (queue.length >= size) {
       const matched = queue.splice(0, size);
-      queueStartTimes[size] = queue.length > 0 ? Date.now() : null;
+      queueStartTimes[size] = null;
       createRoomFromMatchmaking(matched);
       return;
     }
 
-    const elapsed = Date.now() - queueStartTimes[size];
-    if (elapsed >= MATCHMAKING_WAIT_MS) {
-      if (queue.length >= MATCHMAKING_MIN_PLAYERS) {
+    // Der 60-Sekunden-Timer läuft erst los, sobald mindestens 3 Spieler warten - bei
+    // 1-2 Wartenden gibt es keinen Sinn zu starten, also einfach weiter warten ohne Countdown.
+    if (queue.length >= MATCHMAKING_MIN_PLAYERS) {
+      if (!queueStartTimes[size]) queueStartTimes[size] = Date.now();
+      const elapsed = Date.now() - queueStartTimes[size];
+      if (elapsed >= MATCHMAKING_WAIT_MS) {
         const matched = queue.splice(0, queue.length);
         queueStartTimes[size] = null;
         createRoomFromMatchmaking(matched);
         return;
       }
-      // Zu wenige Spieler (< 3) nach Ablauf der Wartezeit -> Wartezeit läuft einfach weiter
-      queueStartTimes[size] = Date.now();
+    } else {
+      queueStartTimes[size] = null;
     }
     broadcastMatchmakingStatus(size);
   });

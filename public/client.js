@@ -15,6 +15,14 @@ socket.on('connect_error', () => {
   showError('Verbindung dauert länger als erwartet (der Server "wacht" evtl. gerade erst auf, das kann bis zu 50 Sekunden dauern). Falls du den Link direkt aus WhatsApp geöffnet hast: tippe oben rechts auf "..." und wähle "Im Browser öffnen" – der eingebaute WhatsApp-Browser blockiert manchmal die Verbindung, besonders auf iPhones.');
 });
 
+// Sicherheitsnetz: falls irgendwo ein unerwarteter JS-Fehler auftritt (z.B. beim Beitreten),
+// soll das NIE mehr als "nichts passiert" wirken - stattdessen wird der Fehler sichtbar
+// gemacht, damit man ihn uns melden kann, statt dass die Seite scheinbar einfach hängt.
+window.addEventListener('error', (e) => {
+  console.error('[Unerwarteter Fehler]', e.error || e.message);
+  showError('Etwas ist schiefgelaufen (' + (e.message || 'unbekannter Fehler') + '). Bitte Seite neu laden und nochmal versuchen.');
+});
+
 // ---------- SOUNDEFFEKTE (dezent, per Web Audio erzeugt, keine externen Dateien nötig) ----------
 let audioCtx = null;
 let soundMuted = localStorage.getItem('bedazzled_muted') === 'true';
@@ -169,6 +177,13 @@ function saveSession(code) {
   sessionStorage.setItem(ROOM_KEY, code);
 }
 function clearSession() {
+  sessionStorage.removeItem(ROOM_KEY);
+}
+
+// Falls der Link einen ANDEREN Raum-Code enthält als eine evtl. noch gespeicherte
+// alte Sitzung (z.B. Tab von einem früheren Test wiederverwendet): die alte Sitzung
+// verwerfen, damit sie nicht mit dem Beitreten zum neuen Raum kollidiert.
+if (roomFromLink && sessionStorage.getItem(ROOM_KEY) && sessionStorage.getItem(ROOM_KEY) !== roomFromLink) {
   sessionStorage.removeItem(ROOM_KEY);
 }
 
