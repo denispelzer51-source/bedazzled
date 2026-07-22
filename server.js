@@ -350,7 +350,7 @@ async function autoCorrectGerman(text) {
 }
 
 function getTakenAvatars(room) {
-  return room.players.map(p => p.avatar);
+  return room.players.map(p => p.avatar).filter(Boolean);
 }
 
 function genRoomCode() {
