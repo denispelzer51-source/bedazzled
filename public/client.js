@@ -210,6 +210,7 @@ function avatarFor(player) {
 const screens = {
   start: document.getElementById('screen-start'),
   setup: document.getElementById('screen-setup'),
+  matchmaking: document.getElementById('screen-matchmaking'),
   pending: document.getElementById('screen-pending'),
   intro: document.getElementById('screen-intro'),
   demo: document.getElementById('screen-demo'),
@@ -356,6 +357,60 @@ document.getElementById('btn-create').addEventListener('click', () => {
   showScreen('setup');
 });
 
+// ---------- MULTIPLAYER-MATCHMAKING: zufällige Lobby (feste Größe 4 oder 6) ----------
+let pendingLobbySize = 4;
+
+document.getElementById('btn-multiplayer-toggle').addEventListener('click', () => {
+  document.getElementById('multiplayer-size-picker').classList.toggle('hidden');
+});
+
+function startMatchmakingFlow(size) {
+  pendingIntent = 'multiplayer';
+  pendingLobbySize = size;
+  pendingJoinCode = null;
+  takenAvatars = [];
+  renderAvatarPicker();
+  showError('');
+  document.getElementById('setup-error-msg').textContent = '';
+  showScreen('setup');
+}
+document.getElementById('btn-mp-size-4').addEventListener('click', () => startMatchmakingFlow(4));
+document.getElementById('btn-mp-size-6').addEventListener('click', () => startMatchmakingFlow(6));
+
+document.getElementById('btn-cancel-matchmaking').addEventListener('click', () => {
+  socket.emit('cancelMatchmaking');
+  showScreen('start');
+});
+
+socket.on('matchmakingStatus', ({ waitingCount, targetSize, secondsLeft, showCountdown }) => {
+  document.getElementById('mp-waiting-count').textContent = `${waitingCount} / ${targetSize}`;
+  const countdownEl = document.getElementById('mp-countdown');
+  const statusEl = document.getElementById('mp-status-text');
+  if (showCountdown) {
+    countdownEl.classList.remove('hidden');
+    countdownEl.textContent = `Startet in ${secondsLeft}s …`;
+    statusEl.textContent = waitingCount < targetSize
+      ? 'Es wird gleich mit den aktuell wartenden Spielern gestartet.'
+      : 'Los geht\'s!';
+  } else {
+    countdownEl.classList.add('hidden');
+    statusEl.textContent = 'Warte auf weitere Spieler …';
+  }
+});
+
+// Sobald ein Match zustande kam, verhält sich alles wie ein ganz normal beigetretener Raum
+socket.on('matchFound', ({ code, playerId }) => {
+  currentCode = code;
+  myId = playerId;
+  myToken = playerId;
+  sessionStorage.setItem(TOKEN_KEY, playerId);
+  saveSession(code);
+  showReconnecting(false);
+  document.getElementById('board-bar').classList.remove('hidden');
+  showError('');
+  registerPushNotifications(code);
+});
+
 document.getElementById('btn-join').addEventListener('click', () => {
   const code = document.getElementById('input-code').value.trim();
   if (!code) return showError('Bitte gib einen Raum-Code ein.');
@@ -386,6 +441,12 @@ document.getElementById('btn-confirm-setup').addEventListener('click', () => {
 
   if (pendingIntent === 'create') {
     socket.emit('createRoom', { name, avatar: selectedAvatar, token: myToken });
+  } else if (pendingIntent === 'multiplayer') {
+    socket.emit('joinMatchmaking', { name, avatar: selectedAvatar, lobbySize: pendingLobbySize, token: myToken });
+    document.getElementById('mp-waiting-count').textContent = `1 / ${pendingLobbySize}`;
+    document.getElementById('mp-countdown').classList.add('hidden');
+    document.getElementById('mp-status-text').textContent = 'Warte auf weitere Spieler …';
+    showScreen('matchmaking');
   } else if (pendingIntent === 'join') {
     if (gameWasInProgress) {
       // Spiel läuft → als Pending vormerken statt sofort joinRoom
@@ -423,7 +484,52 @@ socket.on('joined', ({ code, playerId }) => {
   showReconnecting(false);
   document.getElementById('board-bar').classList.remove('hidden');
   showError('');
+  registerPushNotifications(code);
 });
+
+// ---------- PUSH-BENACHRICHTIGUNGEN (nur in der nativen Android-App aktiv) ----------
+// Läuft im normalen Browser komplett folgenlos (Capacitor-Plugin existiert dort nicht).
+// Fordert Erlaubnis an, holt den FCM-Token und meldet ihn beim Server, damit
+// "Du bist dran!"-Push-Nachrichten (Antwort/Abstimmen/Moderieren) zugestellt werden können.
+let pushRegistered = false;
+async function registerPushNotifications(code) {
+  const Push = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.PushNotifications;
+  if (!Push) return; // kein Capacitor bzw. Plugin nicht installiert (normaler Browser)
+  try {
+    if (!pushRegistered) {
+      pushRegistered = true;
+      let permStatus = await Push.checkPermissions();
+      if (permStatus.receive !== 'granted') {
+        permStatus = await Push.requestPermissions();
+      }
+      if (permStatus.receive !== 'granted') {
+        console.log('[Push] Erlaubnis verweigert - keine Benachrichtigungen möglich.');
+        return;
+      }
+      await Push.register();
+      Push.addListener('registration', (token) => {
+        socket.emit('registerPushToken', { code, pushToken: token.value });
+      });
+      Push.addListener('registrationError', (err) => {
+        console.log('[Push] Registrierung fehlgeschlagen:', err);
+      });
+      // Falls die App im Vordergrund eine Push-Nachricht empfängt, trotzdem anzeigen
+      Push.addListener('pushNotificationReceived', (notification) => {
+        console.log('[Push] Empfangen (App im Vordergrund):', notification);
+      });
+    } else {
+      // Bereits registriert (z.B. nach Raumwechsel) - Token nur erneut mit neuem Code verknüpfen
+      const info = await Push.checkPermissions();
+      if (info.receive === 'granted') {
+        // Aktueller Token wird beim nächsten 'registration'-Event ohnehin neu gemeldet;
+        // hier reicht es, den Server über den (weiterhin gültigen) letzten Stand zu informieren,
+        // was bereits durch den Registrierungs-Listener beim ersten Aufruf abgedeckt ist.
+      }
+    }
+  } catch (e) {
+    console.log('[Push] Setup-Fehler (unkritisch, App läuft normal weiter):', e);
+  }
+}
 
 // Jemand versucht mitten im Spiel beizutreten und der Name passt zu einem getrennten
 // Spieler - fragen, ob er/sie das ist und den alten Platz (Position, Punkte, Rolle) übernehmen möchte

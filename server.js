@@ -5,6 +5,7 @@ const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
 const { MongoClient } = require('mongodb');
+const push = require('./push');
 
 const app = express();
 const server = http.createServer(app);
@@ -518,13 +519,124 @@ function removePlayerForGood(roomCode, playerId) {
   broadcastState(roomCode);
 }
 
+// ---------- Multiplayer-Matchmaking (zufällige Lobbys mit fester Größe) ----------
+// Spieler wählen auf der Startseite "Multiplayer" + Lobby-Größe (4 oder 6) und landen in
+// einer Warteschlange. Sobald genug Leute da sind (oder nach 60s Wartezeit mit min. 3
+// Spielern), wird automatisch ein ganz normaler Raum erstellt - ab dann läuft alles wie
+// gewohnt über die bestehende Raum-/Rundenlogik weiter.
+const matchmakingQueues = { 4: [], 6: [] };
+const queueStartTimes = { 4: null, 6: null };
+const MATCHMAKING_WAIT_MS = 60000;
+const MATCHMAKING_COUNTDOWN_MS = 6000;
+const MATCHMAKING_MIN_PLAYERS = 3;
+
+function createRoomFromMatchmaking(entries) {
+  const code = genRoomCode();
+  const players = entries.map(e => ({
+    id: e.playerId, name: e.name, avatar: e.avatar, position: 0, socketId: e.socket.id, pushToken: null,
+  }));
+  rooms[code] = {
+    code,
+    hostId: players[0].id,
+    stats: {},
+    duplicateConflicts: [],
+    excludeFromPoolPlayerIds: [],
+    suppressRealEntry: false,
+    canonicalPlayerAnswerIds: [],
+    players,
+    moderatorIndex: 0,
+    phase: 'lobby',
+    usedQuestions: [],
+    usedEstimateQuestions: [],
+    answers: {},
+    votes: {},
+    liveTyping: {},
+    shuffledAnswers: [],
+    currentQuestionObj: null,
+    roundType: 'question',
+    pendingRoundType: 'question',
+    removalTimers: {},
+    pendingPlayers: [],
+    catchUpBonusGiven: false,
+    catchUpAnnouncement: null,
+    isMultiplayerMatch: true,
+  };
+  entries.forEach(e => {
+    e.socket.data.token = e.playerId;
+    e.socket.data.roomCode = code;
+    e.socket.data.matchmakingSize = null;
+    e.socket.join(code);
+    e.socket.emit('matchFound', { code, playerId: e.playerId });
+  });
+  console.log(`[Matchmaking] Raum ${code} erstellt mit ${players.length} zufällig gematchten Spielern.`);
+  broadcastState(code);
+}
+
+function broadcastMatchmakingStatus(size) {
+  const queue = matchmakingQueues[size];
+  if (queue.length === 0) return;
+  const elapsed = Date.now() - (queueStartTimes[size] || Date.now());
+  const secondsLeft = Math.max(0, Math.ceil((MATCHMAKING_WAIT_MS - elapsed) / 1000));
+  queue.forEach(e => {
+    e.socket.emit('matchmakingStatus', {
+      waitingCount: queue.length,
+      targetSize: size,
+      secondsLeft,
+      showCountdown: secondsLeft * 1000 <= MATCHMAKING_COUNTDOWN_MS,
+    });
+  });
+}
+
+// Läuft im Hintergrund einmal pro Sekunde: prüft beide Warteschlangen-Größen (4 und 6)
+setInterval(() => {
+  [4, 6].forEach((size) => {
+    const queue = matchmakingQueues[size];
+    if (queue.length === 0) {
+      queueStartTimes[size] = null;
+      return;
+    }
+    if (!queueStartTimes[size]) queueStartTimes[size] = Date.now();
+
+    if (queue.length >= size) {
+      const matched = queue.splice(0, size);
+      queueStartTimes[size] = queue.length > 0 ? Date.now() : null;
+      createRoomFromMatchmaking(matched);
+      return;
+    }
+
+    const elapsed = Date.now() - queueStartTimes[size];
+    if (elapsed >= MATCHMAKING_WAIT_MS) {
+      if (queue.length >= MATCHMAKING_MIN_PLAYERS) {
+        const matched = queue.splice(0, queue.length);
+        queueStartTimes[size] = null;
+        createRoomFromMatchmaking(matched);
+        return;
+      }
+      // Zu wenige Spieler (< 3) nach Ablauf der Wartezeit -> Wartezeit läuft einfach weiter
+      queueStartTimes[size] = Date.now();
+    }
+    broadcastMatchmakingStatus(size);
+  });
+}, 1000);
+
+function removeFromAllMatchmakingQueues(socketId) {
+  [4, 6].forEach((size) => {
+    const before = matchmakingQueues[size].length;
+    matchmakingQueues[size] = matchmakingQueues[size].filter(e => e.socket.id !== socketId);
+    if (matchmakingQueues[size].length !== before) {
+      if (matchmakingQueues[size].length === 0) queueStartTimes[size] = null;
+      broadcastMatchmakingStatus(size);
+    }
+  });
+}
+
 io.on('connection', (socket) => {
   socket.on('createRoom', ({ name, avatar, token }) => {
     const code = genRoomCode();
     const playerId = token || crypto.randomUUID();
     socket.data.token = playerId;
     socket.data.roomCode = code;
-    const player = { id: playerId, name: name || 'Spieler', avatar: avatar || '💎', position: 0, socketId: socket.id };
+    const player = { id: playerId, name: name || 'Spieler', avatar: avatar || '💎', position: 0, socketId: socket.id, pushToken: null };
     rooms[code] = {
       code,
       hostId: playerId,
@@ -554,6 +666,21 @@ io.on('connection', (socket) => {
     socket.join(code);
     socket.emit('joined', { code, playerId });
     broadcastState(code);
+  });
+
+  // ---- Multiplayer-Matchmaking: zufälliger Lobby-Beitritt ----
+  socket.on('joinMatchmaking', ({ name, avatar, lobbySize, token }) => {
+    const size = [4, 6].includes(lobbySize) ? lobbySize : 4;
+    const playerId = token || crypto.randomUUID();
+    socket.data.matchmakingSize = size;
+    matchmakingQueues[size].push({ socket, playerId, name: (name || 'Spieler').trim() || 'Spieler', avatar: avatar || '💎', queuedAt: Date.now() });
+    console.log(`[Matchmaking] "${name}" tritt ${size}er-Warteschlange bei (${matchmakingQueues[size].length}/${size}).`);
+    broadcastMatchmakingStatus(size);
+  });
+
+  socket.on('cancelMatchmaking', () => {
+    removeFromAllMatchmakingQueues(socket.id);
+    socket.data.matchmakingSize = null;
   });
 
   socket.on('joinRoom', ({ name, code, avatar, token }) => {
@@ -592,7 +719,7 @@ io.on('connection', (socket) => {
     const playerId = token || crypto.randomUUID();
     socket.data.token = playerId;
     socket.data.roomCode = code;
-    room.players.push({ id: playerId, name: name || 'Spieler', avatar: avatar || '💎', position: 0, socketId: socket.id });
+    room.players.push({ id: playerId, name: name || 'Spieler', avatar: avatar || '💎', position: 0, socketId: socket.id, pushToken: null });
     socket.join(code);
     socket.emit('joined', { code, playerId });
     broadcastState(code);
@@ -608,6 +735,18 @@ io.on('connection', (socket) => {
       roomExists: !!room,
       gameInProgress: room ? room.phase !== 'lobby' : false,
     });
+  });
+
+  // Native App (Android) meldet ihren Firebase-Push-Token, sobald einer verfügbar ist.
+  // Wird beim Auslösen von Push-Benachrichtigungen (push.js) verwendet.
+  socket.on('registerPushToken', ({ code, pushToken }) => {
+    const room = rooms[code];
+    if (!room || !socket.data.token || !pushToken) return;
+    const player = room.players.find(p => p.id === socket.data.token);
+    if (player) {
+      player.pushToken = pushToken;
+      console.log(`[Push] Token registriert für Spieler "${player.name}" in Raum ${code}`);
+    }
   });
 
   socket.on('rejoinRoom', ({ code, token }) => {
@@ -694,6 +833,10 @@ io.on('connection', (socket) => {
     room.canonicalPlayerAnswerIds = [];
     room.currentQuestionObj = pickNextQuestion(room, roundType);
     broadcastState(code);
+
+    // Push: alle außer dem Moderator müssen jetzt eine Antwort abgeben
+    const answerers = room.players.filter(p => p.id !== moderatorId);
+    push.notifyPlayers(answerers, 'Du bist dran! 🎭', 'Gib deine Bluff-Antwort ab.', { code, type: 'answering' });
   });
 
   socket.on('typingAnswer', ({ code, text }) => {
@@ -813,6 +956,10 @@ io.on('connection', (socket) => {
     room.votePreview = {};
     room.phase = 'voting';
     broadcastState(code);
+
+    // Push: alle außer dem Moderator müssen jetzt abstimmen
+    const voters = room.players.filter(p => p.id !== moderator.id);
+    push.notifyPlayers(voters, 'Du bist dran! 🗳️', 'Jetzt abstimmen, welche Antwort echt ist.', { code, type: 'voting' });
   }
 
   // Geht automatisch zur Abstimmung über, sobald alle geantwortet haben und keine
@@ -856,7 +1003,7 @@ io.on('connection', (socket) => {
       const playerId = token || crypto.randomUUID();
       socket.data.token = playerId;
       socket.data.roomCode = code;
-      room.players.push({ id: playerId, name: name || 'Spieler', avatar: avatar || '💎', position: 0, socketId: socket.id });
+      room.players.push({ id: playerId, name: name || 'Spieler', avatar: avatar || '💎', position: 0, socketId: socket.id, pushToken: null });
       socket.join(code);
       socket.emit('joined', { code, playerId });
       broadcastState(code);
@@ -1038,6 +1185,7 @@ io.on('connection', (socket) => {
     const room = rooms[code];
     if (!room || !isModerator(room, socket)) return;
     room.moderatorIndex = (room.moderatorIndex + 1) % room.players.length;
+    const newModerator = room.players[room.moderatorIndex];
     room.answers = {};
     room.votes = {};
     room.liveTyping = {};
@@ -1064,6 +1212,9 @@ io.on('connection', (socket) => {
     }
 
     broadcastState(code);
+
+    // Push: der/die neue Moderator:in ist jetzt dran, die nächste Runde zu starten
+    push.notifyPlayers([newModerator], 'Du bist dran! 🎤', 'Du moderierst die nächste Runde.', { code, type: 'moderating' });
   });
 
   socket.on('leaveRoom', ({ code }) => {
@@ -1092,6 +1243,8 @@ io.on('connection', (socket) => {
   });
 
   socket.on('disconnect', () => {
+    removeFromAllMatchmakingQueues(socket.id);
+
     const code = socket.data.roomCode;
     const token = socket.data.token;
     if (!code || !token) return;

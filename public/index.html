@@ -31,9 +31,30 @@
           <button id="btn-join" class="btn btn-join-prominent">Raum beitreten</button>
           <div class="divider"><span>oder</span></div>
           <button id="btn-create" class="btn btn-secondary">Neuen Raum erstellen</button>
+          <button id="btn-multiplayer-toggle" class="btn btn-secondary" style="margin-top:8px;">🎲 Multiplayer (zufällige Lobby)</button>
+          <div id="multiplayer-size-picker" class="hidden" style="display:flex; gap:10px; margin-top:10px;">
+            <button id="btn-mp-size-4" class="btn btn-invite-action" style="flex:1;">4 Spieler</button>
+            <button id="btn-mp-size-6" class="btn btn-invite-action" style="flex:1;">6 Spieler</button>
+          </div>
           <button id="btn-tutorial-toggle" class="btn btn-tutorial-toggle" style="margin-top:8px;">🎓 Spielablauf &amp; Tutorial</button>
         </div>
         <p id="error-msg" class="error"></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- MULTIPLAYER-WARTE-SCREEN: zeigt Warteschlangen-Status, Countdown, Abbrechen -->
+  <section id="screen-matchmaking" class="screen">
+    <div class="screen-scroll">
+      <div class="brand">
+        <img src="logo.png" alt="Bedazzled Logo" class="brand-logo" />
+      </div>
+      <div class="card" style="text-align:center;">
+        <h2 style="margin-top:0;">🎲 Suche Mitspieler …</h2>
+        <p id="mp-waiting-count" style="font-size:18px; font-weight:700; color:var(--primary);">1 / 4</p>
+        <p id="mp-status-text" style="color:var(--ink-dim);">Warte auf weitere Spieler</p>
+        <p id="mp-countdown" class="hidden" style="font-size:32px; font-weight:900; color:var(--gold); margin:10px 0;"></p>
+        <button id="btn-cancel-matchmaking" class="btn btn-secondary" style="margin-top:14px;">Abbrechen</button>
       </div>
     </div>
   </section>
