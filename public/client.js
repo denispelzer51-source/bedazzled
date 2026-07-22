@@ -320,7 +320,6 @@ socket.on('takenAvatars', ({ takenAvatars: taken, roomExists, gameInProgress }) 
       pendingIntent = 'join';
       pendingJoinCode = pendingJoinCodeCheck;
       document.getElementById('avatar-picker-block').classList.remove('hidden');
-      document.getElementById('setup-multiplayer-hint').classList.add('hidden');
       showError('');
       document.getElementById('setup-error-msg').textContent = '';
       showScreen('setup');
@@ -355,7 +354,6 @@ document.getElementById('btn-create').addEventListener('click', () => {
   pendingIntent = 'create';
   pendingJoinCode = null;
   document.getElementById('avatar-picker-block').classList.remove('hidden');
-  document.getElementById('setup-multiplayer-hint').classList.add('hidden');
   showError('');
   document.getElementById('setup-error-msg').textContent = '';
   showScreen('setup');
@@ -374,7 +372,6 @@ function startMatchmakingFlow(size) {
   pendingJoinCode = null;
   takenAvatars = [];
   document.getElementById('avatar-picker-block').classList.add('hidden');
-  document.getElementById('setup-multiplayer-hint').classList.remove('hidden');
   showError('');
   document.getElementById('setup-error-msg').textContent = '';
   showScreen('setup');
@@ -725,6 +722,18 @@ document.getElementById('input-answer').addEventListener('input', (e) => {
     socket.emit('typingAnswer', { code: currentCode, text });
   }, 250);
 });
+// Platzhalter verschwindet schon beim Reinklicken (nicht erst beim ersten Zeichen) -
+// so ist der blinkende Cursor sofort gut sichtbar, ohne dass Text im Hintergrund steht
+function hidePlaceholderOnFocus(inputEl) {
+  const original = inputEl.getAttribute('placeholder') || '';
+  inputEl.addEventListener('focus', () => { inputEl.setAttribute('placeholder', ''); });
+  inputEl.addEventListener('blur', () => {
+    if (!inputEl.value) inputEl.setAttribute('placeholder', original);
+  });
+}
+hidePlaceholderOnFocus(document.getElementById('input-answer-number'));
+hidePlaceholderOnFocus(document.getElementById('input-answer'));
+
 document.getElementById('input-answer-number').addEventListener('input', (e) => {
   clearTimeout(typingDebounce);
   const text = e.target.value;
@@ -1021,6 +1030,8 @@ function renderLobbyPlayerList(state) {
 }
 
 // ---------- LOBBY-AVATAR-PICKER (nur für Multiplayer-Matches, nach dem Matching) ----------
+let lobbySelectedAvatar = null;
+
 function renderLobbyAvatarPicker(state) {
   const block = document.getElementById('lobby-avatar-picker-block');
   const me = state.players.find(p => p.id === myId);
@@ -1033,21 +1044,34 @@ function renderLobbyAvatarPicker(state) {
   block.classList.remove('hidden');
 
   const takenHere = state.players.filter(p => p.id !== myId && p.avatar).map(p => p.avatar);
+  if (lobbySelectedAvatar && takenHere.includes(lobbySelectedAvatar)) lobbySelectedAvatar = null;
+
   const box = document.getElementById('lobby-avatar-picker');
   box.innerHTML = '';
   AVATAR_CHOICES.forEach(a => {
     const isTaken = takenHere.includes(a.emoji);
     const div = document.createElement('div');
-    div.className = 'avatar-option' + (isTaken ? ' taken' : '');
+    div.className = 'avatar-option'
+      + (isTaken ? ' taken' : '')
+      + (a.emoji === lobbySelectedAvatar ? ' selected' : '');
     div.innerHTML = `<span class="emoji">${a.emoji}</span><span class="label">${isTaken ? 'vergeben' : a.label}</span>`;
     if (!isTaken) {
       div.addEventListener('click', () => {
-        socket.emit('chooseAvatar', { code: currentCode, avatar: a.emoji });
+        lobbySelectedAvatar = a.emoji;
+        renderLobbyAvatarPicker(state);
       });
     }
     box.appendChild(div);
   });
+
+  const confirmBtn = document.getElementById('btn-confirm-lobby-avatar');
+  confirmBtn.disabled = !lobbySelectedAvatar;
 }
+
+document.getElementById('btn-confirm-lobby-avatar').addEventListener('click', () => {
+  if (!lobbySelectedAvatar) return;
+  socket.emit('chooseAvatar', { code: currentCode, avatar: lobbySelectedAvatar });
+});
 
 socket.on('kicked', () => {
   clearSession();
@@ -1143,9 +1167,8 @@ socket.on('state', (state) => {
     document.getElementById('question-text-2').textContent = state.currentQuestion || '';
     document.getElementById('answered-count').textContent = state.answeredCount;
     document.getElementById('answering-total').textContent = Math.max(state.players.length - 1, 0);
-    document.getElementById('answer-input-label').textContent = isEstimate
-      ? 'Wie lautet deine Schätzung?'
-      : 'Denk dir eine überzeugende Antwort aus:';
+    document.getElementById('answer-input-label').classList.toggle('hidden', isEstimate);
+    document.getElementById('answer-input-label').textContent = 'Denk dir eine überzeugende Antwort aus:';
     document.getElementById('input-answer').classList.toggle('hidden', isEstimate);
     document.getElementById('input-answer-number').classList.toggle('hidden', !isEstimate);
     document.getElementById('btn-to-voting').classList.add('hidden');

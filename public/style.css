@@ -63,10 +63,25 @@ body {
   pointer-events: none;
 }
 .screen-footer > * { pointer-events: auto; }
+/* Ausnahme: auf dem Auflösungs-Screen kann die Antwortenliste lang werden (viele Spieler) -
+   dort soll die Fußleiste ganz normal am Ende mitscrollen, statt fest über der Liste zu
+   schweben und untere Antworten zu verdecken. */
+.screen-footer.screen-footer--inline {
+  position: static;
+  transform: none;
+  left: auto;
+  bottom: auto;
+  width: auto;
+  max-width: none;
+  padding: 20px 0 0;
+  pointer-events: auto;
+}
 /* Platz am Ende jedes Bildschirms lassen, damit Inhalt nicht unter dem fest angehefteten
    Fußbereich verschwindet */
 .screen-scroll { padding-bottom: 130px; }
-#screen-lobby .screen-scroll, #screen-answering .screen-scroll, #screen-voting .screen-scroll { padding-bottom: 20px; }
+#screen-lobby .screen-scroll, #screen-answering .screen-scroll, #screen-voting .screen-scroll, #screen-reveal .screen-scroll { padding-bottom: 20px; }
+#screen-answering .screen-scroll { padding-top: 22px; }
+#answer-input-box { background: var(--night-2); border-radius: var(--radius); padding: 22px; border: 1px solid rgba(255,255,255,0.06); }
 .screen.active { display: block; }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
@@ -190,6 +205,7 @@ h2 { font-family: var(--font-display); font-weight: 700; font-size: 24px; text-a
    zwischen der Frage und der ersten Antwort-Box darunter (klebte sonst direkt aneinander) */
 #screen-reveal .phase-tag { margin-top: 12px; }
 #screen-reveal #question-text-4 { margin-bottom: 22px; }
+#screen-answering .phase-tag { margin-top: 8px; }
 .real-answer-box { margin-top: 14px; padding: 14px 16px; border-top: 1px dashed rgba(255,255,255,0.15); }
 .real-answer-box.hidden, .hidden { display: none !important; }
 .answer-label { font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-text-muted, rgba(255,255,255,0.45)); display: block; margin-bottom: 4px; }
