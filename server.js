@@ -368,6 +368,7 @@ function publicRoomState(room, forPlayerId) {
     code: room.code,
     phase: room.phase,
     isMultiplayerMatch: !!room.isMultiplayerMatch,
+    gameOver: room.gameOverInfo || null,
     roundType: room.roundType || 'question',
     pendingRoundType: room.pendingRoundType || 'question',
     estimateTriggerFields: ESTIMATE_TRIGGER_FIELDS,
@@ -499,10 +500,14 @@ function computeAwards(room) {
 }
 
 function checkForWinner(code, room) {
-  const winner = room.players.find(p => p.position >= BOARD_LENGTH);
-  if (winner) {
-    io.to(code).emit('gameOver', { winnerName: winner.name, awards: computeAwards(room) });
-  }
+  const finishers = room.players.filter(p => p.position >= BOARD_LENGTH);
+  if (finishers.length === 0) return;
+  // Bei mehreren Spielern, die in derselben Runde ins Ziel laufen, gewinnt wer am
+  // weitesten gekommen ist (mehr Felder gemacht hat), nicht wer zufällig zuerst geprüft wurde.
+  const winner = finishers.reduce((best, p) => (p.position > best.position ? p : best), finishers[0]);
+  room.gameOverInfo = { winnerName: winner.name, awards: computeAwards(room) };
+  // Die eigentliche Bekanntgabe (Pop-up) erfolgt erst, wenn das Spielbrett gezeigt wurde
+  // (siehe 'showBoard'), damit man noch sieht, wie die Figur ins Ziel läuft.
 }
 
 function removePlayerForGood(roomCode, playerId) {
@@ -1241,6 +1246,36 @@ io.on('connection', (socket) => {
     push.notifyPlayers([newModerator], 'Du bist dran! 🎤', 'Du moderierst die nächste Runde.', { code, type: 'moderating' });
   });
 
+  socket.on('newGameSameLobby', ({ code }) => {
+    const room = rooms[code];
+    if (!room || !room.gameOverInfo) return; // nur nach einem beendeten Spiel nutzbar
+    const token = socket.data.token;
+    if (!room.players.some(p => p.id === token)) return; // nur Mitglieder dieses Raums
+
+    room.players.forEach(p => { p.position = 0; });
+    room.moderatorIndex = 0;
+    room.stats = {};
+    room.answers = {};
+    room.votes = {};
+    room.liveTyping = {};
+    room.shuffledAnswers = [];
+    room.duplicateConflicts = [];
+    room.excludeFromPoolPlayerIds = [];
+    room.suppressRealEntry = false;
+    room.canonicalPlayerAnswerIds = [];
+    room.usedQuestions = [];
+    room.usedEstimateQuestions = [];
+    room.currentQuestionObj = null;
+    room.roundType = 'question';
+    room.pendingRoundType = 'question';
+    room.catchUpBonusGiven = false;
+    room.catchUpAnnouncement = null;
+    room.gameOverInfo = null;
+    room.phase = 'lobby';
+    broadcastState(code);
+    console.log(`[Neues Spiel] Raum ${code} wurde in derselben Lobby neu gestartet.`);
+  });
+
   socket.on('leaveRoom', ({ code }) => {
     const token = socket.data.token;
     if (!code || !token) return;
@@ -1251,6 +1286,20 @@ io.on('connection', (socket) => {
   });
 
   // Nur der Host (Raum-Ersteller, unabhängig von der rotierenden Moderatorrolle) darf kicken
+  // ===== DEV-TOOL: NUR ZUM TESTEN, SPÄTER WIEDER ENTFERNEN =====
+  // Setzt einen Spieler ein Feld vor das Ziel, damit man das Spielende (Board-Animation,
+  // Gewinner-Popup, "Neue Runde") testen kann, ohne zehn echte Runden spielen zu müssen.
+  socket.on('devNearFinish', ({ code, targetPlayerId }) => {
+    const room = rooms[code];
+    if (!room) return;
+    const target = room.players.find(p => p.id === targetPlayerId);
+    if (!target) return;
+    target.position = Math.max(0, BOARD_LENGTH - 1);
+    console.log(`[DEV-TOOL] "${target.name}" in Raum ${code} auf Feld ${target.position} gesetzt (kurz vorm Ziel).`);
+    broadcastState(code);
+  });
+  // ===== ENDE DEV-TOOL =====
+
   socket.on('kickPlayer', ({ code, targetPlayerId }) => {
     const room = rooms[code];
     if (!room) return;

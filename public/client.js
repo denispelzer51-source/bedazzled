@@ -814,9 +814,10 @@ document.getElementById('btn-next-round').addEventListener('click', () => {
   socket.emit('nextRound', { code: currentCode });
 });
 
-// ---------- WINNER OVERLAY ----------
-socket.on('gameOver', ({ winnerName, awards }) => {
-  document.getElementById('winner-text').textContent = `${winnerName} hat gewonnen! 🎉`;
+// ---------- WINNER OVERLAY (wird nach der Spielbrett-Animation aufgerufen, nicht sofort) ----------
+let winnerOverlayShownFor = null; // verhindert doppeltes Anzeigen bei erneutem State-Update
+function showWinnerOverlay(winnerName, awards) {
+  document.getElementById('winner-text').textContent = `${winnerName} hat gewonnen!`;
   const awardsBox = document.getElementById('awards-list');
   awardsBox.innerHTML = '';
   (awards || []).forEach(a => {
@@ -827,9 +828,13 @@ socket.on('gameOver', ({ winnerName, awards }) => {
   });
   document.getElementById('winner-overlay').classList.remove('hidden');
   playWinSound();
-});
+}
 document.getElementById('btn-close-winner').addEventListener('click', () => {
   document.getElementById('winner-overlay').classList.add('hidden');
+});
+document.getElementById('btn-new-game').addEventListener('click', () => {
+  document.getElementById('winner-overlay').classList.add('hidden');
+  socket.emit('newGameSameLobby', { code: currentCode });
 });
 
 // ---------- BOARD RENDER (mini bar, always visible) ----------
@@ -901,7 +906,7 @@ function computeTokenOffsets(players, positionsMap) {
   return offsets;
 }
 
-function renderBoardLarge(players, fromPositions, animate) {
+function renderBoardLarge(players, fromPositions, animate, onComplete) {
   const fieldsBox = document.getElementById('board-fields-large');
   const tokensBox = document.getElementById('board-tokens-large');
   fieldsBox.innerHTML = '';
@@ -972,6 +977,10 @@ function renderBoardLarge(players, fromPositions, animate) {
       }
       cumulativeDelay += steps * HOP_MS + PAUSE_BETWEEN_PLAYERS;
     });
+
+    if (onComplete) setTimeout(onComplete, cumulativeDelay + 200);
+  } else if (onComplete) {
+    onComplete();
   }
 
   const legend = document.getElementById('board-legend');
@@ -1036,6 +1045,16 @@ function renderLobbyPlayerList(state) {
       });
       li.appendChild(kickBtn);
     }
+    // ===== DEV-TOOL: NUR ZUM TESTEN, SPÄTER WIEDER ENTFERNEN =====
+    const devBtn = document.createElement('button');
+    devBtn.className = 'btn-kick';
+    devBtn.title = 'DEV: kurz vors Ziel setzen (Spielende testen)';
+    devBtn.textContent = '🧪';
+    devBtn.addEventListener('click', () => {
+      socket.emit('devNearFinish', { code: currentCode, targetPlayerId: p.id });
+    });
+    li.appendChild(devBtn);
+    // ===== ENDE DEV-TOOL =====
     list.appendChild(li);
   });
 
@@ -1166,6 +1185,7 @@ socket.on('state', (state) => {
   document.querySelectorAll('.mod-hide').forEach(el => el.style.display = iAmModerator ? 'none' : 'block');
 
   if (state.phase === 'lobby') {
+    winnerOverlayShownFor = null;
     document.getElementById('room-code-display').textContent = state.code;
     renderLobbyPlayerList(state);
     renderLobbyAvatarPicker(state);
@@ -1372,8 +1392,18 @@ socket.on('state', (state) => {
   }
 
   if (state.phase === 'board') {
-    renderBoardLarge(state.players, roundStartPositions, enteringBoard);
+    renderBoardLarge(state.players, roundStartPositions, enteringBoard, () => {
+      if (state.gameOver && winnerOverlayShownFor !== state.code + state.gameOver.winnerName) {
+        winnerOverlayShownFor = state.code + state.gameOver.winnerName;
+        showWinnerOverlay(state.gameOver.winnerName, state.gameOver.awards);
+      }
+    });
     showScreen('board');
+    document.getElementById('btn-next-round').classList.toggle('hidden', !!state.gameOver);
+    document.getElementById('btn-new-game').classList.toggle('hidden', !state.gameOver);
+    if (document.getElementById('board-waiting-msg')) {
+      document.getElementById('board-waiting-msg').classList.toggle('hidden', !!state.gameOver);
+    }
   }
 });
 
