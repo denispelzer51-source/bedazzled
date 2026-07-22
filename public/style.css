@@ -430,6 +430,8 @@ h2 { font-family: var(--font-display); font-weight: 700; font-size: 24px; text-a
 }
 .btn-back svg { width: 24px; height: 24px; }
 .btn-back:hover { border-color: var(--gold); color: var(--gold); }
+.btn-back:disabled { opacity: 0.35; cursor: not-allowed; }
+.btn-back:disabled:hover { border-color: rgba(255,255,255,0.15); color: var(--ink); }
 #screen-lobby { position: relative; }
 
 .closeness-tag { font-size: 13px; font-weight: 700; color: var(--gold); }
@@ -456,8 +458,8 @@ h2 { font-family: var(--font-display); font-weight: 700; font-size: 24px; text-a
   border-radius: 8px;
 }
 
-.share-buttons { display: flex; gap: 10px; margin: 0 0 4px; }
-.btn-share { font-size: 14px; padding: 12px 10px; flex: 1; }
+.share-buttons { display: flex; flex-direction: column; gap: 10px; margin: 0 0 4px; }
+.btn-share { font-size: 14px; padding: 12px 10px; }
 .copy-link-msg { text-align: center; color: var(--teal); font-size: 13px; font-weight: 600; margin: 0 0 12px; }
 
 .input-code-prominent {
@@ -475,6 +477,14 @@ h2 { font-family: var(--font-display); font-weight: 700; font-size: 24px; text-a
   box-shadow: 0 6px 20px rgba(140,57,247,0.35);
 }
 .btn-join-prominent:hover { filter: brightness(1.1); }
+
+.btn-invite-action {
+  background: var(--primary);
+  color: var(--ink);
+  box-shadow: 0 6px 20px rgba(140,57,247,0.35);
+  width: 100%;
+}
+.btn-invite-action:hover { filter: brightness(1.1); }
 
 .btn-kick {
   background: transparent;
@@ -658,7 +668,7 @@ h2 { font-family: var(--font-display); font-weight: 700; font-size: 24px; text-a
 .invite-card { text-align: center; max-width: 320px; width: 92%; }
 .invite-card h2 { margin: 0 0 20px; }
 .invite-card .share-buttons { flex-direction: column; gap: 10px; margin: 0 0 12px; }
-.invite-card .btn-share { font-size: 15px; padding: 14px 16px; width: 100%; }
+.invite-card .btn-share { font-size: 16px; padding: 15px 18px; width: 100%; }
 
 /* ---- Spiel-verlassen-Button (in allen Game-Screens unten) ---- */
 .btn-leave-game {

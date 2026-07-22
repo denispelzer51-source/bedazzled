@@ -521,9 +521,11 @@ document.getElementById('btn-quit-cancel').addEventListener('click', () => {
 // ---- Spieler einladen: Popup öffnen/schließen ----
 document.getElementById('btn-invite').addEventListener('click', () => {
   document.getElementById('invite-overlay').classList.remove('hidden');
+  document.getElementById('btn-leave-room').disabled = true;
 });
 document.getElementById('btn-invite-close').addEventListener('click', () => {
   document.getElementById('invite-overlay').classList.add('hidden');
+  document.getElementById('btn-leave-room').disabled = false;
 });
 
 document.getElementById('btn-copy-link').addEventListener('click', async () => {
