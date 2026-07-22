@@ -283,6 +283,15 @@ if (testSlot) {
   renderAvatarPicker();
 }
 
+// ---------- START SCREEN: nur Auswahl, ob beitreten oder erstellen ----------
+// WICHTIG: diese Deklarationen müssen VOR dem "roomFromLink"-Block weiter unten stehen,
+// da dieser sie beim Laden über einen Einladungs-Link sofort verwendet (sonst kompletter
+// Skript-Absturz durch Zugriff auf "let"-Variablen vor ihrer Deklaration).
+let pendingIntent = null; // 'join' | 'create' | 'multiplayer'
+let pendingJoinCode = null;
+let awaitingJoinConfirmation = false;
+let pendingJoinCodeCheck = null;
+
 // Komfort: Wenn der Link mit einem Raum-Code geöffnet wurde (z.B. per WhatsApp geteilt),
 // direkt zum Setup-Screen springen – kein manueller "Raum beitreten"-Klick nötig
 if (roomFromLink && /^\d{4}$/.test(roomFromLink)) {
@@ -360,10 +369,6 @@ socket.on('nameTaken', ({ name }) => {
 });
 
 // ---------- START SCREEN: nur Auswahl, ob beitreten oder erstellen ----------
-let pendingIntent = null; // 'join' | 'create'
-let pendingJoinCode = null;
-let awaitingJoinConfirmation = false;
-let pendingJoinCodeCheck = null;
 
 document.getElementById('btn-create').addEventListener('click', () => {
   pendingIntent = 'create';
