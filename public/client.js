@@ -204,7 +204,7 @@ let selectedAvatar = AVATAR_CHOICES[0].emoji;
 let takenAvatars = [];
 
 function avatarFor(player) {
-  return (player && player.avatar) || '💎';
+  return (player && player.avatar) || '❓';
 }
 
 const screens = {
@@ -319,6 +319,8 @@ socket.on('takenAvatars', ({ takenAvatars: taken, roomExists, gameInProgress }) 
     if (roomExists) {
       pendingIntent = 'join';
       pendingJoinCode = pendingJoinCodeCheck;
+      document.getElementById('avatar-picker-block').classList.remove('hidden');
+      document.getElementById('setup-multiplayer-hint').classList.add('hidden');
       showError('');
       document.getElementById('setup-error-msg').textContent = '';
       showScreen('setup');
@@ -352,6 +354,8 @@ let pendingJoinCodeCheck = null;
 document.getElementById('btn-create').addEventListener('click', () => {
   pendingIntent = 'create';
   pendingJoinCode = null;
+  document.getElementById('avatar-picker-block').classList.remove('hidden');
+  document.getElementById('setup-multiplayer-hint').classList.add('hidden');
   showError('');
   document.getElementById('setup-error-msg').textContent = '';
   showScreen('setup');
@@ -369,7 +373,8 @@ function startMatchmakingFlow(size) {
   pendingLobbySize = size;
   pendingJoinCode = null;
   takenAvatars = [];
-  renderAvatarPicker();
+  document.getElementById('avatar-picker-block').classList.add('hidden');
+  document.getElementById('setup-multiplayer-hint').classList.remove('hidden');
   showError('');
   document.getElementById('setup-error-msg').textContent = '';
   showScreen('setup');
@@ -442,7 +447,7 @@ document.getElementById('btn-confirm-setup').addEventListener('click', () => {
   if (pendingIntent === 'create') {
     socket.emit('createRoom', { name, avatar: selectedAvatar, token: myToken });
   } else if (pendingIntent === 'multiplayer') {
-    socket.emit('joinMatchmaking', { name, avatar: selectedAvatar, lobbySize: pendingLobbySize, token: myToken });
+    socket.emit('joinMatchmaking', { name, lobbySize: pendingLobbySize, token: myToken });
     document.getElementById('mp-waiting-count').textContent = `1 / ${pendingLobbySize}`;
     document.getElementById('mp-countdown').classList.add('hidden');
     document.getElementById('mp-status-text').textContent = 'Warte auf weitere Spieler …';
@@ -1015,6 +1020,35 @@ function renderLobbyPlayerList(state) {
   if (hintEl) hintEl.classList.toggle('hidden', state.players.length >= 3);
 }
 
+// ---------- LOBBY-AVATAR-PICKER (nur für Multiplayer-Matches, nach dem Matching) ----------
+function renderLobbyAvatarPicker(state) {
+  const block = document.getElementById('lobby-avatar-picker-block');
+  const me = state.players.find(p => p.id === myId);
+  const iHaveChosen = !!(me && me.avatar);
+
+  if (!state.isMultiplayerMatch || iHaveChosen) {
+    block.classList.add('hidden');
+    return;
+  }
+  block.classList.remove('hidden');
+
+  const takenHere = state.players.filter(p => p.id !== myId && p.avatar).map(p => p.avatar);
+  const box = document.getElementById('lobby-avatar-picker');
+  box.innerHTML = '';
+  AVATAR_CHOICES.forEach(a => {
+    const isTaken = takenHere.includes(a.emoji);
+    const div = document.createElement('div');
+    div.className = 'avatar-option' + (isTaken ? ' taken' : '');
+    div.innerHTML = `<span class="emoji">${a.emoji}</span><span class="label">${isTaken ? 'vergeben' : a.label}</span>`;
+    if (!isTaken) {
+      div.addEventListener('click', () => {
+        socket.emit('chooseAvatar', { code: currentCode, avatar: a.emoji });
+      });
+    }
+    box.appendChild(div);
+  });
+}
+
 socket.on('kicked', () => {
   clearSession();
   currentCode = null;
@@ -1095,7 +1129,10 @@ socket.on('state', (state) => {
   if (state.phase === 'lobby') {
     document.getElementById('room-code-display').textContent = state.code;
     renderLobbyPlayerList(state);
-    document.getElementById('btn-start-round').style.display = (state.players.length >= 3 && iAmModerator) ? 'block' : 'none';
+    renderLobbyAvatarPicker(state);
+    const allHaveAvatars = !state.isMultiplayerMatch || state.players.every(p => !!p.avatar);
+    document.getElementById('btn-start-round').style.display =
+      (state.players.length >= 3 && iAmModerator && allHaveAvatars) ? 'block' : 'none';
     showScreen('lobby');
   }
 

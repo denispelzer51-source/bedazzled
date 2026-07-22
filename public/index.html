@@ -70,8 +70,11 @@
       <div class="card">
         <label>Dein Name</label>
         <input id="input-name-setup" type="text" maxlength="16" placeholder="z.B. Sascha" />
-        <label>Deine Spielfigur</label>
-        <div id="avatar-picker" class="avatar-picker"></div>
+        <div id="avatar-picker-block">
+          <label>Deine Spielfigur</label>
+          <div id="avatar-picker" class="avatar-picker"></div>
+        </div>
+        <p id="setup-multiplayer-hint" class="hidden" style="color:var(--ink-dim); font-size:13px; margin:6px 0 0;">Deine Spielfigur wählst du gleich, sobald alle Mitspieler:innen gefunden sind.</p>
         <button id="btn-confirm-setup" class="btn btn-primary">Los geht's</button>
         <p id="setup-error-msg" class="error"></p>
       </div>
@@ -178,6 +181,10 @@
 
     <div class="screen-scroll">
       <h2>Wer ist dabei?</h2>
+      <div id="lobby-avatar-picker-block" class="hidden card" style="margin-bottom:16px;">
+        <label>Alle da! Wähl jetzt deine Spielfigur:</label>
+        <div id="lobby-avatar-picker" class="avatar-picker"></div>
+      </div>
       <ul id="player-list" class="player-list"></ul>
       <p id="min-players-hint" class="hint">Mindestens 3 Spieler nötig.</p>
       <button id="btn-start-round" class="btn btn-primary">Runde starten</button>

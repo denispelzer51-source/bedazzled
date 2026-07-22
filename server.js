@@ -367,6 +367,7 @@ function publicRoomState(room, forPlayerId) {
   return {
     code: room.code,
     phase: room.phase,
+    isMultiplayerMatch: !!room.isMultiplayerMatch,
     roundType: room.roundType || 'question',
     pendingRoundType: room.pendingRoundType || 'question',
     estimateTriggerFields: ESTIMATE_TRIGGER_FIELDS,
@@ -533,7 +534,7 @@ const MATCHMAKING_MIN_PLAYERS = 3;
 function createRoomFromMatchmaking(entries) {
   const code = genRoomCode();
   const players = entries.map(e => ({
-    id: e.playerId, name: e.name, avatar: e.avatar, position: 0, socketId: e.socket.id, pushToken: null,
+    id: e.playerId, name: e.name, avatar: null, position: 0, socketId: e.socket.id, pushToken: null,
   }));
   rooms[code] = {
     code,
@@ -669,11 +670,11 @@ io.on('connection', (socket) => {
   });
 
   // ---- Multiplayer-Matchmaking: zufälliger Lobby-Beitritt ----
-  socket.on('joinMatchmaking', ({ name, avatar, lobbySize, token }) => {
+  socket.on('joinMatchmaking', ({ name, lobbySize, token }) => {
     const size = [4, 6].includes(lobbySize) ? lobbySize : 4;
     const playerId = token || crypto.randomUUID();
     socket.data.matchmakingSize = size;
-    matchmakingQueues[size].push({ socket, playerId, name: (name || 'Spieler').trim() || 'Spieler', avatar: avatar || '💎', queuedAt: Date.now() });
+    matchmakingQueues[size].push({ socket, playerId, name: (name || 'Spieler').trim() || 'Spieler', queuedAt: Date.now() });
     console.log(`[Matchmaking] "${name}" tritt ${size}er-Warteschlange bei (${matchmakingQueues[size].length}/${size}).`);
     broadcastMatchmakingStatus(size);
   });
@@ -681,6 +682,22 @@ io.on('connection', (socket) => {
   socket.on('cancelMatchmaking', () => {
     removeFromAllMatchmakingQueues(socket.id);
     socket.data.matchmakingSize = null;
+  });
+
+  // Nach dem Matchmaking-Match: Spieler wählen ihre Spielfigur erst, sobald sie sich
+  // gegenseitig in der Lobby sehen (verhindert Doppelwahl vor dem eigentlichen Matching).
+  socket.on('chooseAvatar', ({ code, avatar }) => {
+    const room = rooms[code];
+    if (!room || room.phase !== 'lobby') return;
+    const player = room.players.find(p => p.id === socket.data.token);
+    if (!player) return;
+    const taken = room.players.some(p => p.id !== player.id && p.avatar === avatar);
+    if (taken) {
+      socket.emit('avatarTaken', { takenAvatars: room.players.filter(p => p.avatar).map(p => p.avatar) });
+      return;
+    }
+    player.avatar = avatar;
+    broadcastState(code);
   });
 
   socket.on('joinRoom', ({ name, code, avatar, token }) => {
@@ -804,6 +821,10 @@ io.on('connection', (socket) => {
     const room = rooms[code];
     if (!room || room.players.length < 3) {
       socket.emit('errorMsg', 'Mindestens 3 Spieler nötig, um zu starten.');
+      return;
+    }
+    if (room.isMultiplayerMatch && room.players.some(p => !p.avatar)) {
+      socket.emit('errorMsg', 'Alle Spieler müssen zuerst ihre Spielfigur wählen.');
       return;
     }
     const moderatorId = room.players[room.moderatorIndex].id;
