@@ -995,7 +995,8 @@ io.on('connection', (socket) => {
   // offenen Dopplungs-Konflikte mehr auf eine Moderator-Entscheidung warten
   function maybeAutoAdvanceToVoting(room, code) {
     if (room.phase !== 'answering' || room.roundType === 'estimate') return;
-    const requiredCount = room.players.length - 1;
+    const connectedNonModerator = room.players.filter(p => p.id !== room.players[room.moderatorIndex].id && p.socketId);
+    const requiredCount = connectedNonModerator.length;
     const answeredCount = Object.keys(room.answers).length;
     const hasOpenConflicts = room.duplicateConflicts && room.duplicateConflicts.length > 0;
     if (answeredCount >= requiredCount && !hasOpenConflicts) {
@@ -1110,7 +1111,7 @@ io.on('connection', (socket) => {
     // Alle Nicht-Moderatoren müssen abgestimmt haben
     const moderatorId = room.players[room.moderatorIndex].id;
     const voters = room.players.filter(p => p.id !== moderatorId);
-    const missingVotes = voters.filter(p => room.votes[p.id] === undefined);
+    const missingVotes = voters.filter(p => room.votes[p.id] === undefined && p.socketId); // getrennte Spieler blockieren nicht
     if (missingVotes.length > 0) {
       const names = missingVotes.map(p => p.name).join(', ');
       socket.emit('errorMsg', `Noch nicht alle haben abgestimmt: ${names}`);
