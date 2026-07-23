@@ -349,6 +349,14 @@ h2 { font-family: var(--font-display); font-weight: 700; font-size: 24px; text-a
 }
 .board-legend { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; justify-content: center; }
 .board-legend span { font-size: 13px; color: var(--ink-dim); background: var(--night-2); padding: 6px 12px; border-radius: 20px; }
+
+.field-color-key { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 4px; }
+.field-color-key span { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-dim); }
+.key-dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+.key-purple { background: rgba(172,88,249,0.5); border: 1px solid var(--primary, #AC58F9); }
+.key-blue { background: rgba(88,149,249,0.5); border: 1px solid #5895F9; }
+.key-green { background: rgba(63,191,160,0.5); border: 1px solid var(--teal); }
+.key-yellow { background: rgba(245,200,66,0.5); border: 1px solid var(--gold); }
 .board-bar {
   position: fixed;
   bottom: 0; left: 0; right: 0;

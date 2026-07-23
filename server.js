@@ -114,6 +114,10 @@ const CATCHUP_BONUS = 5;
 // Zugangscode für die Fragen-Verwaltung (/admin.html). Auf Render als Umgebungsvariable
 // ADMIN_KEY setzen, um den Standardwert zu überschreiben.
 const ADMIN_KEY = process.env.ADMIN_KEY || 'bedazzled-admin';
+// Separater Code fürs In-Game-Admin-Tool (Runde überspringen, jeden Spieler kicken) -
+// unabhängig vom Fragen-Admin-Panel-Key oben. Unbedingt per Env-Var GAME_ADMIN_CODE
+// auf Render überschreiben, bevor andere Leute mitspielen!
+const GAME_ADMIN_CODE = process.env.GAME_ADMIN_CODE || 'bedazzled-superadmin';
 
 function checkAdmin(req, res, next) {
   const key = req.query.key || req.headers['x-admin-key'];
@@ -430,6 +434,7 @@ function publicRoomState(room, forPlayerId) {
     phase: room.phase,
     isMultiplayerMatch: !!room.isMultiplayerMatch,
     gameOver: room.gameOverInfo || null,
+    adminForcedFromPositions: (room.phase === 'board' && room.adminForcedFromPositions) ? room.adminForcedFromPositions : null,
     roundType: room.roundType || 'question',
     pendingRoundType: room.pendingRoundType || 'question',
     estimateTriggerFields: ESTIMATE_TRIGGER_FIELDS,
@@ -1489,6 +1494,7 @@ io.on('connection', (socket) => {
     room.correctGuessers = [];
     room.drawingResult = null;
     room.drawingStartPositions = {};
+    room.adminForcedFromPositions = null;
     room.phase = 'lobby';
 
     // Vorgemerkte Spieler jetzt automatisch einlassen
@@ -1541,6 +1547,12 @@ io.on('connection', (socket) => {
     room.catchUpBonusGiven = false;
     room.catchUpAnnouncement = null;
     room.gameOverInfo = null;
+    room.adminForcedFromPositions = null;
+    room.correctGuessers = [];
+    room.drawingResult = null;
+    room.drawingStartPositions = {};
+    room.usedDrawTerms = [];
+    room.usedForeignwordQuestions = [];
     room.phase = 'lobby';
     broadcastState(code);
     console.log(`[Neues Spiel] Raum ${code} wurde in derselben Lobby neu gestartet.`);
@@ -1570,14 +1582,95 @@ io.on('connection', (socket) => {
   });
   // ===== ENDE DEV-TOOL =====
 
+  // ==================== IN-GAME ADMIN-TOOL (nur für dich, per Geheim-Code) ====================
+  socket.on('adminAuth', ({ passcode }) => {
+    const ok = !!passcode && passcode === GAME_ADMIN_CODE;
+    socket.data.isSuperAdmin = ok;
+    socket.emit('adminAuthResult', { success: ok });
+  });
+
+  socket.on('adminSkipRound', ({ code }) => {
+    if (!socket.data.isSuperAdmin) return;
+    const room = rooms[code];
+    if (!room) return;
+    // Wie ein normaler Rundenwechsel, aber jederzeit auslösbar (egal in welcher Phase
+    // gerade festgehangen wird) - für den Fall, dass beim Testen mal was klemmt.
+    room.moderatorIndex = (room.moderatorIndex + 1) % room.players.length;
+    room.answers = {};
+    room.votes = {};
+    room.liveTyping = {};
+    room.shuffledAnswers = [];
+    room.correctGuessers = [];
+    room.drawingResult = null;
+    room.drawingStartPositions = {};
+    room.duplicateConflicts = [];
+    room.excludeFromPoolPlayerIds = [];
+    room.suppressRealEntry = false;
+    room.canonicalPlayerAnswerIds = [];
+    room.currentQuestionObj = null;
+    room.questionCandidates = [];
+    room.previewIndex = 0;
+    room.adminForcedFromPositions = null;
+    room.phase = 'lobby';
+    broadcastState(code);
+    console.log(`[ADMIN-TOOL] Runde in Raum ${code} übersprungen.`);
+  });
+
+  // Springt sofort in den Anfang einer Zeichenrunde (zum Testen des Zeichen-Screens),
+  // ohne die Fragen-Vorschau und ohne den Begriff als "verwendet" zu markieren.
+  socket.on('adminForceDrawingRound', ({ code }) => {
+    if (!socket.data.isSuperAdmin) return;
+    const room = rooms[code];
+    if (!room || room.players.length < 2) return;
+    const chosen = pickNextQuestion(room, 'drawing', []);
+    room.roundType = 'drawing';
+    room.currentQuestionObj = chosen;
+    room.questionCandidates = [];
+    room.previewIndex = 0;
+    room.answers = {};
+    room.votes = {};
+    room.correctGuessers = [];
+    room.drawingResult = null;
+    room.drawingStartPositions = {};
+    room.players.forEach(p => { room.drawingStartPositions[p.id] = p.position; });
+    room.phase = 'drawing';
+    broadcastState(code);
+    console.log(`[ADMIN-TOOL] Zeichenrunde in Raum ${code} erzwungen (Test).`);
+  });
+
+  // Simuliert, dass eine komplette Runde stattgefunden hat: jede Figur macht einen
+  // zufälligen Zug, dann geht's direkt zum Spielbrett - zum Testen der Brett-Animation
+  // und des Spielendes, ohne eine echte Runde durchspielen zu müssen.
+  socket.on('adminForceBoardRandom', ({ code }) => {
+    if (!socket.data.isSuperAdmin) return;
+    const room = rooms[code];
+    if (!room) return;
+    const prevPositions = {};
+    room.players.forEach(p => { prevPositions[p.id] = p.position; });
+    room.players.forEach(p => {
+      const steps = Math.floor(Math.random() * 7); // 0-6 Felder, wie eine plausible echte Runde
+      p.position = Math.min(BOARD_LENGTH, p.position + steps);
+    });
+    room.adminForcedFromPositions = prevPositions;
+    room.answers = {};
+    room.votes = {};
+    room.correctGuessers = [];
+    room.drawingResult = null;
+    applyRoundTypeTriggerCheck(room, prevPositions);
+    room.phase = 'board';
+    broadcastState(code);
+    checkForWinner(code, room);
+    console.log(`[ADMIN-TOOL] Zufällige Züge + Spielbrett in Raum ${code} erzwungen (Test).`);
+  });
+
   socket.on('kickPlayer', ({ code, targetPlayerId }) => {
     const room = rooms[code];
     if (!room) return;
-    if (socket.data.token !== room.hostId) {
+    if (socket.data.token !== room.hostId && !socket.data.isSuperAdmin) {
       socket.emit('errorMsg', 'Nur der Host kann Spieler entfernen.');
       return;
     }
-    if (targetPlayerId === room.hostId) return; // Host kann sich nicht selbst rauswerfen
+    if (targetPlayerId === room.hostId && !socket.data.isSuperAdmin) return; // Host kann sich nicht selbst rauswerfen
     const target = room.players.find(p => p.id === targetPlayerId);
     if (target && target.socketId) {
       io.to(target.socketId).emit('kicked');

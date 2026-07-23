@@ -143,11 +143,94 @@ document.getElementById('btn-settings').addEventListener('click', () => {
   } else {
     roomRow.classList.add('hidden');
   }
+  renderAdminPlayerList();
   overlay.classList.remove('hidden');
 });
 document.getElementById('btn-close-settings').addEventListener('click', () => {
   document.getElementById('settings-overlay').classList.add('hidden');
 });
+
+// ---------- IN-GAME ADMIN-TOOL (nur für dich, per Geheim-Code, geräteübergreifend) ----------
+const ADMIN_CODE_KEY = 'bedazzled_admin_code';
+let isSuperAdminUnlocked = false;
+
+function tryAdminAuth(passcode) {
+  socket.emit('adminAuth', { passcode });
+}
+// Beim (Wieder-)Verbinden automatisch erneut freischalten, falls schon mal auf diesem
+// Gerät erfolgreich freigeschaltet wurde (jede neue Verbindung braucht eine neue Prüfung)
+const storedAdminCode = localStorage.getItem(ADMIN_CODE_KEY);
+if (storedAdminCode) {
+  socket.on('connect', () => tryAdminAuth(storedAdminCode));
+}
+
+socket.on('adminAuthResult', ({ success }) => {
+  const msgEl = document.getElementById('admin-unlock-msg');
+  if (success) {
+    isSuperAdminUnlocked = true;
+    const enteredCode = document.getElementById('input-admin-code').value.trim();
+    if (enteredCode) localStorage.setItem(ADMIN_CODE_KEY, enteredCode);
+    document.getElementById('admin-tools-box').classList.remove('hidden');
+    document.getElementById('admin-unlock-row').classList.add('hidden');
+    msgEl.textContent = '';
+    renderAdminPlayerList();
+  } else {
+    msgEl.textContent = 'Falscher Code.';
+    isSuperAdminUnlocked = false;
+    localStorage.removeItem(ADMIN_CODE_KEY);
+  }
+});
+
+document.getElementById('btn-admin-unlock').addEventListener('click', () => {
+  const code = document.getElementById('input-admin-code').value.trim();
+  if (!code) return;
+  tryAdminAuth(code);
+});
+
+document.getElementById('btn-admin-skip-round').addEventListener('click', () => {
+  if (!currentCode) return;
+  if (!confirm('Aktuelle Runde wirklich überspringen und zurück in die Lobby?')) return;
+  socket.emit('adminSkipRound', { code: currentCode });
+});
+
+document.getElementById('btn-admin-force-drawing').addEventListener('click', () => {
+  if (!currentCode) return;
+  socket.emit('adminForceDrawingRound', { code: currentCode });
+  document.getElementById('settings-overlay').classList.add('hidden');
+});
+
+document.getElementById('btn-admin-force-board').addEventListener('click', () => {
+  if (!currentCode) return;
+  socket.emit('adminForceBoardRandom', { code: currentCode });
+  document.getElementById('settings-overlay').classList.add('hidden');
+});
+
+function renderAdminPlayerList() {
+  const box = document.getElementById('admin-player-list');
+  if (!box) return;
+  if (!isSuperAdminUnlocked || !lastState || !lastState.players) {
+    box.innerHTML = '';
+    return;
+  }
+  box.innerHTML = '';
+  lastState.players.forEach(p => {
+    const row = document.createElement('div');
+    row.style.display = 'flex';
+    row.style.justifyContent = 'space-between';
+    row.style.alignItems = 'center';
+    row.style.padding = '6px 0';
+    row.innerHTML = `<span>${avatarFor(p)} ${escapeHtml(p.name)}${p.connected === false ? ' (getrennt)' : ''}</span>`;
+    const kickBtn = document.createElement('button');
+    kickBtn.className = 'btn-kick';
+    kickBtn.textContent = '✕ Entfernen';
+    kickBtn.addEventListener('click', () => {
+      if (!confirm(`${p.name} wirklich aus dem Raum entfernen?`)) return;
+      socket.emit('kickPlayer', { code: currentCode, targetPlayerId: p.id });
+    });
+    row.appendChild(kickBtn);
+    box.appendChild(row);
+  });
+}
 
 let myId = null;
 let currentCode = null;
@@ -608,6 +691,7 @@ document.getElementById('btn-start-round').addEventListener('click', () => {
 
 // ---------- FRAGEN-VORSCHAU (Moderator sieht/wählt die Frage vor dem Rundenstart) ----------
 let qpCurrentIndex = 0;
+let qpSwapAreaRevealed = false;
 document.getElementById('btn-qp-prev').addEventListener('click', () => {
   if (qpCurrentIndex > 0) {
     socket.emit('selectPreviewCandidate', { code: currentCode, index: qpCurrentIndex - 1 });
@@ -617,6 +701,8 @@ document.getElementById('btn-qp-next-candidate').addEventListener('click', () =>
   socket.emit('selectPreviewCandidate', { code: currentCode, index: qpCurrentIndex + 1 });
 });
 document.getElementById('btn-qp-swap').addEventListener('click', () => {
+  qpSwapAreaRevealed = true;
+  document.getElementById('qp-swap-area').classList.remove('hidden');
   socket.emit('previewOtherQuestion', { code: currentCode });
 });
 document.getElementById('btn-qp-confirm').addEventListener('click', () => {
@@ -624,17 +710,7 @@ document.getElementById('btn-qp-confirm').addEventListener('click', () => {
 });
 
 document.getElementById('btn-leave-room').addEventListener('click', () => {
-  if (currentCode) socket.emit('leaveRoom', { code: currentCode });
-  clearSession();
-  currentCode = null;
-  myId = null;
-  lastState = null;
-  pendingIntent = null;
-  pendingJoinCode = null;
-  document.getElementById('board-bar').classList.add('hidden');
-  document.getElementById('input-code').value = '';
-  showError('');
-  showScreen('start');
+  document.getElementById('quit-overlay').classList.remove('hidden');
 });
 
 // ---- X-Button: Spiel verlassen (mit Bestätigung) ----
@@ -1330,12 +1406,18 @@ socket.on('state', (state) => {
   }
 
   if (state.phase === 'previewQuestion') {
+    const enteringQuestionPreview = !lastState || lastState.phase !== 'previewQuestion';
+    if (enteringQuestionPreview) {
+      qpSwapAreaRevealed = false;
+      document.getElementById('qp-swap-area').classList.add('hidden');
+    }
     const qp = state.questionPreview;
     if (qp) {
       // Ich bin Moderator:in - Vorschau anzeigen
       qpCurrentIndex = qp.currentIndex;
       document.getElementById('qp-moderator-view').classList.remove('hidden');
       document.getElementById('qp-waiting-view').classList.add('hidden');
+      if (qpSwapAreaRevealed) document.getElementById('qp-swap-area').classList.remove('hidden');
       document.getElementById('qp-current-num').textContent = qp.currentIndex + 1;
       document.getElementById('qp-total-num').textContent = qp.candidates.length;
       const current = qp.candidates[qp.currentIndex];
@@ -1658,7 +1740,7 @@ socket.on('state', (state) => {
   }
 
   if (state.phase === 'board') {
-    renderBoardLarge(state.players, roundStartPositions, enteringBoard, () => {
+    renderBoardLarge(state.players, state.adminForcedFromPositions || roundStartPositions, enteringBoard, () => {
       if (state.gameOver && winnerOverlayShownFor !== state.code + state.gameOver.winnerName) {
         winnerOverlayShownFor = state.code + state.gameOver.winnerName;
         showWinnerOverlay(state.gameOver.winnerName, state.gameOver.awards);
