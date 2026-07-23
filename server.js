@@ -28,6 +28,19 @@ let mongoDb = null;
 let questionsList = JSON.parse(fs.readFileSync(QUESTIONS_PATH, 'utf8'));
 let estimateQuestionsList = JSON.parse(fs.readFileSync(ESTIMATE_QUESTIONS_PATH, 'utf8'));
 
+// Migration: bereits vorhandene Fragen (aus der Datei, vor Einführung des "reviewed"-
+// Flags) gelten als geprüft, damit sie nicht plötzlich aus dem laufenden Spiel
+// verschwinden. Nur wirklich NEUE Fragen (per Formular/Import) starten als ungeprüft.
+function migrateReviewedFlag(list) {
+  let changed = false;
+  list.forEach(q => {
+    if (q.reviewed === undefined) { q.reviewed = true; changed = true; }
+  });
+  return changed;
+}
+if (migrateReviewedFlag(questionsList)) fs.writeFileSync(QUESTIONS_PATH, JSON.stringify(questionsList, null, 2), 'utf8');
+if (migrateReviewedFlag(estimateQuestionsList)) fs.writeFileSync(ESTIMATE_QUESTIONS_PATH, JSON.stringify(estimateQuestionsList, null, 2), 'utf8');
+
 async function initDatabase() {
   if (!useMongo) {
     console.log('[DB] Keine MONGODB_URI gesetzt - Fragen laufen über lokale JSON-Dateien.');
@@ -56,6 +69,17 @@ async function initDatabase() {
     questionsList = (await questionsCol.find().toArray()).map(stripId);
     estimateQuestionsList = (await estimateCol.find().toArray()).map(stripId);
     console.log(`[DB] Geladen: ${questionsList.length} Bluff-Fragen, ${estimateQuestionsList.length} Schätzen-Fragen aus MongoDB.`);
+
+    // Migration: bestehende Fragen in der DB (von vor Einführung des "reviewed"-Flags)
+    // gelten als bereits geprüft, damit sie im laufenden Spiel bleiben
+    if (migrateReviewedFlag(questionsList)) {
+      await questionsCol.deleteMany({});
+      await questionsCol.insertMany(questionsList.map(stripId));
+    }
+    if (migrateReviewedFlag(estimateQuestionsList)) {
+      await estimateCol.deleteMany({});
+      await estimateCol.insertMany(estimateQuestionsList.map(stripId));
+    }
   } catch (err) {
     console.error('[DB] Verbindung zu MongoDB fehlgeschlagen, falle auf lokale Dateien zurück:', err.message);
     mongoDb = null;
@@ -138,6 +162,7 @@ app.post('/api/estimate-questions', checkAdmin, (req, res) => {
     topic: (topic || 'Sonstiges').trim(),
     question: question.trim(),
     answer: numericAnswer,
+    reviewed: false,
   });
   saveEstimateQuestions();
   res.json(estimateQuestionsList);
@@ -154,6 +179,19 @@ app.put('/api/estimate-questions/:index', checkAdmin, (req, res) => {
   if (answer !== undefined && !Number.isNaN(Number(answer))) estimateQuestionsList[idx].answer = Number(answer);
   if (category) estimateQuestionsList[idx].category = category.trim();
   if (topic) estimateQuestionsList[idx].topic = topic.trim();
+  estimateQuestionsList[idx].reviewed = true;
+  saveEstimateQuestions();
+  res.json(estimateQuestionsList);
+});
+
+app.put('/api/estimate-questions/:index/reviewed', checkAdmin, (req, res) => {
+  const idx = parseInt(req.params.index, 10);
+  if (!estimateQuestionsList[idx]) {
+    res.status(404).json({ error: 'Frage nicht gefunden.' });
+    return;
+  }
+  const { reviewed } = req.body || {};
+  estimateQuestionsList[idx].reviewed = !!reviewed;
   saveEstimateQuestions();
   res.json(estimateQuestionsList);
 });
@@ -182,6 +220,7 @@ app.post('/api/estimate-questions/import', checkAdmin, (req, res) => {
       topic: (i.topic || 'Sonstiges').toString().trim(),
       question: String(i.question).trim(),
       answer: Number(i.answer),
+      reviewed: false,
     }));
   if (valid.length === 0) {
     res.status(400).json({ error: 'Keine gültigen Fragen im Import gefunden.' });
@@ -212,6 +251,7 @@ app.post('/api/questions', checkAdmin, (req, res) => {
     topic: (topic || 'Sonstiges').trim(),
     question: question.trim(),
     answer: answer.trim(),
+    reviewed: false, // neu erstellte Fragen müssen erst geprüft werden, bevor sie im Spiel landen
   });
   saveQuestions();
   res.json(questionsList);
@@ -228,6 +268,20 @@ app.put('/api/questions/:index', checkAdmin, (req, res) => {
   if (answer) questionsList[idx].answer = answer.trim();
   if (category) questionsList[idx].category = category.trim();
   if (topic) questionsList[idx].topic = topic.trim();
+  // Manuelles Bearbeiten zählt als Prüfung - die Frage darf ab jetzt im Spiel vorkommen
+  questionsList[idx].reviewed = true;
+  saveQuestions();
+  res.json(questionsList);
+});
+
+app.put('/api/questions/:index/reviewed', checkAdmin, (req, res) => {
+  const idx = parseInt(req.params.index, 10);
+  if (!questionsList[idx]) {
+    res.status(404).json({ error: 'Frage nicht gefunden.' });
+    return;
+  }
+  const { reviewed } = req.body || {};
+  questionsList[idx].reviewed = !!reviewed;
   saveQuestions();
   res.json(questionsList);
 });
@@ -256,6 +310,7 @@ app.post('/api/questions/import', checkAdmin, (req, res) => {
       topic: (i.topic || 'Sonstiges').toString().trim(),
       question: String(i.question).trim(),
       answer: String(i.answer).trim(),
+      reviewed: false, // importierte Fragen müssen erst geprüft werden
     }));
   if (valid.length === 0) {
     res.status(400).json({ error: 'Keine gültigen Fragen im Import gefunden.' });
@@ -468,23 +523,23 @@ function broadcastState(roomCode) {
 function pickNextQuestion(room, roundType, excludeIndices = []) {
   let pool, usedKey;
   if (roundType === 'estimate') {
-    pool = estimateQuestionsList;
+    pool = estimateQuestionsList.filter(q => q.reviewed === true);
     usedKey = 'usedEstimateQuestions';
   } else if (roundType === 'foreignword') {
     // Blaue Felder: nur Fremdwörter-Fragen
-    pool = questionsList.filter(q => q.category === 'Fremdwörter');
+    pool = questionsList.filter(q => q.category === 'Fremdwörter' && q.reviewed === true);
     usedKey = 'usedForeignwordQuestions';
   } else if (roundType === 'drawing') {
     // Gelbe Felder: Begriffe aus der Kategorie "Zeichnen" (übers Fragen-Verwaltung-Panel
     // gepflegt wie alle anderen Fragen auch - "Frage"-Feld enthält den Begriff)
-    pool = questionsList.filter(q => q.category === 'Zeichnen');
+    pool = questionsList.filter(q => q.category === 'Zeichnen' && q.reviewed === true);
     usedKey = 'usedDrawTerms';
   } else {
     // Lila Standardfelder: alles außer Fremdwörter/Zeichnen (Kuriositäten, Historischer Kontext, etc.)
-    pool = questionsList.filter(q => q.category !== 'Fremdwörter' && q.category !== 'Zeichnen');
+    pool = questionsList.filter(q => q.category !== 'Fremdwörter' && q.category !== 'Zeichnen' && q.reviewed === true);
     usedKey = 'usedQuestions';
   }
-  if (pool.length === 0) pool = questionsList; // Notfall, falls eine Kategorie leer ist
+  if (pool.length === 0) pool = questionsList.filter(q => q.reviewed === true); // Notfall, falls eine Kategorie leer ist
 
   if (!room[usedKey]) room[usedKey] = [];
   const usedOrExcluded = new Set([...room[usedKey], ...excludeIndices]);
@@ -892,20 +947,20 @@ io.on('connection', (socket) => {
       return;
     }
     const roundType = room.pendingRoundType || 'question';
-    if (roundType === 'estimate' && estimateQuestionsList.length === 0) {
-      socket.emit('errorMsg', 'Es sind keine Schätzen-Fragen hinterlegt. Bitte über /admin.html hinzufügen.');
+    if (roundType === 'estimate' && estimateQuestionsList.filter(q => q.reviewed === true).length === 0) {
+      socket.emit('errorMsg', 'Es sind keine geprüften Schätzen-Fragen hinterlegt. Bitte über /admin.html hinzufügen bzw. prüfen.');
       return;
     }
-    if (roundType === 'question' && questionsList.filter(q => q.category !== 'Fremdwörter' && q.category !== 'Zeichnen').length === 0) {
-      socket.emit('errorMsg', 'Es sind keine Fragen hinterlegt. Bitte über /admin.html Fragen hinzufügen.');
+    if (roundType === 'question' && questionsList.filter(q => q.category !== 'Fremdwörter' && q.category !== 'Zeichnen' && q.reviewed === true).length === 0) {
+      socket.emit('errorMsg', 'Es sind keine geprüften Fragen hinterlegt. Bitte über /admin.html Fragen hinzufügen bzw. prüfen.');
       return;
     }
-    if (roundType === 'foreignword' && questionsList.filter(q => q.category === 'Fremdwörter').length === 0) {
-      socket.emit('errorMsg', 'Es sind keine Fremdwörter-Fragen hinterlegt. Bitte über /admin.html hinzufügen.');
+    if (roundType === 'foreignword' && questionsList.filter(q => q.category === 'Fremdwörter' && q.reviewed === true).length === 0) {
+      socket.emit('errorMsg', 'Es sind keine geprüften Fremdwörter-Fragen hinterlegt. Bitte über /admin.html hinzufügen bzw. prüfen.');
       return;
     }
-    if (roundType === 'drawing' && questionsList.filter(q => q.category === 'Zeichnen').length === 0) {
-      socket.emit('errorMsg', 'Es sind keine Zeichen-Begriffe hinterlegt. Bitte über /admin.html mit Kategorie "Zeichnen" hinzufügen.');
+    if (roundType === 'drawing' && questionsList.filter(q => q.category === 'Zeichnen' && q.reviewed === true).length === 0) {
+      socket.emit('errorMsg', 'Es sind keine geprüften Zeichen-Begriffe hinterlegt. Bitte über /admin.html mit Kategorie "Zeichnen" hinzufügen bzw. prüfen.');
       return;
     }
     room.roundType = roundType;

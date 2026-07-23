@@ -11,6 +11,9 @@
   .q-row { background: var(--night-2); border-radius: 12px; padding: 14px 16px; margin-bottom: 8px; }
   .q-row .q-text { font-weight: 600; margin-bottom: 4px; }
   .q-row .q-topic-tag { display: inline-block; font-size: 11px; color: var(--gold); background: rgba(172,88,249,0.12); padding: 2px 8px; border-radius: 20px; margin-bottom: 6px; }
+  .reviewed-badge { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 20px; margin: 0 0 6px 6px; }
+  .reviewed-badge.is-reviewed { color: #3fbfa0; background: rgba(63,191,160,0.15); }
+  .reviewed-badge.is-unreviewed { color: #e8a83c; background: rgba(232,168,60,0.15); }
   .q-text-edit, .a-text-edit { width: 100%; margin-bottom: 8px; }
   .q-row .a-text { color: var(--teal); font-size: 14px; }
   .q-row .row-actions { display: flex; gap: 8px; margin-top: 10px; }
@@ -106,6 +109,11 @@
       <select id="filter-topic">
         <option value="">Alle Themen</option>
       </select>
+      <select id="filter-reviewed">
+        <option value="">Alle (geprüft &amp; ungeprüft)</option>
+        <option value="unreviewed">⚠️ Nur ungeprüfte</option>
+        <option value="reviewed">✅ Nur geprüfte</option>
+      </select>
       <input id="filter-search" type="search" placeholder="🔍 Volltextsuche in Frage/Antwort …" />
     </div>
 
@@ -123,6 +131,7 @@
   let openTopics = new Set();
   let filterCategory = '';
   let filterTopic = '';
+  let filterReviewed = '';
   let filterSearch = '';
   const DEFAULT_CATEGORY = 'Sonstige';
   const DEFAULT_TOPIC = 'Sonstiges';
@@ -230,12 +239,15 @@
 
   document.getElementById('filter-category').addEventListener('change', (e) => { filterCategory = e.target.value; renderQuestions(); });
   document.getElementById('filter-topic').addEventListener('change', (e) => { filterTopic = e.target.value; renderQuestions(); });
+  document.getElementById('filter-reviewed').addEventListener('change', (e) => { filterReviewed = e.target.value; renderQuestions(); });
   document.getElementById('filter-search').addEventListener('input', (e) => { filterSearch = e.target.value.toLowerCase(); renderQuestions(); });
 
   function applyFilters(list) {
     return list.filter(q => {
       if (filterCategory && (q.category || DEFAULT_CATEGORY) !== filterCategory) return false;
       if (filterTopic && (q.topic || DEFAULT_TOPIC) !== filterTopic) return false;
+      if (filterReviewed === 'reviewed' && q.reviewed !== true) return false;
+      if (filterReviewed === 'unreviewed' && q.reviewed === true) return false;
       if (filterSearch) {
         const hay = (q.question + ' ' + q.answer).toLowerCase();
         if (!hay.includes(filterSearch)) return false;
@@ -313,11 +325,14 @@
         items.forEach(q => {
           const row = document.createElement('div');
           row.className = 'q-row';
+          const isReviewed = q.reviewed === true;
           row.innerHTML = `
             <span class="q-topic-tag">${escapeHtml(q.category || DEFAULT_CATEGORY)}</span>
+            <span class="reviewed-badge ${isReviewed ? 'is-reviewed' : 'is-unreviewed'}">${isReviewed ? '✅ Geprüft' : '⚠️ Ungeprüft'}</span>
             <div class="q-text">${escapeHtml(q.question)}</div>
             <div class="a-text">✔ ${escapeHtml(String(q.answer))}</div>
             <div class="row-actions">
+              <button class="btn btn-secondary btn-toggle-reviewed">${isReviewed ? 'Als ungeprüft markieren' : '✓ Als geprüft markieren'}</button>
               <button class="btn btn-secondary btn-edit">Bearbeiten</button>
               <button class="btn btn-secondary btn-delete">Löschen</button>
             </div>
@@ -325,6 +340,13 @@
           row.querySelector('.btn-delete').addEventListener('click', async () => {
             if (!confirm('Diese Frage wirklich löschen?')) return;
             questions = await apiCall(apiBase() + '/' + q._globalIdx, { method: 'DELETE' });
+            renderQuestions();
+          });
+          row.querySelector('.btn-toggle-reviewed').addEventListener('click', async () => {
+            questions = await apiCall(apiBase() + '/' + q._globalIdx + '/reviewed', {
+              method: 'PUT',
+              body: JSON.stringify({ reviewed: !isReviewed }),
+            });
             renderQuestions();
           });
           row.querySelector('.btn-edit').addEventListener('click', () => startEdit(row, q, q._globalIdx));

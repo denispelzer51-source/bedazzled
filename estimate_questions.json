@@ -46,5 +46,11 @@
     "question": "Wie alt wurde die älteste jemals dokumentierte Person der Welt (in Jahren)?",
     "answer": 122,
     "topic": "Wissenschaft & Forschung"
+  },
+  {
+    "category": "Historischer Kontext",
+    "question": "Wie viele Tage dauerte Napoleons erstes Exil auf der Insel Elba, bevor er 1815 wieder entkam?",
+    "answer": 300,
+    "topic": "Herrscher & Politik"
   }
 ]

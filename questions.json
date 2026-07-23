@@ -400,5 +400,54 @@
     "topic": "Gegenstände",
     "question": "Sanduhr",
     "answer": "Sanduhr"
+  },
+  {
+    "category": "Historischer Kontext",
+    "topic": "Militär & Kriegsführung",
+    "question": "Gegen welchen Gegner verlor das australische Militär 1932 einen offiziell erklärten Krieg?",
+    "answer": "Gegen wilde Emus – die Vögel waren den Maschinengewehren schlicht zu schnell und zu schlau"
+  },
+  {
+    "category": "Historischer Kontext",
+    "topic": "Tiere & Natur",
+    "question": "Wie lange lebte das berühmte Huhn „Mike\", nachdem ihm 1945 versehentlich der Kopf abgeschlagen wurde?",
+    "answer": "Noch 18 Monate – gefüttert per Pipette direkt in die Speiseröhre"
+  },
+  {
+    "category": "Historischer Kontext",
+    "topic": "Alltag & Technik",
+    "question": "Was richtete ein geplatzter Sirup-Tank 1919 in Boston an?",
+    "answer": "Eine rund 8 Meter hohe Sirup-Welle raste mit bis zu 56 km/h durch die Straßen und tötete 21 Menschen"
+  },
+  {
+    "category": "Historischer Kontext",
+    "topic": "Alltag & Technik",
+    "question": "Was verursachte 1814 der Bruch eines riesigen Braukessels in London?",
+    "answer": "Eine 4,6 Meter hohe Bierwelle (über 1,4 Millionen Liter) walzte durch ein Armenviertel und tötete 8 Menschen"
+  },
+  {
+    "category": "Historischer Kontext",
+    "topic": "Aberglaube & Bräuche",
+    "question": "Was passierte im Sommer 1518 in Straßburg, als eine Frau namens Frau Troffea plötzlich auf der Straße zu tanzen begann?",
+    "answer": "Hunderte Menschen schlossen sich tagelang unkontrolliert tanzend an, manche bis zur Erschöpfung oder zum Tod"
+  },
+  {
+    "category": "Historischer Kontext",
+    "topic": "Alltag & Technik",
+    "question": "Wie viel konnte eine einzelne, besonders seltene Tulpenzwiebel 1637 in den Niederlanden auf dem Höhepunkt der „Tulpenmanie\" wert sein?",
+    "answer": "Mehr als ein ganzes Haus in Amsterdam"
+  },
+  {
+    "category": "Historischer Kontext",
+    "topic": "Herrscher & Politik",
+    "question": "Welchen skurrilen Beruf gab es im Preußen Friedrichs des Großen, nachdem er 1781 ein Kaffee-Monopol einführte?",
+    "answer": "„Kaffeeriecher\" – Beamte, die durch die Straßen zogen und am Geruch illegal gerösteten Kaffee erschnüffelten"
+  },
+  {
+    "category": "Historischer Kontext",
+    "topic": "Militär & Kriegsführung",
+    "question": "Was passierte der ersten Spionage-Katze, die die CIA in den 1960ern für 20 Millionen Dollar zur Abhör-Waffe umgebaut hatte, bei ihrem allerersten Einsatz?",
+    "answer": "Sie wurde direkt beim Losschicken von einem Taxi überfahren",
+    "reviewed": true
   }
 ]
