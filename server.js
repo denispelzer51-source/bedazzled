@@ -16,6 +16,7 @@ app.use(express.json());
 
 const QUESTIONS_PATH = path.join(__dirname, 'questions.json');
 const ESTIMATE_QUESTIONS_PATH = path.join(__dirname, 'estimate_questions.json');
+const DRAW_TERMS_PATH = path.join(__dirname, 'draw_terms.json');
 
 // ---------- Fragen-Speicherung: MongoDB Atlas, falls eingerichtet - sonst lokale Dateien ----------
 // Sobald die Umgebungsvariable MONGODB_URI auf Render gesetzt ist, werden Fragen dauerhaft
@@ -27,6 +28,7 @@ let mongoDb = null;
 
 let questionsList = JSON.parse(fs.readFileSync(QUESTIONS_PATH, 'utf8'));
 let estimateQuestionsList = JSON.parse(fs.readFileSync(ESTIMATE_QUESTIONS_PATH, 'utf8'));
+let drawTermsList = JSON.parse(fs.readFileSync(DRAW_TERMS_PATH, 'utf8'));
 
 async function initDatabase() {
   if (!useMongo) {
@@ -75,6 +77,12 @@ const DISCONNECT_GRACE_MS = 3 * 60 * 1000; // 3 Minuten, bevor ein getrennter Sp
 // Felder, die eine Schätzen-Karte statt der normalen Bluff-Frage auslösen (bewusst unregelmäßig verteilt)
 const ESTIMATE_TRIGGER_FIELDS = [5, 8, 13, 18];
 const ESTIMATE_POINTS = [3, 2, 1]; // Platz 1, 2, 3 – Rest geht leer aus
+
+// Blaue Felder: Fremdwörter-Fragen (etwas seltener als die lila Standardfelder)
+const FOREIGNWORD_TRIGGER_FIELDS = [2, 10, 16, 22];
+// Gelbe Felder: Zeichenrunde (Moderator zeichnet einen Begriff, andere raten mit)
+const DRAWING_TRIGGER_FIELDS = [4, 12, 19, 24];
+const DRAWING_GUESS_POINTS = 3; // pro richtig ratendem Mitspieler
 
 // Aufholjagd: sobald irgendjemand dieses Feld erreicht/überschreitet, bekommt der/die
 // Letztplatzierte einmalig einen Bonus, damit das Spiel spannend bleibt
@@ -372,12 +380,16 @@ function publicRoomState(room, forPlayerId) {
     roundType: room.roundType || 'question',
     pendingRoundType: room.pendingRoundType || 'question',
     estimateTriggerFields: ESTIMATE_TRIGGER_FIELDS,
+    foreignwordTriggerFields: FOREIGNWORD_TRIGGER_FIELDS,
+    drawingTriggerFields: DRAWING_TRIGGER_FIELDS,
     pointsCorrectGuess: POINTS_CORRECT_GUESS,
     pointsPerFooled: POINTS_PER_FOOLED_PLAYER,
     players: room.players.map(p => ({ id: p.id, name: p.name, avatar: p.avatar, position: p.position, connected: !!p.socketId })),
     moderatorId,
     hostId: room.hostId,
-    currentQuestion: room.phase !== 'lobby' && room.currentQuestionObj ? room.currentQuestionObj.question : null,
+    currentQuestion: (room.phase !== 'lobby' && room.currentQuestionObj && (room.phase !== 'drawing' || isModerator))
+      ? room.currentQuestionObj.question
+      : null,
     realAnswer: (isModerator && room.phase === 'answering' && room.currentQuestionObj) ? room.currentQuestionObj.answer : null,
     answeredCount: Object.keys(room.answers || {}).length,
     votedCount: Object.keys(room.votes || {}).length,
@@ -436,6 +448,13 @@ function publicRoomState(room, forPlayerId) {
     estimateRealAnswer: (room.phase === 'reveal' && room.roundType === 'estimate' && room.currentQuestionObj)
       ? room.currentQuestionObj.answer
       : null,
+    // Zeichenrunde: Moderator sieht, wer schon richtig geraten hat; Mitspieler sehen
+    // nur ihren eigenen Status (nicht die anderen, um kein Rennen/Gruppenzwang zu erzeugen)
+    drawingCorrectGuessers: (isModerator && room.phase === 'drawing')
+      ? (room.correctGuessers || []).map(id => (room.players.find(p => p.id === id) || {}).name || '???')
+      : [],
+    myGuessCorrect: room.phase === 'drawing' ? (room.correctGuessers || []).includes(forPlayerId) : false,
+    drawingResult: (room.phase === 'reveal' && room.drawingResult) ? room.drawingResult : null,
     catchUpAnnouncement: room.catchUpAnnouncement || null,
   };
 }
@@ -449,8 +468,22 @@ function broadcastState(roomCode) {
 }
 
 function pickNextQuestion(room, roundType, excludeIndices = []) {
-  const pool = roundType === 'estimate' ? estimateQuestionsList : questionsList;
-  const usedKey = roundType === 'estimate' ? 'usedEstimateQuestions' : 'usedQuestions';
+  if (roundType === 'drawing') return pickDrawTerm(room, excludeIndices);
+  let pool, usedKey;
+  if (roundType === 'estimate') {
+    pool = estimateQuestionsList;
+    usedKey = 'usedEstimateQuestions';
+  } else if (roundType === 'foreignword') {
+    // Blaue Felder: nur Fremdwörter-Fragen
+    pool = questionsList.filter(q => q.category === 'Fremdwörter');
+    usedKey = 'usedForeignwordQuestions';
+  } else {
+    // Lila Standardfelder: alles außer Fremdwörter (Kuriositäten, Historischer Kontext, etc.)
+    pool = questionsList.filter(q => q.category !== 'Fremdwörter');
+    usedKey = 'usedQuestions';
+  }
+  if (pool.length === 0) pool = questionsList; // Notfall, falls eine Kategorie leer ist
+
   if (!room[usedKey]) room[usedKey] = [];
   const usedOrExcluded = new Set([...room[usedKey], ...excludeIndices]);
   let available = pool.map((q, i) => i).filter(i => !usedOrExcluded.has(i));
@@ -464,6 +497,25 @@ function pickNextQuestion(room, roundType, excludeIndices = []) {
   return { index: idx, ...pool[idx] };
 }
 
+// Gelbe Felder: Begriff zum Zeichnen auswählen. Gibt dieselbe Form wie pickNextQuestion
+// zurück (question/answer/category/topic), damit die Fragen-Vorschau unverändert
+// wiederverwendet werden kann - "question" ist hier der Anzeige-Text für den/die
+// Moderator:in, "answer" ist der eigentliche zu erratende Begriff.
+function pickDrawTerm(room, excludeIndices = []) {
+  const pool = drawTermsList;
+  const usedKey = 'usedDrawTerms';
+  if (!room[usedKey]) room[usedKey] = [];
+  const usedOrExcluded = new Set([...room[usedKey], ...excludeIndices]);
+  let available = pool.map((t, i) => i).filter(i => !usedOrExcluded.has(i));
+  if (available.length === 0) {
+    available = pool.map((t, i) => i).filter(i => !excludeIndices.includes(i));
+    if (available.length === 0) available = pool.map((t, i) => i);
+  }
+  const idx = available[Math.floor(Math.random() * available.length)];
+  const t = pool[idx];
+  return { index: idx, question: `Zeichne: ${t.term}`, answer: t.term, category: '🎨 Zeichenrunde', topic: t.category || '' };
+}
+
 // Prüft, ob jemand durch die Punktevergabe DIESER Runde neu auf einem Schätzen-Feld
 // gelandet ist (nicht: ob er zufällig schon länger dort steht). Nur ein frischer Zug auf
 // eines der Felder löst die nächste Runde als Schätzen-Karte aus.
@@ -475,11 +527,12 @@ function applyCatchUpBonus(room) {
   return;
 }
 
-function applyEstimateTriggerCheck(room, prevPositions) {
-  const triggered = room.players.some(p =>
-    ESTIMATE_TRIGGER_FIELDS.includes(p.position) && p.position !== prevPositions[p.id]
-  );
-  room.pendingRoundType = triggered ? 'estimate' : 'question';
+function applyRoundTypeTriggerCheck(room, prevPositions) {
+  const movedOnto = (fields) => room.players.some(p => fields.includes(p.position) && p.position !== prevPositions[p.id]);
+  if (movedOnto(ESTIMATE_TRIGGER_FIELDS)) room.pendingRoundType = 'estimate';
+  else if (movedOnto(DRAWING_TRIGGER_FIELDS)) room.pendingRoundType = 'drawing';
+  else if (movedOnto(FOREIGNWORD_TRIGGER_FIELDS)) room.pendingRoundType = 'foreignword';
+  else room.pendingRoundType = 'question';
 }
 
 function ensureStats(room, playerId) {
@@ -852,8 +905,16 @@ io.on('connection', (socket) => {
       socket.emit('errorMsg', 'Es sind keine Schätzen-Fragen hinterlegt. Bitte über /admin.html hinzufügen.');
       return;
     }
-    if (roundType === 'question' && questionsList.length === 0) {
+    if (roundType === 'question' && questionsList.filter(q => q.category !== 'Fremdwörter').length === 0) {
       socket.emit('errorMsg', 'Es sind keine Fragen hinterlegt. Bitte über /admin.html Fragen hinzufügen.');
+      return;
+    }
+    if (roundType === 'foreignword' && questionsList.filter(q => q.category === 'Fremdwörter').length === 0) {
+      socket.emit('errorMsg', 'Es sind keine Fremdwörter-Fragen hinterlegt. Bitte über /admin.html hinzufügen.');
+      return;
+    }
+    if (roundType === 'drawing' && drawTermsList.length === 0) {
+      socket.emit('errorMsg', 'Es sind keine Zeichen-Begriffe hinterlegt.');
       return;
     }
     room.roundType = roundType;
@@ -904,18 +965,37 @@ io.on('connection', (socket) => {
     if (!room || !isModerator(room, socket) || room.phase !== 'previewQuestion') return;
     if (!room.questionCandidates || room.questionCandidates.length === 0) return;
     const chosen = room.questionCandidates[room.previewIndex] || room.questionCandidates[0];
-    const usedKey = room.roundType === 'estimate' ? 'usedEstimateQuestions' : 'usedQuestions';
+    const usedKey = room.roundType === 'estimate' ? 'usedEstimateQuestions'
+      : room.roundType === 'foreignword' ? 'usedForeignwordQuestions'
+      : room.roundType === 'drawing' ? 'usedDrawTerms'
+      : 'usedQuestions';
     if (!room[usedKey]) room[usedKey] = [];
     if (!room[usedKey].includes(chosen.index)) room[usedKey].push(chosen.index);
 
     room.currentQuestionObj = chosen;
     room.questionCandidates = [];
     room.previewIndex = 0;
+    const moderatorId = room.players[room.moderatorIndex].id;
+
+    if (room.roundType === 'drawing') {
+      room.phase = 'drawing';
+      room.correctGuessers = [];
+      room.guesses = {};
+      // Positionen VOR der Zeichenrunde merken, da Punkte hier laufend (nicht erst am
+      // Ende) vergeben werden - für Aufhol-/Schätzen-Feld-Check am Rundenende gebraucht.
+      room.drawingStartPositions = {};
+      room.players.forEach(p => { room.drawingStartPositions[p.id] = p.position; });
+      broadcastState(code);
+      const guessers = room.players.filter(p => p.id !== moderatorId);
+      push.notifyPlayers(guessers, 'Zeichenrunde! 🎨', 'Rate mit, was gerade gezeichnet wird.', { code, type: 'drawing' });
+      push.notifyPlayers([room.players[room.moderatorIndex]], 'Du bist dran! 🎨', 'Zeichne den Begriff.', { code, type: 'drawing-mod' });
+      return;
+    }
+
     room.phase = 'answering';
     broadcastState(code);
 
     // Push: alle außer dem Moderator müssen jetzt eine Antwort abgeben
-    const moderatorId = room.players[room.moderatorIndex].id;
     const answerers = room.players.filter(p => p.id !== moderatorId);
     push.notifyPlayers(answerers, 'Du bist dran! 🎭', 'Gib deine Bluff-Antwort ab.', { code, type: 'answering' });
   });
@@ -1058,6 +1138,66 @@ io.on('connection', (socket) => {
       room.duplicateConflicts = room.duplicateConflicts.filter(id => id !== playerId);
     }
     broadcastState(code);
+  });
+
+  // ==================== ZEICHENRUNDE (gelbe Felder) ====================
+  // Der/die Moderator:in zeichnet den Begriff, alle anderen sehen live mit und raten
+  // per Textfeld. Striche werden nur weitergeleitet (nicht serverseitig gespeichert) -
+  // bewusst simpel gehalten, kein Kartenstapel-/Animations-Schnickschnack.
+
+  socket.on('drawStroke', ({ code, x0, y0, x1, y1 }) => {
+    const room = rooms[code];
+    if (!room || room.phase !== 'drawing') return;
+    const moderatorId = room.players[room.moderatorIndex].id;
+    if (socket.data.token !== moderatorId) return; // nur der/die Moderator:in darf zeichnen
+    socket.to(code).emit('drawStroke', { x0, y0, x1, y1 });
+  });
+
+  socket.on('clearDrawing', ({ code }) => {
+    const room = rooms[code];
+    if (!room || room.phase !== 'drawing') return;
+    const moderatorId = room.players[room.moderatorIndex].id;
+    if (socket.data.token !== moderatorId) return;
+    socket.to(code).emit('clearDrawing');
+  });
+
+  socket.on('submitGuess', ({ code, guess }) => {
+    const room = rooms[code];
+    if (!room || room.phase !== 'drawing') return;
+    const myId = socket.data.token;
+    const moderatorId = room.players[room.moderatorIndex].id;
+    if (myId === moderatorId) return; // Moderator zeichnet, rät nicht mit
+    if (!room.correctGuessers) room.correctGuessers = [];
+    if (room.correctGuessers.includes(myId)) return; // hat schon richtig geraten
+
+    const normalize = (s) => (s || '').trim().toLowerCase().replace(/[^a-zäöüß0-9 ]/gi, '');
+    const isCorrect = normalize(guess) === normalize(room.currentQuestionObj.answer) && normalize(guess).length > 0;
+    if (isCorrect) {
+      room.correctGuessers.push(myId);
+      const player = room.players.find(p => p.id === myId);
+      if (player) player.position = Math.min(BOARD_LENGTH, player.position + DRAWING_GUESS_POINTS);
+      broadcastState(code);
+    } else {
+      socket.emit('guessWrong', { guess });
+    }
+  });
+
+  socket.on('endDrawingRound', ({ code }) => {
+    const room = rooms[code];
+    if (!room || !isModerator(room, socket) || room.phase !== 'drawing') return;
+
+    const prevPositions = room.drawingStartPositions || {};
+    room.drawingResult = {
+      term: room.currentQuestionObj.answer,
+      guesserNames: (room.correctGuessers || []).map(id => {
+        const p = room.players.find(pp => pp.id === id);
+        return p ? p.name : '???';
+      }),
+    };
+    applyRoundTypeTriggerCheck(room, prevPositions);
+    room.phase = 'reveal';
+    broadcastState(code);
+    checkForWinner(code, room);
   });
 
   socket.on('goToVoting', ({ code }) => {
@@ -1212,7 +1352,7 @@ io.on('connection', (socket) => {
     });
 
     applyCatchUpBonus(room);
-    applyEstimateTriggerCheck(room, prevPositions);
+    applyRoundTypeTriggerCheck(room, prevPositions);
     room.phase = 'reveal';
     broadcastState(code);
     room.catchUpAnnouncement = null; // nur einmalig in der Ansage anzeigen
@@ -1255,7 +1395,7 @@ io.on('connection', (socket) => {
     });
 
     applyCatchUpBonus(room);
-    applyEstimateTriggerCheck(room, prevPositions);
+    applyRoundTypeTriggerCheck(room, prevPositions);
     room.phase = 'reveal';
     broadcastState(code);
     room.catchUpAnnouncement = null; // nur einmalig in der Ansage anzeigen
@@ -1278,6 +1418,9 @@ io.on('connection', (socket) => {
     room.votes = {};
     room.liveTyping = {};
     room.shuffledAnswers = [];
+    room.correctGuessers = [];
+    room.drawingResult = null;
+    room.drawingStartPositions = {};
     room.phase = 'lobby';
 
     // Vorgemerkte Spieler jetzt automatisch einlassen

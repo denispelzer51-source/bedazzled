@@ -233,6 +233,7 @@ const screens = {
   questionPreview: document.getElementById('screen-question-preview'),
   answering: document.getElementById('screen-answering'),
   voting: document.getElementById('screen-voting'),
+  drawing: document.getElementById('screen-drawing'),
   reveal: document.getElementById('screen-reveal'),
   board: document.getElementById('screen-board'),
 };
@@ -831,6 +832,90 @@ document.getElementById('btn-to-reveal').addEventListener('click', () => {
   socket.emit('revealResults', { code: currentCode });
 });
 
+// ---------- ZEICHENRUNDE (gelbe Felder) ----------
+const drawingCanvas = document.getElementById('drawing-canvas');
+const drawingCtx = drawingCanvas.getContext('2d');
+drawingCtx.lineCap = 'round';
+drawingCtx.lineJoin = 'round';
+drawingCtx.strokeStyle = '#1a0a2e';
+drawingCtx.lineWidth = 4;
+let isDrawingNow = false;
+let lastDrawPoint = null;
+
+function canvasPointFromEvent(e) {
+  const rect = drawingCanvas.getBoundingClientRect();
+  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+  // Auf die interne Canvas-Auflösung (600x420) umrechnen, egal wie groß es angezeigt wird
+  const x = (clientX - rect.left) * (drawingCanvas.width / rect.width);
+  const y = (clientY - rect.top) * (drawingCanvas.height / rect.height);
+  return { x, y };
+}
+
+function drawLineSegment(ctx, x0, y0, x1, y1) {
+  ctx.beginPath();
+  ctx.moveTo(x0, y0);
+  ctx.lineTo(x1, y1);
+  ctx.stroke();
+}
+
+function startDrawing(e) {
+  if (!iAmModerator || lastState?.phase !== 'drawing') return;
+  isDrawingNow = true;
+  lastDrawPoint = canvasPointFromEvent(e);
+  e.preventDefault();
+}
+function moveDrawing(e) {
+  if (!isDrawingNow) return;
+  const p = canvasPointFromEvent(e);
+  drawLineSegment(drawingCtx, lastDrawPoint.x, lastDrawPoint.y, p.x, p.y);
+  socket.emit('drawStroke', { code: currentCode, x0: lastDrawPoint.x, y0: lastDrawPoint.y, x1: p.x, y1: p.y });
+  lastDrawPoint = p;
+  e.preventDefault();
+}
+function stopDrawing() {
+  isDrawingNow = false;
+  lastDrawPoint = null;
+}
+drawingCanvas.addEventListener('mousedown', startDrawing);
+drawingCanvas.addEventListener('mousemove', moveDrawing);
+window.addEventListener('mouseup', stopDrawing);
+drawingCanvas.addEventListener('touchstart', startDrawing, { passive: false });
+drawingCanvas.addEventListener('touchmove', moveDrawing, { passive: false });
+drawingCanvas.addEventListener('touchend', stopDrawing);
+
+// Striche von der/dem Moderator:in empfangen und beim Zusehen nachzeichnen
+socket.on('drawStroke', ({ x0, y0, x1, y1 }) => {
+  drawLineSegment(drawingCtx, x0, y0, x1, y1);
+});
+socket.on('clearDrawing', () => {
+  drawingCtx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+});
+
+document.getElementById('btn-drawing-clear').addEventListener('click', () => {
+  drawingCtx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+  socket.emit('clearDrawing', { code: currentCode });
+});
+document.getElementById('btn-drawing-end').addEventListener('click', () => {
+  socket.emit('endDrawingRound', { code: currentCode });
+});
+
+document.getElementById('btn-drawing-guess-submit').addEventListener('click', () => {
+  const input = document.getElementById('input-drawing-guess');
+  const guess = input.value.trim();
+  if (!guess) return;
+  socket.emit('submitGuess', { code: currentCode, guess });
+  input.value = '';
+});
+document.getElementById('input-drawing-guess').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') document.getElementById('btn-drawing-guess-submit').click();
+});
+socket.on('guessWrong', () => {
+  const fb = document.getElementById('drawing-guess-feedback');
+  fb.textContent = '❌ Leider falsch, versuch\'s nochmal!';
+  setTimeout(() => { if (fb.textContent.includes('Leider')) fb.textContent = ''; }, 2000);
+});
+
 // ---------- REVEAL ----------
 document.getElementById('btn-to-board').addEventListener('click', () => {
   socket.emit('showBoard', { code: currentCode });
@@ -866,6 +951,8 @@ document.getElementById('btn-new-game').addEventListener('click', () => {
 
 // ---------- BOARD RENDER (mini bar, always visible) ----------
 let estimateTriggerFields = [5, 8, 13, 18]; // Standardwert, wird vom Server überschrieben
+let foreignwordTriggerFields = [2, 10, 16, 22];
+let drawingTriggerFields = [4, 12, 19, 24];
 
 function renderBoard(players, positionsOverride) {
   const track = document.getElementById('board-track');
@@ -875,6 +962,8 @@ function renderBoard(players, positionsOverride) {
     const field = document.createElement('div');
     let cls = 'board-field' + (i === BOARD_LENGTH ? ' finish' : '');
     if (estimateTriggerFields.includes(i)) cls += ' estimate-field';
+    if (foreignwordTriggerFields.includes(i)) cls += ' foreignword-field';
+    if (drawingTriggerFields.includes(i)) cls += ' drawing-field';
     field.className = cls;
     field.textContent = i === BOARD_LENGTH ? '🏁' : i;
     const here = players.filter(p => (positionsOverride ? positionsOverride[p.id] : p.position) === i);
@@ -942,6 +1031,8 @@ function renderBoardLarge(players, fromPositions, animate, onComplete) {
     const dot = document.createElement('div');
     let dotCls = 'board-field-dot' + (i === BOARD_LENGTH ? ' finish' : '');
     if (estimateTriggerFields.includes(i)) dotCls += ' estimate-field';
+    if (foreignwordTriggerFields.includes(i)) dotCls += ' foreignword-field';
+    if (drawingTriggerFields.includes(i)) dotCls += ' drawing-field';
     dot.className = dotCls;
     dot.style.left = pos.x + '%';
     dot.style.top = pos.y + '%';
@@ -1204,6 +1295,8 @@ socket.on('state', (state) => {
   lastState = state;
   updateConnectionBanner(state);
   if (state.estimateTriggerFields) estimateTriggerFields = state.estimateTriggerFields;
+  if (state.foreignwordTriggerFields) foreignwordTriggerFields = state.foreignwordTriggerFields;
+  if (state.drawingTriggerFields) drawingTriggerFields = state.drawingTriggerFields;
   const iAmModerator = state.moderatorId === myId;
 
   renderBoard(state.players, miniBarShowsLive ? null : roundStartPositions);
@@ -1428,6 +1521,40 @@ socket.on('state', (state) => {
     showScreen('voting');
   }
 
+  const enteringDrawing = state.phase === 'drawing' && (!lastState || lastState.phase !== 'drawing');
+  if (state.phase === 'drawing') {
+    if (enteringDrawing) {
+      drawingCtx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+      document.getElementById('input-drawing-guess').value = '';
+      document.getElementById('drawing-guess-feedback').textContent = '';
+      document.getElementById('drawing-guess-correct-msg').classList.add('hidden');
+    }
+    if (iAmModerator) {
+      document.getElementById('drawing-mod-hint').classList.remove('hidden');
+      document.getElementById('drawing-guess-hint').classList.add('hidden');
+      document.getElementById('drawing-term-display').textContent = state.currentQuestion || '';
+      document.getElementById('drawing-mod-tools').classList.remove('hidden');
+      document.getElementById('drawing-guess-form').classList.add('hidden');
+      const names = state.drawingCorrectGuessers || [];
+      document.getElementById('drawing-mod-guessers').textContent = names.length > 0
+        ? `✔ Schon richtig geraten: ${names.join(', ')}`
+        : 'Noch niemand hat richtig geraten.';
+    } else {
+      document.getElementById('drawing-mod-hint').classList.add('hidden');
+      document.getElementById('drawing-guess-hint').classList.remove('hidden');
+      document.getElementById('drawing-mod-tools').classList.add('hidden');
+      document.getElementById('drawing-mod-guessers').textContent = '';
+      if (state.myGuessCorrect) {
+        document.getElementById('drawing-guess-form').classList.add('hidden');
+        document.getElementById('drawing-guess-correct-msg').classList.remove('hidden');
+      } else {
+        document.getElementById('drawing-guess-form').classList.remove('hidden');
+        document.getElementById('drawing-guess-correct-msg').classList.add('hidden');
+      }
+    }
+    showScreen('drawing');
+  }
+
   if (state.phase === 'reveal') {
     const catchupBanner = document.getElementById('catchup-banner');
     if (state.catchUpAnnouncement) {
@@ -1437,12 +1564,30 @@ socket.on('state', (state) => {
     } else {
       catchupBanner.classList.add('hidden');
     }
-    document.getElementById('question-text-4').textContent = state.currentQuestion || '';
+    document.getElementById('question-text-4').textContent = state.roundType === 'drawing' ? '' : (state.currentQuestion || '');
     const list = document.getElementById('reveal-list');
     const realBox = document.getElementById('estimate-real-answer');
     list.innerHTML = '';
 
-    if (state.roundType === 'estimate') {
+    if (state.roundType === 'drawing') {
+      realBox.classList.remove('hidden');
+      const term = state.drawingResult ? state.drawingResult.term : '';
+      realBox.innerHTML = `<span class="answer-label">🎨 Gesuchter Begriff:</span> <span class="answer-value">${escapeHtml(term)}</span>`;
+      const guesserNames = state.drawingResult ? state.drawingResult.guesserNames : [];
+      if (guesserNames.length === 0) {
+        const div = document.createElement('div');
+        div.className = 'reveal-item';
+        div.innerHTML = `Niemand hat es erraten. Schade!`;
+        list.appendChild(div);
+      } else {
+        guesserNames.forEach(name => {
+          const div = document.createElement('div');
+          div.className = 'reveal-item real';
+          div.innerHTML = `${escapeHtml(name)}<br><span class="owner">✔ Richtig geraten</span>`;
+          list.appendChild(div);
+        });
+      }
+    } else if (state.roundType === 'estimate') {
       realBox.classList.remove('hidden');
       realBox.innerHTML = `<span class="answer-label">Antwort:</span> <span class="answer-value">${state.estimateRealAnswer}</span>`;
       const medals = ['🥇', '🥈', '🥉'];
