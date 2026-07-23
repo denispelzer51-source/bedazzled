@@ -153,9 +153,11 @@ let myId = null;
 let currentCode = null;
 let lastState = null;
 
-// ---------- SESSION PERSISTENCE (überlebt Seiten-Reload im selben Tab) ----------
+// ---------- SESSION PERSISTENCE (überlebt Seiten-Reload UND komplettes Schließen von
+// Tab/App - wichtig, damit ein Spieler nach dem Schließen der App wieder in seine
+// laufende Runde zurückfindet, statt als "neuer" Spieler mit Namenskollision zu landen) ----------
 // Für den Multiplayer-Simulator (/simulator.html) laufen mehrere Spieler-Instanzen als
-// iframes auf derselben Seite. iframes vom selben Ursprung teilen sich sessionStorage,
+// iframes auf derselben Seite. iframes vom selben Ursprung teilen sich localStorage,
 // deshalb bekommt jede Instanz über ?testSlot=N ihren eigenen, getrennten Storage-Schlüssel.
 const urlParams = new URLSearchParams(window.location.search);
 const testSlot = urlParams.get('testSlot');
@@ -164,33 +166,33 @@ const TOKEN_KEY = testSlot ? `bedazzled_token_slot${testSlot}` : 'bedazzled_toke
 const ROOM_KEY = testSlot ? `bedazzled_room_slot${testSlot}` : 'bedazzled_room';
 
 function getOrCreateToken() {
-  let token = sessionStorage.getItem(TOKEN_KEY);
+  let token = localStorage.getItem(TOKEN_KEY);
   if (!token) {
     token = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random());
-    sessionStorage.setItem(TOKEN_KEY, token);
+    localStorage.setItem(TOKEN_KEY, token);
   }
   return token;
 }
 let myToken = getOrCreateToken();
 
 function saveSession(code) {
-  sessionStorage.setItem(ROOM_KEY, code);
+  localStorage.setItem(ROOM_KEY, code);
 }
 function clearSession() {
-  sessionStorage.removeItem(ROOM_KEY);
+  localStorage.removeItem(ROOM_KEY);
 }
 
 // Falls der Link einen ANDEREN Raum-Code enthält als eine evtl. noch gespeicherte
 // alte Sitzung (z.B. Tab von einem früheren Test wiederverwendet): die alte Sitzung
 // verwerfen, damit sie nicht mit dem Beitreten zum neuen Raum kollidiert.
-if (roomFromLink && sessionStorage.getItem(ROOM_KEY) && sessionStorage.getItem(ROOM_KEY) !== roomFromLink) {
-  sessionStorage.removeItem(ROOM_KEY);
+if (roomFromLink && localStorage.getItem(ROOM_KEY) && localStorage.getItem(ROOM_KEY) !== roomFromLink) {
+  localStorage.removeItem(ROOM_KEY);
 }
 
 socket.on('connect', () => {
   connectionTroubleShown = false;
   showError('');
-  const savedCode = sessionStorage.getItem(ROOM_KEY);
+  const savedCode = localStorage.getItem(ROOM_KEY);
   if (savedCode) {
     showReconnecting(true);
     socket.emit('rejoinRoom', { code: savedCode, token: myToken });
@@ -427,7 +429,7 @@ socket.on('matchFound', ({ code, playerId }) => {
   currentCode = code;
   myId = playerId;
   myToken = playerId;
-  sessionStorage.setItem(TOKEN_KEY, playerId);
+  localStorage.setItem(TOKEN_KEY, playerId);
   saveSession(code);
   showReconnecting(false);
   document.getElementById('board-bar').classList.remove('hidden');
@@ -503,7 +505,7 @@ socket.on('joined', ({ code, playerId }) => {
   currentCode = code;
   myId = playerId;
   myToken = playerId;
-  sessionStorage.setItem(TOKEN_KEY, playerId);
+  localStorage.setItem(TOKEN_KEY, playerId);
   saveSession(code);
   showReconnecting(false);
   document.getElementById('board-bar').classList.remove('hidden');
@@ -571,7 +573,7 @@ socket.on('pendingJoinQueued', ({ code, playerId }) => {
   currentCode = code;
   myId = playerId;
   myToken = playerId;
-  sessionStorage.setItem(TOKEN_KEY, playerId);
+  localStorage.setItem(TOKEN_KEY, playerId);
   saveSession(code);
   showReconnecting(false);
   showError('');
