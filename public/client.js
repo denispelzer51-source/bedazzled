@@ -737,6 +737,13 @@ socket.on('answerRejected', ({ reason }) => {
   ta.focus();
 });
 
+socket.on('voteLocked', ({ reason }) => {
+  document.querySelectorAll('.vote-option').forEach(el => { el.style.pointerEvents = 'none'; });
+  document.getElementById('btn-submit-vote').classList.add('hidden');
+  document.getElementById('vote-submitted-msg').classList.remove('hidden');
+  document.getElementById('vote-submitted-msg').textContent = reason;
+});
+
 socket.on('answerLocked', ({ reason }) => {
   document.getElementById('input-answer').disabled = true;
   document.getElementById('input-answer-number').disabled = true;
@@ -1517,6 +1524,23 @@ socket.on('state', (state) => {
           document.getElementById('btn-submit-vote').classList.remove('hidden');
           document.getElementById('btn-submit-vote').disabled = true;
           document.getElementById('vote-submitted-msg').classList.add('hidden');
+        }
+      }
+
+      // Sobald ALLE abgestimmt haben, wird für alle gesperrt - egal wer's zuletzt war.
+      // Läuft bei jedem State-Update (nicht nur beim ersten Betreten der Phase), da sich
+      // der Stand ändert, während andere noch abstimmen.
+      const totalVotersHere = Math.max(state.players.length - 1, 0);
+      const allVotedHere = state.votedCount >= totalVotersHere && totalVotersHere > 0;
+      if (allVotedHere) {
+        document.querySelectorAll('.vote-option').forEach(el => { el.style.pointerEvents = 'none'; });
+        document.getElementById('btn-submit-vote').classList.add('hidden');
+        document.getElementById('vote-submitted-msg').classList.remove('hidden');
+        document.getElementById('vote-submitted-msg').textContent = 'Alle haben abgestimmt – keine Änderung mehr möglich.';
+      } else {
+        document.querySelectorAll('.vote-option').forEach(el => { el.style.pointerEvents = 'auto'; });
+        if (voteSubmitted) {
+          document.getElementById('vote-submitted-msg').textContent = 'Stimme abgeschickt ✓ (Änderung möglich, solange nicht alle fertig sind)';
         }
       }
     }

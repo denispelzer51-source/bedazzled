@@ -1296,6 +1296,18 @@ io.on('connection', (socket) => {
     const myId = socket.data.token;
     const moderatorId = room.players[room.moderatorIndex].id;
     if (myId === moderatorId) return; // Moderator stimmt nicht ab
+
+    const totalVoters = room.players.filter(p => p.id !== moderatorId).length;
+    const alreadyVoted = room.votes[myId] !== undefined;
+    const currentVotedCount = Object.keys(room.votes).length;
+    // Sobald ALLE abgestimmt haben, ist keine Änderung mehr möglich (auch nicht für den
+    // letzten, der gerade fertig wurde) - nur der allererste Eintrag von jemandem darf
+    // noch durch, solange er/sie selbst noch nicht Teil des "alle fertig"-Standes war.
+    if (alreadyVoted && currentVotedCount >= totalVoters) {
+      socket.emit('voteLocked', { reason: 'Alle haben schon abgestimmt – Änderungen sind nicht mehr möglich.' });
+      return;
+    }
+
     room.votes[myId] = chosenOwnerId;
     broadcastState(code);
   });
