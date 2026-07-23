@@ -230,6 +230,7 @@ const screens = {
   intro: document.getElementById('screen-intro'),
   demo: document.getElementById('screen-demo'),
   lobby: document.getElementById('screen-lobby'),
+  questionPreview: document.getElementById('screen-question-preview'),
   answering: document.getElementById('screen-answering'),
   voting: document.getElementById('screen-voting'),
   reveal: document.getElementById('screen-reveal'),
@@ -602,6 +603,23 @@ document.getElementById('btn-start-round').addEventListener('click', () => {
   socket.emit('startRound', { code: currentCode });
 });
 
+// ---------- FRAGEN-VORSCHAU (Moderator sieht/wählt die Frage vor dem Rundenstart) ----------
+let qpCurrentIndex = 0;
+document.getElementById('btn-qp-prev').addEventListener('click', () => {
+  if (qpCurrentIndex > 0) {
+    socket.emit('selectPreviewCandidate', { code: currentCode, index: qpCurrentIndex - 1 });
+  }
+});
+document.getElementById('btn-qp-next-candidate').addEventListener('click', () => {
+  socket.emit('selectPreviewCandidate', { code: currentCode, index: qpCurrentIndex + 1 });
+});
+document.getElementById('btn-qp-swap').addEventListener('click', () => {
+  socket.emit('previewOtherQuestion', { code: currentCode });
+});
+document.getElementById('btn-qp-confirm').addEventListener('click', () => {
+  socket.emit('confirmQuestion', { code: currentCode });
+});
+
 document.getElementById('btn-leave-room').addEventListener('click', () => {
   if (currentCode) socket.emit('leaveRoom', { code: currentCode });
   clearSession();
@@ -783,11 +801,16 @@ function renderVoteOptions(shuffledAnswers) {
     div.textContent = a.text;
     div.dataset.ownerId = a.ownerId;
     div.addEventListener('click', () => {
-      if (voteSubmitted) return;
       document.querySelectorAll('.vote-option').forEach(el => el.classList.remove('selected'));
       div.classList.add('selected');
       selectedVote = a.ownerId;
+      // Eine andere Antwort wählen ist jederzeit möglich, solange noch nicht aufgelöst
+      // wurde - auch nach einer bereits abgeschickten Stimme (z.B. wenn man sich
+      // umentscheidet, solange die anderen noch nicht alle fertig sind).
+      voteSubmitted = false;
+      document.getElementById('btn-submit-vote').classList.remove('hidden');
       document.getElementById('btn-submit-vote').disabled = false;
+      document.getElementById('vote-submitted-msg').classList.add('hidden');
       socket.emit('previewVote', { code: currentCode, chosenOwnerId: a.ownerId });
     });
     box.appendChild(div);
@@ -795,13 +818,12 @@ function renderVoteOptions(shuffledAnswers) {
 }
 
 document.getElementById('btn-submit-vote').addEventListener('click', () => {
-  if (!selectedVote || voteSubmitted) return;
+  if (!selectedVote) return;
   socket.emit('submitVote', { code: currentCode, chosenOwnerId: selectedVote });
   voteSubmitted = true;
   document.getElementById('btn-submit-vote').disabled = true;
   document.getElementById('btn-submit-vote').classList.add('hidden');
   document.getElementById('vote-submitted-msg').classList.remove('hidden');
-  document.querySelectorAll('.vote-option').forEach(el => el.style.pointerEvents = 'none');
   playSubmitSound();
 });
 
@@ -1200,6 +1222,35 @@ socket.on('state', (state) => {
     showScreen('lobby');
   }
 
+  if (state.phase === 'previewQuestion') {
+    const qp = state.questionPreview;
+    if (qp) {
+      // Ich bin Moderator:in - Vorschau anzeigen
+      qpCurrentIndex = qp.currentIndex;
+      document.getElementById('qp-moderator-view').classList.remove('hidden');
+      document.getElementById('qp-waiting-view').classList.add('hidden');
+      document.getElementById('qp-current-num').textContent = qp.currentIndex + 1;
+      document.getElementById('qp-total-num').textContent = qp.candidates.length;
+      const current = qp.candidates[qp.currentIndex];
+      if (current) {
+        document.getElementById('qp-category').textContent =
+          (qp.roundType === 'estimate' ? '🔢 Schätzfrage · ' : '') + (current.category || '') + (current.topic ? ' · ' + current.topic : '');
+        document.getElementById('qp-question-text').textContent = current.question;
+      }
+      document.getElementById('btn-qp-prev').disabled = qp.currentIndex <= 0;
+      document.getElementById('btn-qp-next-candidate').disabled = qp.currentIndex >= qp.candidates.length - 1;
+      document.getElementById('btn-qp-swap').disabled = !qp.canSwapMore;
+      document.getElementById('qp-swap-hint').textContent = qp.canSwapMore
+        ? `Du kannst noch ${3 - qp.candidates.length}x wechseln.`
+        : 'Kein Wechsel mehr übrig – das war die letzte Möglichkeit.';
+    } else {
+      // Ich bin nicht Moderator:in - einfacher Warte-Screen
+      document.getElementById('qp-moderator-view').classList.add('hidden');
+      document.getElementById('qp-waiting-view').classList.remove('hidden');
+    }
+    showScreen('questionPreview');
+  }
+
   if (state.phase === 'answering') {
     currentRoundType = state.roundType || 'question';
     const isEstimate = currentRoundType === 'estimate';
@@ -1211,7 +1262,7 @@ socket.on('state', (state) => {
     document.getElementById('answer-input-label').textContent = 'Denk dir eine überzeugende Antwort aus:';
     document.getElementById('input-answer').classList.toggle('hidden', isEstimate);
     document.getElementById('input-answer-number').classList.toggle('hidden', !isEstimate);
-    document.getElementById('btn-to-voting').classList.add('hidden');
+    document.getElementById('btn-to-voting').classList.toggle('hidden', isEstimate);
     document.getElementById('btn-reveal-estimate').classList.toggle('hidden', !isEstimate);
 
     if (iAmModerator) {
@@ -1230,6 +1281,35 @@ socket.on('state', (state) => {
           : `<span class="typing-tag">${a.text ? 'tippt gerade …' : 'noch nichts eingegeben'}</span>`;
         const shownText = a.text ? escapeHtml(String(a.text)) : '<span class="placeholder-text">…</span>';
         div.innerHTML = `${shownText}${statusTag}<br><span class="owner">${escapeHtml(a.name)}</span>`;
+        // Moderator-Werkzeug: eingereichte Antworten manuell bearbeiten oder löschen -
+        // z.B. wenn eine Antwort sinngleich mit der echten ist, aber anders formuliert,
+        // und daher von der automatischen Dopplungs-Erkennung nicht erfasst wurde.
+        if (a.submitted) {
+          const toolsDiv = document.createElement('div');
+          toolsDiv.className = 'mod-answer-tools';
+          const editBtn = document.createElement('button');
+          editBtn.className = 'mod-answer-tool-btn';
+          editBtn.title = 'Antwort bearbeiten';
+          editBtn.textContent = '✏️';
+          editBtn.addEventListener('click', () => {
+            const newText = prompt(`Antwort von ${a.name} bearbeiten:`, a.text);
+            if (newText !== null && newText.trim()) {
+              socket.emit('editPlayerAnswer', { code: currentCode, playerId: a.id, newText: newText.trim() });
+            }
+          });
+          const deleteBtn = document.createElement('button');
+          deleteBtn.className = 'mod-answer-tool-btn';
+          deleteBtn.title = 'Antwort löschen';
+          deleteBtn.textContent = '🗑️';
+          deleteBtn.addEventListener('click', () => {
+            if (confirm(`Antwort von ${a.name} wirklich löschen? Sie fliegt dann komplett aus dieser Runde raus.`)) {
+              socket.emit('deletePlayerAnswer', { code: currentCode, playerId: a.id });
+            }
+          });
+          toolsDiv.appendChild(editBtn);
+          toolsDiv.appendChild(deleteBtn);
+          div.appendChild(toolsDiv);
+        }
         previewBox.appendChild(div);
       });
 
@@ -1246,6 +1326,7 @@ socket.on('state', (state) => {
             <div class="dc-actions">
               <button class="btn-dc-remove">Echte Antwort behalten (${escapeHtml(c.name)}s Version raus)</button>
               <button class="btn-dc-keep">${escapeHtml(c.name)}s Version behalten (offizielle Antwort raus)</button>
+              <button class="btn-dc-ignore">Kein Duplikat – beide getrennt behalten</button>
             </div>
           `;
           div.querySelector('.btn-dc-remove').addEventListener('click', () => {
@@ -1253,6 +1334,9 @@ socket.on('state', (state) => {
           });
           div.querySelector('.btn-dc-keep').addEventListener('click', () => {
             socket.emit('resolveDuplicate', { code: currentCode, playerId: c.playerId, action: 'keepPlayerVersion' });
+          });
+          div.querySelector('.btn-dc-ignore').addEventListener('click', () => {
+            socket.emit('resolveDuplicate', { code: currentCode, playerId: c.playerId, action: 'ignore' });
           });
           dcBox.appendChild(div);
         });
@@ -1327,10 +1411,9 @@ socket.on('state', (state) => {
         document.getElementById('vote-options').classList.remove('hidden');
         renderVoteOptions(state.shuffledAnswers);
         if (voteSubmitted) {
-          // Reload/Reconnect nach bereits abgegebener Stimme: gesperrten Zustand zeigen,
-          // statt die Auswahl fälschlich wieder freizugeben
+          // Reload/Reconnect nach bereits abgegebener Stimme: bisherige Auswahl anzeigen,
+          // aber weiterhin änderbar lassen (nicht dauerhaft sperren)
           document.querySelectorAll('.vote-option').forEach(el => {
-            el.style.pointerEvents = 'none';
             if (el.dataset.ownerId === selectedVote) el.classList.add('selected');
           });
           document.getElementById('btn-submit-vote').classList.add('hidden');

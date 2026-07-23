@@ -389,11 +389,23 @@ function publicRoomState(room, forPlayerId) {
           .map(p => {
             const submitted = room.answers[p.id] !== undefined;
             const text = submitted ? room.answers[p.id] : ((room.liveTyping && room.liveTyping[p.id]) || '');
-            return { name: p.name, text, submitted };
+            return { id: p.id, name: p.name, text, submitted };
           })
       : [],
     // Nur für die Moderation: Fälle, in denen eine eingereichte Antwort praktisch identisch
     // mit der echten Antwort ist und manuell aufgelöst werden muss, bevor es weitergeht
+    // Fragen-Vorschau: nur der/die Moderator:in sieht die Kandidaten und Details,
+    // andere Spieler bekommen nur die reine Phasen-Info (Warte-Screen)
+    questionPreview: (isModerator && room.phase === 'previewQuestion')
+      ? {
+          candidates: (room.questionCandidates || []).map(c => ({
+            question: c.question, category: c.category, topic: c.topic,
+          })),
+          currentIndex: room.previewIndex || 0,
+          canSwapMore: (room.questionCandidates || []).length < 3,
+          roundType: room.roundType,
+        }
+      : null,
     duplicateConflicts: (isModerator && room.phase === 'answering')
       ? (room.duplicateConflicts || []).map(pid => {
           const p = room.players.find(pp => pp.id === pid);
@@ -436,15 +448,19 @@ function broadcastState(roomCode) {
   });
 }
 
-function pickNextQuestion(room, roundType) {
+function pickNextQuestion(room, roundType, excludeIndices = []) {
   const pool = roundType === 'estimate' ? estimateQuestionsList : questionsList;
   const usedKey = roundType === 'estimate' ? 'usedEstimateQuestions' : 'usedQuestions';
   if (!room[usedKey]) room[usedKey] = [];
-  const available = pool.map((q, i) => i).filter(i => !room[usedKey].includes(i));
-  const candidates = available.length > 0 ? available : pool.map((q, i) => i);
-  if (available.length === 0) room[usedKey] = [];
-  const idx = candidates[Math.floor(Math.random() * candidates.length)];
-  room[usedKey].push(idx);
+  const usedOrExcluded = new Set([...room[usedKey], ...excludeIndices]);
+  let available = pool.map((q, i) => i).filter(i => !usedOrExcluded.has(i));
+  if (available.length === 0) {
+    // Alle Fragen im Pool schon verwendet - Pool "auffrischen", aber innerhalb dieser
+    // Vorschau trotzdem keine der gerade schon gezeigten Kandidaten wiederholen
+    available = pool.map((q, i) => i).filter(i => !excludeIndices.includes(i));
+    if (available.length === 0) available = pool.map((q, i) => i); // absoluter Notfall (Pool winzig)
+  }
+  const idx = available[Math.floor(Math.random() * available.length)];
   return { index: idx, ...pool[idx] };
 }
 
@@ -453,19 +469,10 @@ function pickNextQuestion(room, roundType) {
 // eines der Felder löst die nächste Runde als Schätzen-Karte aus.
 // Aufholjagd: einmalig pro Spiel, sobald jemand das Trigger-Feld erreicht/überschreitet,
 // bekommt der/die Letztplatzierte (bei Gleichstand: alle Letzten) einen Bonus-Vorstoß
+// AUSGESCHALTET (auf Wunsch entfernt) - Funktion bleibt hier stehen, falls der
+// Aufhol-Bonus irgendwann wieder gebraucht wird, wird aber aktuell nirgends mehr aufgerufen.
 function applyCatchUpBonus(room) {
-  if (room.catchUpBonusGiven) return;
-  const anyoneAhead = room.players.some(p => p.position >= CATCHUP_TRIGGER_FIELD);
-  if (!anyoneAhead) return;
-
-  const minPos = Math.min(...room.players.map(p => p.position));
-  const laggards = room.players.filter(p => p.position === minPos);
-  laggards.forEach(p => {
-    p.position = Math.min(BOARD_LENGTH - 1, p.position + CATCHUP_BONUS);
-  });
-
-  room.catchUpBonusGiven = true;
-  room.catchUpAnnouncement = { names: laggards.map(p => p.name), amount: CATCHUP_BONUS };
+  return;
 }
 
 function applyEstimateTriggerCheck(room, prevPositions) {
@@ -851,7 +858,7 @@ io.on('connection', (socket) => {
     }
     room.roundType = roundType;
     room.pendingRoundType = 'question';
-    room.phase = 'answering';
+    room.phase = 'previewQuestion';
     room.answers = {};
     room.votes = {};
     room.liveTyping = {};
@@ -860,10 +867,55 @@ io.on('connection', (socket) => {
     room.excludeFromPoolPlayerIds = [];
     room.suppressRealEntry = false;
     room.canonicalPlayerAnswerIds = [];
-    room.currentQuestionObj = pickNextQuestion(room, roundType);
+    room.currentQuestionObj = null;
+    room.questionCandidates = [pickNextQuestion(room, roundType, [])];
+    room.previewIndex = 0;
+    broadcastState(code);
+  });
+
+  // ---- Fragen-Vorschau: der/die Moderator:in sieht die Frage zuerst und kann sie vor
+  // dem eigentlichen Rundenstart bis zu 2x austauschen (max. 3 Kandidaten insgesamt) und
+  // zwischen bereits gezogenen Kandidaten frei hin- und herwechseln. ----
+  socket.on('previewOtherQuestion', ({ code }) => {
+    const room = rooms[code];
+    if (!room || !isModerator(room, socket) || room.phase !== 'previewQuestion') return;
+    if (!room.questionCandidates) room.questionCandidates = [];
+    if (room.questionCandidates.length >= 3) {
+      socket.emit('errorMsg', 'Maximal 2x austauschen möglich (3 Fragen insgesamt).');
+      return;
+    }
+    const excludeIndices = room.questionCandidates.map(c => c.index);
+    const next = pickNextQuestion(room, room.roundType, excludeIndices);
+    room.questionCandidates.push(next);
+    room.previewIndex = room.questionCandidates.length - 1;
+    broadcastState(code);
+  });
+
+  socket.on('selectPreviewCandidate', ({ code, index }) => {
+    const room = rooms[code];
+    if (!room || !isModerator(room, socket) || room.phase !== 'previewQuestion') return;
+    if (!room.questionCandidates || index < 0 || index >= room.questionCandidates.length) return;
+    room.previewIndex = index;
+    broadcastState(code);
+  });
+
+  socket.on('confirmQuestion', ({ code }) => {
+    const room = rooms[code];
+    if (!room || !isModerator(room, socket) || room.phase !== 'previewQuestion') return;
+    if (!room.questionCandidates || room.questionCandidates.length === 0) return;
+    const chosen = room.questionCandidates[room.previewIndex] || room.questionCandidates[0];
+    const usedKey = room.roundType === 'estimate' ? 'usedEstimateQuestions' : 'usedQuestions';
+    if (!room[usedKey]) room[usedKey] = [];
+    if (!room[usedKey].includes(chosen.index)) room[usedKey].push(chosen.index);
+
+    room.currentQuestionObj = chosen;
+    room.questionCandidates = [];
+    room.previewIndex = 0;
+    room.phase = 'answering';
     broadcastState(code);
 
     // Push: alle außer dem Moderator müssen jetzt eine Antwort abgeben
+    const moderatorId = room.players[room.moderatorIndex].id;
     const answerers = room.players.filter(p => p.id !== moderatorId);
     push.notifyPlayers(answerers, 'Du bist dran! 🎭', 'Gib deine Bluff-Antwort ab.', { code, type: 'answering' });
   });
@@ -886,15 +938,10 @@ io.on('connection', (socket) => {
     const moderatorId = room.players[room.moderatorIndex].id;
     if (myId === moderatorId) return; // Moderator gibt keine Antwort ab
 
-    const requiredCount = room.players.length - 1; // alle außer Moderator:in
-    const alreadyHadAnswer = room.answers[myId] !== undefined;
-    const currentAnsweredCount = Object.keys(room.answers).length;
-    // Ändern ist erlaubt, solange noch nicht alle abgeschickt haben. Sobald der komplette
-    // Satz an Antworten vorliegt, wird nichts mehr angenommen (auch keine erneute Änderung).
-    if (alreadyHadAnswer && currentAnsweredCount >= requiredCount) {
-      socket.emit('answerLocked', { reason: 'Alle haben schon abgeschickt – Änderungen sind nicht mehr möglich.' });
-      return;
-    }
+    // Bearbeiten ist jederzeit erlaubt, solange die Antwort-Phase läuft - der/die
+    // Moderator:in entscheidet manuell, wann es weitergeht (kein automatisches Sperren
+    // mehr nach dem Motto "alle sind fertig", das würde jemanden mitten in einer
+    // Änderung ungewollt aussperren).
 
     if (room.roundType === 'estimate') {
       const numericValue = Number(text);
@@ -912,15 +959,6 @@ io.on('connection', (socket) => {
     const stillRoom = rooms[code];
     if (!stillRoom || stillRoom.phase !== 'answering') return;
 
-    // Falls inzwischen (während der Rechtschreibprüfung) alle anderen fertig wurden,
-    // diese späte Änderung nicht mehr übernehmen
-    const stillAlreadyHad = stillRoom.answers[myId] !== undefined;
-    const stillCount = Object.keys(stillRoom.answers).length;
-    if (stillAlreadyHad && stillCount >= requiredCount) {
-      socket.emit('answerLocked', { reason: 'Alle haben schon abgeschickt – Änderungen sind nicht mehr möglich.' });
-      return;
-    }
-
     stillRoom.answers[myId] = corrected;
     if (stillRoom.liveTyping) delete stillRoom.liveTyping[myId];
 
@@ -934,7 +972,6 @@ io.on('connection', (socket) => {
 
     socket.emit('answerCorrected', { text: corrected, wasChanged: corrected !== rawText });
     broadcastState(code);
-    maybeAutoAdvanceToVoting(stillRoom, code);
   });
 
   socket.on('resolveDuplicate', ({ code, playerId, action }) => {
@@ -958,9 +995,11 @@ io.on('connection', (socket) => {
         room.canonicalPlayerAnswerIds.push(playerId);
       }
     }
+    // action === 'ignore': Fehlalarm der automatischen Ähnlichkeits-Erkennung - beide
+    // Antworten bleiben ganz normal und getrennt im Pool (keine weitere Aktion nötig,
+    // der Konflikt wurde oben bereits aus duplicateConflicts entfernt).
 
     broadcastState(code);
-    maybeAutoAdvanceToVoting(room, code);
   });
 
   function startVotingPhase(room, code) {
@@ -993,24 +1032,41 @@ io.on('connection', (socket) => {
 
   // Geht automatisch zur Abstimmung über, sobald alle geantwortet haben und keine
   // offenen Dopplungs-Konflikte mehr auf eine Moderator-Entscheidung warten
-  function maybeAutoAdvanceToVoting(room, code) {
-    if (room.phase !== 'answering' || room.roundType === 'estimate') return;
-    const connectedNonModerator = room.players.filter(p => p.id !== room.players[room.moderatorIndex].id && p.socketId);
-    const requiredCount = connectedNonModerator.length;
-    const answeredCount = Object.keys(room.answers).length;
-    const hasOpenConflicts = room.duplicateConflicts && room.duplicateConflicts.length > 0;
-    if (answeredCount >= requiredCount && !hasOpenConflicts) {
-      startVotingPhase(room, code);
-    }
-  }
-
   function isModerator(room, socket) {
     return room.players[room.moderatorIndex] && room.players[room.moderatorIndex].id === socket.data.token;
   }
 
+  // ---- Moderator kann Spieler-Antworten manuell bearbeiten/löschen (z.B. wenn eine
+  // Antwort sinngleich mit der echten ist, aber im Wortlaut anders und daher von der
+  // automatischen Dopplungs-Erkennung nicht erfasst wurde) ----
+  socket.on('editPlayerAnswer', ({ code, playerId, newText }) => {
+    const room = rooms[code];
+    if (!room || !isModerator(room, socket) || room.phase !== 'answering') return;
+    if (room.answers[playerId] === undefined) return;
+    const trimmed = (newText || '').trim();
+    if (!trimmed) return;
+    room.answers[playerId] = trimmed;
+    broadcastState(code);
+  });
+
+  socket.on('deletePlayerAnswer', ({ code, playerId }) => {
+    const room = rooms[code];
+    if (!room || !isModerator(room, socket) || room.phase !== 'answering') return;
+    delete room.answers[playerId];
+    // Falls diese Antwort gerade in einem offenen Dopplungs-Konflikt steckte, den auch auflösen
+    if (room.duplicateConflicts) {
+      room.duplicateConflicts = room.duplicateConflicts.filter(id => id !== playerId);
+    }
+    broadcastState(code);
+  });
+
   socket.on('goToVoting', ({ code }) => {
     const room = rooms[code];
     if (!room || !isModerator(room, socket)) return;
+    if (room.duplicateConflicts && room.duplicateConflicts.length > 0) {
+      socket.emit('errorMsg', 'Bitte erst alle Dopplungen auflösen, bevor es zur Abstimmung geht.');
+      return;
+    }
     startVotingPhase(room, code);
   });
 
@@ -1172,7 +1228,9 @@ io.on('connection', (socket) => {
     room.players.forEach(p => { prevPositions[p.id] = p.position; });
 
     const realValue = Number(room.currentQuestionObj.answer);
+    const moderatorId = room.players[room.moderatorIndex].id;
     const ranked = Object.entries(room.answers)
+      .filter(([playerId]) => playerId !== moderatorId)
       .map(([playerId, value]) => ({ playerId, value: Number(value), diff: Math.abs(Number(value) - realValue) }))
       .sort((a, b) => a.diff - b.diff);
 

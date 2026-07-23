@@ -181,6 +181,7 @@ h2 { font-family: var(--font-display); font-weight: 700; font-size: 24px; text-a
 .player-list li .tag { font-size: 11px; color: var(--night); background: var(--teal); padding: 3px 8px; border-radius: 20px; font-weight: 700; text-transform: uppercase; }
 
 .hint { color: var(--ink-dim); font-size: 14px; text-align: center; margin: 0 0 18px; }
+.qp-counter { text-align: center; color: var(--ink-dim); font-weight: 700; font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 14px; }
 
 .phase-tag {
   display: inline-block;
@@ -229,6 +230,16 @@ h2 { font-family: var(--font-display); font-weight: 700; font-size: 24px; text-a
 
 .reveal-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 18px; }
 .reveal-item { border-radius: 12px; padding: 16px; font-size: 17px; font-weight: 600; line-height: 1.4; background: var(--night-2); border-left: 4px solid transparent; border: 1px solid transparent; border-left-width: 4px; }
+.mod-answer-tools { display: flex; gap: 8px; margin-top: 10px; }
+.mod-answer-tool-btn {
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 15px;
+  cursor: pointer;
+}
+.mod-answer-tool-btn:hover { background: rgba(255,255,255,0.16); }
 .reveal-item.real { border-left-color: var(--teal); }
 .reveal-item .owner {
   display: inline-block;
@@ -616,6 +627,7 @@ h2 { font-family: var(--font-display); font-weight: 700; font-size: 24px; text-a
 }
 .btn-dc-remove { background: var(--pink); color: var(--void); }
 .btn-dc-keep { background: rgba(255,255,255,0.1); color: var(--ink); }
+.btn-dc-ignore { background: transparent; color: var(--ink-dim); border: 1.5px solid rgba(255,255,255,0.2) !important; }
 
 /* ---- Pending-Join Wartescreen ---- */
 @keyframes pulse {

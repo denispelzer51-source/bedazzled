@@ -244,6 +244,37 @@
     </div>
   </section>
 
+  <!-- FRAGEN-VORSCHAU: nur der/die Moderator:in sieht/wählt die Frage, bevor die Runde
+       für alle beginnt. Bis zu 2x austauschen möglich (3 Kandidaten), frei zwischen
+       bereits gezogenen Kandidaten hin- und herwechselbar. -->
+  <section id="screen-question-preview" class="screen">
+    <div class="screen-scroll">
+      <div class="phase-tag">Fragen-Vorschau</div>
+
+      <div id="qp-moderator-view">
+        <p class="qp-counter"><span id="qp-current-num">1</span> / <span id="qp-total-num">1</span></p>
+        <p id="qp-category" style="color:var(--gold); font-weight:700; font-size:13px; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:6px;"></p>
+        <h2 id="qp-question-text" style="font-family:var(--font-display); font-size:22px; line-height:1.4;"></h2>
+
+        <div class="qp-nav" style="display:flex; gap:10px; margin:18px 0;">
+          <button id="btn-qp-prev" class="btn btn-secondary" style="flex:1;">◀ Vorherige</button>
+          <button id="btn-qp-next-candidate" class="btn btn-secondary" style="flex:1;">Nächste ▶</button>
+        </div>
+
+        <button id="btn-qp-swap" class="btn btn-secondary" style="margin-bottom:12px;">🔄 Andere Frage ziehen</button>
+        <p id="qp-swap-hint" class="hint" style="text-align:center;"></p>
+
+        <button id="btn-qp-confirm" class="btn btn-primary" style="margin-top:10px;">✓ Diese Frage nehmen</button>
+      </div>
+
+      <div id="qp-waiting-view" class="hidden" style="text-align:center; padding-top:40px;">
+        <p style="font-size:40px;">🎴</p>
+        <h2>Der/die Moderator:in wählt gerade die Frage aus …</h2>
+        <p class="hint">Gleich geht's los!</p>
+      </div>
+    </div>
+  </section>
+
   <!-- ANSWERING SCREEN (Frage + Antwort-Eingabe in einer Phase) -->
   <section id="screen-answering" class="screen">
     <div class="phase-tag" id="answering-phase-tag">Antwort-Phase</div>
@@ -255,7 +286,7 @@
         <label id="answer-input-label">Denk dir eine überzeugende Antwort aus:</label>
         <textarea id="input-answer" maxlength="140" placeholder="Deine erfundene Antwort …"></textarea>
         <div class="estimate-input-wrap">
-          <input id="input-answer-number" type="number" step="any" class="hidden" placeholder="Deine Schätzung …" />
+          <input id="input-answer-number" type="number" step="any" inputmode="decimal" class="hidden" placeholder="Deine Schätzung …" />
         </div>
         <button id="btn-submit-answer" class="btn btn-primary">Antwort abschicken</button>
         <p id="answer-reject-msg" class="error hidden"></p>
@@ -265,7 +296,7 @@
       <div id="moderator-answers-preview" class="reveal-list hidden"></div>
 
       <p class="progress-text"><span id="answered-count">0</span>/<span id="answering-total">0</span> haben geantwortet</p>
-      <button id="btn-to-voting" class="btn btn-secondary mod-only">Weiter zur Abstimmung</button>
+      <button id="btn-to-voting" class="btn btn-primary mod-only">Weiter zur Abstimmung</button>
       <button id="btn-reveal-estimate" class="btn btn-primary mod-only hidden">Auswerten</button>
       <button class="btn-leave-game">Spiel verlassen</button>
     </div>
