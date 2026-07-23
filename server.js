@@ -512,6 +512,7 @@ function publicRoomState(room, forPlayerId) {
       ? (room.correctGuessers || []).map(id => (room.players.find(p => p.id === id) || {}).name || '???')
       : [],
     myGuessCorrect: room.phase === 'drawing' ? (room.correctGuessers || []).includes(forPlayerId) : false,
+    drawingRoundId: room.drawingRoundId || 0,
     drawingResult: (room.phase === 'reveal' && room.drawingResult) ? room.drawingResult : null,
     catchUpAnnouncement: room.catchUpAnnouncement || null,
   };
@@ -544,7 +545,21 @@ function pickNextQuestion(room, roundType, excludeIndices = []) {
     pool = questionsList.filter(q => q.category !== 'Fremdwörter' && q.category !== 'Zeichnen' && q.reviewed === true);
     usedKey = 'usedQuestions';
   }
-  if (pool.length === 0) pool = questionsList.filter(q => q.reviewed === true); // Notfall, falls eine Kategorie leer ist
+  if (pool.length === 0) {
+    // Notfall: NIE in eine andere Kategorie ausweichen (eine Zeichenrunde darf niemals
+    // eine Fremdwort-/Bluff-Frage zeigen und umgekehrt) - höchstens das reviewed-Flag
+    // ignorieren, falls in der richtigen Kategorie nur ungeprüfte Einträge existieren.
+    if (roundType === 'estimate') {
+      pool = estimateQuestionsList;
+    } else if (roundType === 'foreignword') {
+      pool = questionsList.filter(q => q.category === 'Fremdwörter');
+    } else if (roundType === 'drawing') {
+      pool = questionsList.filter(q => q.category === 'Zeichnen');
+    } else {
+      pool = questionsList.filter(q => q.category !== 'Fremdwörter' && q.category !== 'Zeichnen');
+    }
+  }
+  if (pool.length === 0) return null; // Kategorie ist wirklich komplett leer - Aufrufer muss das behandeln
 
   if (!room[usedKey]) room[usedKey] = [];
   const usedOrExcluded = new Set([...room[usedKey], ...excludeIndices]);
@@ -980,7 +995,12 @@ io.on('connection', (socket) => {
     room.suppressRealEntry = false;
     room.canonicalPlayerAnswerIds = [];
     room.currentQuestionObj = null;
-    room.questionCandidates = [pickNextQuestion(room, roundType, [])];
+    const firstCandidate = pickNextQuestion(room, roundType, []);
+    if (!firstCandidate) {
+      socket.emit('errorMsg', 'Für diesen Feldtyp sind keine Fragen hinterlegt. Bitte über /admin.html hinzufügen.');
+      return;
+    }
+    room.questionCandidates = [firstCandidate];
     room.previewIndex = 0;
     broadcastState(code);
   });
@@ -998,6 +1018,10 @@ io.on('connection', (socket) => {
     }
     const excludeIndices = room.questionCandidates.map(c => c.index);
     const next = pickNextQuestion(room, room.roundType, excludeIndices);
+    if (!next) {
+      socket.emit('errorMsg', 'Keine weitere Frage in dieser Kategorie verfügbar.');
+      return;
+    }
     room.questionCandidates.push(next);
     room.previewIndex = room.questionCandidates.length - 1;
     broadcastState(code);
@@ -1029,6 +1053,7 @@ io.on('connection', (socket) => {
     const moderatorId = room.players[room.moderatorIndex].id;
 
     if (room.roundType === 'drawing') {
+      room.drawingRoundId = (room.drawingRoundId || 0) + 1;
       room.phase = 'drawing';
       room.correctGuessers = [];
       room.guesses = {};
@@ -1623,6 +1648,10 @@ io.on('connection', (socket) => {
     const room = rooms[code];
     if (!room || room.players.length < 2) return;
     const chosen = pickNextQuestion(room, 'drawing', []);
+    if (!chosen) {
+      socket.emit('errorMsg', 'Keine Zeichen-Begriffe hinterlegt (Kategorie "Zeichnen" in /admin.html befüllen).');
+      return;
+    }
     room.roundType = 'drawing';
     room.currentQuestionObj = chosen;
     room.questionCandidates = [];
@@ -1633,6 +1662,7 @@ io.on('connection', (socket) => {
     room.drawingResult = null;
     room.drawingStartPositions = {};
     room.players.forEach(p => { room.drawingStartPositions[p.id] = p.position; });
+    room.drawingRoundId = (room.drawingRoundId || 0) + 1;
     room.phase = 'drawing';
     broadcastState(code);
     console.log(`[ADMIN-TOOL] Zeichenrunde in Raum ${code} erzwungen (Test).`);

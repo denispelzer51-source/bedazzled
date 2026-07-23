@@ -307,6 +307,15 @@ function avatarFor(player) {
   return (player && player.avatar) || '❓';
 }
 
+// Ordnet jeden Rundentyp seiner Feldfarbe zu, damit überall klar erkennbar ist,
+// welche Frageart gerade dran ist (lila=normal, blau=Fremdwort, grün=Schätzen, gelb=Zeichnen)
+function fieldColorInfo(roundType) {
+  if (roundType === 'estimate') return { dotClass: 'key-green', label: '🟢 Grünes Feld · Schätzfrage' };
+  if (roundType === 'foreignword') return { dotClass: 'key-blue', label: '🔵 Blaues Feld · Fremdwort' };
+  if (roundType === 'drawing') return { dotClass: 'key-yellow', label: '🟡 Gelbes Feld · Zeichnen' };
+  return { dotClass: 'key-purple', label: '🟣 Lila Feld · Normale Frage' };
+}
+
 const screens = {
   start: document.getElementById('screen-start'),
   setup: document.getElementById('screen-setup'),
@@ -921,6 +930,7 @@ document.getElementById('btn-to-reveal').addEventListener('click', () => {
 // Global (nicht nur lokal im state-Handler) verfügbar, da die Canvas-Funktionen
 // außerhalb des state-Handlers wissen müssen, ob gerade gezeichnet werden darf.
 let isMyTurnToDraw = false;
+let lastDrawingRoundIdSeen = null;
 
 const drawingCanvas = document.getElementById('drawing-canvas');
 const drawingCtx = drawingCanvas.getContext('2d');
@@ -1418,12 +1428,15 @@ socket.on('state', (state) => {
       document.getElementById('qp-moderator-view').classList.remove('hidden');
       document.getElementById('qp-waiting-view').classList.add('hidden');
       if (qpSwapAreaRevealed) document.getElementById('qp-swap-area').classList.remove('hidden');
+
       document.getElementById('qp-current-num').textContent = qp.currentIndex + 1;
       document.getElementById('qp-total-num').textContent = qp.candidates.length;
       const current = qp.candidates[qp.currentIndex];
       if (current) {
-        document.getElementById('qp-category').textContent =
-          (qp.roundType === 'estimate' ? '🔢 Schätzfrage · ' : '') + (current.category || '') + (current.topic ? ' · ' + current.topic : '');
+        const fieldInfo = fieldColorInfo(qp.roundType);
+        document.getElementById('qp-category').innerHTML =
+          `<span class="key-dot ${fieldInfo.dotClass}" style="margin-right:6px; vertical-align:middle;"></span>${fieldInfo.label}` +
+          (current.topic ? ' · ' + escapeHtml(current.topic) : '');
         document.getElementById('qp-question-text').textContent = current.question;
       }
       document.getElementById('btn-qp-prev').disabled = qp.currentIndex <= 0;
@@ -1443,7 +1456,9 @@ socket.on('state', (state) => {
   if (state.phase === 'answering') {
     currentRoundType = state.roundType || 'question';
     const isEstimate = currentRoundType === 'estimate';
-    document.getElementById('answering-phase-tag').textContent = isEstimate ? 'Schätz-Frage 🔢' : 'Antwort-Phase';
+    const answeringFieldInfo = fieldColorInfo(currentRoundType);
+    document.getElementById('answering-phase-tag').innerHTML =
+      `<span class="key-dot ${answeringFieldInfo.dotClass}" style="margin-right:6px; vertical-align:middle;"></span>${isEstimate ? 'Schätz-Frage 🔢' : 'Antwort-Phase'}`;
     document.getElementById('question-text-2').textContent = state.currentQuestion || '';
     document.getElementById('answered-count').textContent = state.answeredCount;
     document.getElementById('answering-total').textContent = Math.max(state.players.length - 1, 0);
@@ -1634,9 +1649,10 @@ socket.on('state', (state) => {
     showScreen('voting');
   }
 
-  const enteringDrawing = state.phase === 'drawing' && (!lastState || lastState.phase !== 'drawing');
+  const enteringDrawing = state.phase === 'drawing' && lastDrawingRoundIdSeen !== state.drawingRoundId;
   if (state.phase === 'drawing') {
     if (enteringDrawing) {
+      lastDrawingRoundIdSeen = state.drawingRoundId;
       drawingCtx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
       document.getElementById('input-drawing-guess').value = '';
       document.getElementById('drawing-guess-feedback').textContent = '';
