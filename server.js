@@ -16,7 +16,6 @@ app.use(express.json());
 
 const QUESTIONS_PATH = path.join(__dirname, 'questions.json');
 const ESTIMATE_QUESTIONS_PATH = path.join(__dirname, 'estimate_questions.json');
-const DRAW_TERMS_PATH = path.join(__dirname, 'draw_terms.json');
 
 // ---------- Fragen-Speicherung: MongoDB Atlas, falls eingerichtet - sonst lokale Dateien ----------
 // Sobald die Umgebungsvariable MONGODB_URI auf Render gesetzt ist, werden Fragen dauerhaft
@@ -28,7 +27,6 @@ let mongoDb = null;
 
 let questionsList = JSON.parse(fs.readFileSync(QUESTIONS_PATH, 'utf8'));
 let estimateQuestionsList = JSON.parse(fs.readFileSync(ESTIMATE_QUESTIONS_PATH, 'utf8'));
-let drawTermsList = JSON.parse(fs.readFileSync(DRAW_TERMS_PATH, 'utf8'));
 
 async function initDatabase() {
   if (!useMongo) {
@@ -82,7 +80,7 @@ const ESTIMATE_POINTS = [3, 2, 1]; // Platz 1, 2, 3 – Rest geht leer aus
 const FOREIGNWORD_TRIGGER_FIELDS = [2, 10, 16, 22];
 // Gelbe Felder: Zeichenrunde (Moderator zeichnet einen Begriff, andere raten mit)
 const DRAWING_TRIGGER_FIELDS = [4, 12, 19, 24];
-const DRAWING_GUESS_POINTS = 3; // pro richtig ratendem Mitspieler
+const DRAWING_GUESS_POINTS = [3, 2]; // 1. und 2. richtig Ratende:r - danach endet die Runde automatisch
 
 // Aufholjagd: sobald irgendjemand dieses Feld erreicht/überschreitet, bekommt der/die
 // Letztplatzierte einmalig einen Bonus, damit das Spiel spannend bleibt
@@ -468,7 +466,6 @@ function broadcastState(roomCode) {
 }
 
 function pickNextQuestion(room, roundType, excludeIndices = []) {
-  if (roundType === 'drawing') return pickDrawTerm(room, excludeIndices);
   let pool, usedKey;
   if (roundType === 'estimate') {
     pool = estimateQuestionsList;
@@ -477,9 +474,14 @@ function pickNextQuestion(room, roundType, excludeIndices = []) {
     // Blaue Felder: nur Fremdwörter-Fragen
     pool = questionsList.filter(q => q.category === 'Fremdwörter');
     usedKey = 'usedForeignwordQuestions';
+  } else if (roundType === 'drawing') {
+    // Gelbe Felder: Begriffe aus der Kategorie "Zeichnen" (übers Fragen-Verwaltung-Panel
+    // gepflegt wie alle anderen Fragen auch - "Frage"-Feld enthält den Begriff)
+    pool = questionsList.filter(q => q.category === 'Zeichnen');
+    usedKey = 'usedDrawTerms';
   } else {
-    // Lila Standardfelder: alles außer Fremdwörter (Kuriositäten, Historischer Kontext, etc.)
-    pool = questionsList.filter(q => q.category !== 'Fremdwörter');
+    // Lila Standardfelder: alles außer Fremdwörter/Zeichnen (Kuriositäten, Historischer Kontext, etc.)
+    pool = questionsList.filter(q => q.category !== 'Fremdwörter' && q.category !== 'Zeichnen');
     usedKey = 'usedQuestions';
   }
   if (pool.length === 0) pool = questionsList; // Notfall, falls eine Kategorie leer ist
@@ -494,26 +496,15 @@ function pickNextQuestion(room, roundType, excludeIndices = []) {
     if (available.length === 0) available = pool.map((q, i) => i); // absoluter Notfall (Pool winzig)
   }
   const idx = available[Math.floor(Math.random() * available.length)];
-  return { index: idx, ...pool[idx] };
-}
+  const picked = pool[idx];
 
-// Gelbe Felder: Begriff zum Zeichnen auswählen. Gibt dieselbe Form wie pickNextQuestion
-// zurück (question/answer/category/topic), damit die Fragen-Vorschau unverändert
-// wiederverwendet werden kann - "question" ist hier der Anzeige-Text für den/die
-// Moderator:in, "answer" ist der eigentliche zu erratende Begriff.
-function pickDrawTerm(room, excludeIndices = []) {
-  const pool = drawTermsList;
-  const usedKey = 'usedDrawTerms';
-  if (!room[usedKey]) room[usedKey] = [];
-  const usedOrExcluded = new Set([...room[usedKey], ...excludeIndices]);
-  let available = pool.map((t, i) => i).filter(i => !usedOrExcluded.has(i));
-  if (available.length === 0) {
-    available = pool.map((t, i) => i).filter(i => !excludeIndices.includes(i));
-    if (available.length === 0) available = pool.map((t, i) => i);
+  if (roundType === 'drawing') {
+    // Gleiche Form wie eine normale Frage, damit die Fragen-Vorschau unverändert
+    // wiederverwendet werden kann - "question" ist der Anzeige-Text für den/die
+    // Moderator:in, "answer" ist der eigentliche zu erratende Begriff.
+    return { index: idx, question: `Zeichne: ${picked.question}`, answer: picked.answer, category: '🎨 Zeichenrunde', topic: picked.topic || '' };
   }
-  const idx = available[Math.floor(Math.random() * available.length)];
-  const t = pool[idx];
-  return { index: idx, question: `Zeichne: ${t.term}`, answer: t.term, category: '🎨 Zeichenrunde', topic: t.category || '' };
+  return { index: idx, ...picked };
 }
 
 // Prüft, ob jemand durch die Punktevergabe DIESER Runde neu auf einem Schätzen-Feld
@@ -905,7 +896,7 @@ io.on('connection', (socket) => {
       socket.emit('errorMsg', 'Es sind keine Schätzen-Fragen hinterlegt. Bitte über /admin.html hinzufügen.');
       return;
     }
-    if (roundType === 'question' && questionsList.filter(q => q.category !== 'Fremdwörter').length === 0) {
+    if (roundType === 'question' && questionsList.filter(q => q.category !== 'Fremdwörter' && q.category !== 'Zeichnen').length === 0) {
       socket.emit('errorMsg', 'Es sind keine Fragen hinterlegt. Bitte über /admin.html Fragen hinzufügen.');
       return;
     }
@@ -913,8 +904,8 @@ io.on('connection', (socket) => {
       socket.emit('errorMsg', 'Es sind keine Fremdwörter-Fragen hinterlegt. Bitte über /admin.html hinzufügen.');
       return;
     }
-    if (roundType === 'drawing' && drawTermsList.length === 0) {
-      socket.emit('errorMsg', 'Es sind keine Zeichen-Begriffe hinterlegt.');
+    if (roundType === 'drawing' && questionsList.filter(q => q.category === 'Zeichnen').length === 0) {
+      socket.emit('errorMsg', 'Es sind keine Zeichen-Begriffe hinterlegt. Bitte über /admin.html mit Kategorie "Zeichnen" hinzufügen.');
       return;
     }
     room.roundType = roundType;
@@ -1169,23 +1160,27 @@ io.on('connection', (socket) => {
     if (myId === moderatorId) return; // Moderator zeichnet, rät nicht mit
     if (!room.correctGuessers) room.correctGuessers = [];
     if (room.correctGuessers.includes(myId)) return; // hat schon richtig geraten
+    if (room.correctGuessers.length >= DRAWING_GUESS_POINTS.length) return; // schon 2 Richtige - Runde läuft gleich aus
 
     const normalize = (s) => (s || '').trim().toLowerCase().replace(/[^a-zäöüß0-9 ]/gi, '');
     const isCorrect = normalize(guess) === normalize(room.currentQuestionObj.answer) && normalize(guess).length > 0;
     if (isCorrect) {
+      const place = room.correctGuessers.length; // 0 = erste:r, 1 = zweite:r
       room.correctGuessers.push(myId);
       const player = room.players.find(p => p.id === myId);
-      if (player) player.position = Math.min(BOARD_LENGTH, player.position + DRAWING_GUESS_POINTS);
+      if (player) player.position = Math.min(BOARD_LENGTH, player.position + DRAWING_GUESS_POINTS[place]);
       broadcastState(code);
+
+      // Sobald die ersten beiden richtig geraten haben, endet die Runde automatisch
+      if (room.correctGuessers.length >= DRAWING_GUESS_POINTS.length) {
+        finishDrawingRound(room, code);
+      }
     } else {
       socket.emit('guessWrong', { guess });
     }
   });
 
-  socket.on('endDrawingRound', ({ code }) => {
-    const room = rooms[code];
-    if (!room || !isModerator(room, socket) || room.phase !== 'drawing') return;
-
+  function finishDrawingRound(room, code) {
     const prevPositions = room.drawingStartPositions || {};
     room.drawingResult = {
       term: room.currentQuestionObj.answer,
@@ -1198,6 +1193,12 @@ io.on('connection', (socket) => {
     room.phase = 'reveal';
     broadcastState(code);
     checkForWinner(code, room);
+  }
+
+  socket.on('endDrawingRound', ({ code }) => {
+    const room = rooms[code];
+    if (!room || !isModerator(room, socket) || room.phase !== 'drawing') return;
+    finishDrawingRound(room, code);
   });
 
   socket.on('goToVoting', ({ code }) => {

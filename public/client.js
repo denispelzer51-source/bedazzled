@@ -842,6 +842,10 @@ document.getElementById('btn-to-reveal').addEventListener('click', () => {
 });
 
 // ---------- ZEICHENRUNDE (gelbe Felder) ----------
+// Global (nicht nur lokal im state-Handler) verfügbar, da die Canvas-Funktionen
+// außerhalb des state-Handlers wissen müssen, ob gerade gezeichnet werden darf.
+let isMyTurnToDraw = false;
+
 const drawingCanvas = document.getElementById('drawing-canvas');
 const drawingCtx = drawingCanvas.getContext('2d');
 drawingCtx.lineCap = 'round';
@@ -869,7 +873,7 @@ function drawLineSegment(ctx, x0, y0, x1, y1) {
 }
 
 function startDrawing(e) {
-  if (!iAmModerator || lastState?.phase !== 'drawing') return;
+  if (!isMyTurnToDraw || lastState?.phase !== 'drawing') return;
   isDrawingNow = true;
   lastDrawPoint = canvasPointFromEvent(e);
   e.preventDefault();
@@ -1307,6 +1311,7 @@ socket.on('state', (state) => {
   if (state.foreignwordTriggerFields) foreignwordTriggerFields = state.foreignwordTriggerFields;
   if (state.drawingTriggerFields) drawingTriggerFields = state.drawingTriggerFields;
   const iAmModerator = state.moderatorId === myId;
+  isMyTurnToDraw = iAmModerator;
 
   renderBoard(state.players, miniBarShowsLive ? null : roundStartPositions);
 
@@ -1606,10 +1611,12 @@ socket.on('state', (state) => {
         div.innerHTML = `Niemand hat es erraten. Schade!`;
         list.appendChild(div);
       } else {
-        guesserNames.forEach(name => {
+        const medals = ['🥇', '🥈'];
+        const drawingPoints = [3, 2];
+        guesserNames.forEach((name, i) => {
           const div = document.createElement('div');
           div.className = 'reveal-item real';
-          div.innerHTML = `${escapeHtml(name)}<br><span class="owner">✔ Richtig geraten</span>`;
+          div.innerHTML = `${medals[i] || ''} ${escapeHtml(name)}<br><span class="owner">✔ Richtig geraten (+${drawingPoints[i] || 0} Punkte)</span>`;
           list.appendChild(div);
         });
       }
