@@ -15,6 +15,7 @@
   .reviewed-badge.is-reviewed { color: #3fbfa0; background: rgba(63,191,160,0.15); }
   .reviewed-badge.is-unreviewed { color: #e8a83c; background: rgba(232,168,60,0.15); }
   .q-text-edit, .a-text-edit { width: 100%; margin-bottom: 8px; }
+  textarea.answer-edit-textarea { min-height: 90px; resize: vertical; }
   .q-row .a-text { color: var(--teal); font-size: 14px; }
   .q-row .row-actions { display: flex; gap: 8px; margin-top: 10px; }
   .row-actions button { flex: none; width: auto; padding: 8px 14px; font-size: 13px; }
@@ -29,10 +30,10 @@
   .filter-bar { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 18px; }
   .filter-bar select, .filter-bar input {
     background: var(--night-2); border: 1.5px solid rgba(172,88,249,0.25); color: var(--ink);
-    border-radius: 10px; padding: 10px 12px; font-size: 14px; font-family: var(--font-body);
+    border-radius: 10px; padding: 14px 16px; font-size: 16px; font-family: var(--font-body);
   }
-  .filter-bar select { flex: 1; min-width: 160px; }
-  .filter-bar input[type="search"] { flex: 2; min-width: 200px; }
+  .filter-bar select { flex: 1; min-width: 220px; }
+  .filter-bar input[type="search"] { flex: 2; min-width: 240px; }
 
   .category-group { margin-bottom: 12px; border-radius: 14px; overflow: hidden; border: 1px solid rgba(255,255,255,0.08); }
   .category-header {
@@ -370,7 +371,9 @@
         <select class="q-topic-edit">${topicNames.map(t => `<option value="${escapeHtml(t)}" ${t === currentTopic ? 'selected' : ''}>${escapeHtml(t)}</option>`).join('')}</select>
       </div>
       <textarea class="q-question-edit">${escapeHtml(q.question)}</textarea>
-      <input class="a-text-edit" type="${isEstimate ? 'number' : 'text'}" step="any" value="${escapeHtml(String(q.answer))}" />
+      ${isEstimate
+        ? `<input class="a-text-edit" type="number" step="any" value="${escapeHtml(String(q.answer))}" />`
+        : `<textarea class="a-text-edit answer-edit-textarea">${escapeHtml(String(q.answer))}</textarea>`}
       <div class="row-actions">
         <button class="btn btn-primary btn-save">Speichern</button>
         <button class="btn btn-secondary btn-cancel">Abbrechen</button>

@@ -616,7 +616,7 @@ function computeAwards(room) {
     const max = Math.max(0, ...entries.map(([, s]) => s[key]));
     if (max === 0) return;
     const winners = entries.filter(([, s]) => s[key] === max).map(([id]) => nameFor(id)).filter(Boolean);
-    if (winners.length > 0) awards.push({ title: `${emoji} ${title}`, names: winners });
+    if (winners.length > 0) awards.push({ title: `${emoji} ${title}`, names: winners, count: max });
   }
 
   topAward('fooled', 'Bester Bluffer', '🎭');
@@ -1488,6 +1488,7 @@ io.on('connection', (socket) => {
         rank: i + 1,
         name: player ? player.name : '???',
         value: entry.value,
+        diff: entry.diff,
         points: ESTIMATE_POINTS[i] || 0,
       };
     });

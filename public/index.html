@@ -249,14 +249,15 @@
        bereits gezogenen Kandidaten hin- und herwechselbar. -->
   <section id="screen-question-preview" class="screen">
     <div class="screen-scroll">
-      <div class="phase-tag">Fragen-Vorschau</div>
+      <img src="logo.png" alt="" id="qp-corner-logo" style="width:36px; height:36px; border-radius:8px; margin-bottom:10px;" />
+      <div id="qp-phase-tag" class="phase-tag">Fragen-Vorschau</div>
 
       <div id="qp-moderator-view">
         <p id="qp-category" style="color:var(--gold); font-weight:700; font-size:13px; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:6px;"></p>
         <h2 id="qp-question-text" style="font-family:var(--font-display); font-size:22px; line-height:1.4;"></h2>
 
         <button id="btn-qp-confirm" class="btn btn-primary" style="margin-top:20px;">✓ Runde mit dieser Frage starten</button>
-        <button id="btn-qp-swap" class="btn btn-secondary" style="margin-top:10px;">🔄 Andere Frage ziehen (Notfall)</button>
+        <button id="btn-qp-swap" class="btn btn-secondary" style="margin-top:10px;">🔄 Andere Frage ziehen</button>
 
         <div id="qp-swap-area" class="hidden" style="margin-top:16px;">
           <p class="qp-counter"><span id="qp-current-num">1</span> / <span id="qp-total-num">1</span></p>
@@ -292,7 +293,6 @@
         <button id="btn-submit-answer" class="btn btn-primary">Antwort abschicken</button>
         <p id="answer-reject-msg" class="error hidden"></p>
       </div>
-      <p id="moderator-wait-box" class="waiting-msg hidden">Du bist Moderator:in. Hier siehst du live, wer was schreibt:</p>
       <div id="duplicate-conflict-box" class="duplicate-conflict-box hidden"></div>
       <div id="moderator-answers-preview" class="reveal-list hidden"></div>
 
@@ -309,7 +309,7 @@
     <p class="question-text small" id="question-text-3"></p>
 
     <div class="screen-scroll">
-      <p class="hint" id="vote-question-hint">Welche Antwort ist die echte?</p>
+      <p class="hint hidden" id="vote-question-hint"></p>
       <div id="vote-options" class="vote-options"></div>
       <button id="btn-submit-vote" class="btn btn-primary" disabled>Auswahl abschicken</button>
       <p id="vote-submitted-msg" class="waiting-msg hidden">Deine Stimme wurde abgeschickt ✓</p>
@@ -487,7 +487,7 @@
 </div>
 
 <div id="winner-overlay" class="overlay hidden">
-  <div class="overlay-card">
+  <div class="overlay-card winner-card">
     <span class="brand-mask big">🏆</span>
     <h2 id="winner-text"></h2>
     <div id="awards-list" class="awards-list"></div>

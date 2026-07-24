@@ -310,10 +310,10 @@ function avatarFor(player) {
 // Ordnet jeden Rundentyp seiner Feldfarbe zu, damit überall klar erkennbar ist,
 // welche Frageart gerade dran ist (lila=normal, blau=Fremdwort, grün=Schätzen, gelb=Zeichnen)
 function fieldColorInfo(roundType) {
-  if (roundType === 'estimate') return { dotClass: 'key-green', label: '🟢 Grünes Feld · Schätzfrage' };
-  if (roundType === 'foreignword') return { dotClass: 'key-blue', label: '🔵 Blaues Feld · Fremdwort' };
-  if (roundType === 'drawing') return { dotClass: 'key-yellow', label: '🟡 Gelbes Feld · Zeichnen' };
-  return { dotClass: 'key-purple', label: '🟣 Lila Feld · Normale Frage' };
+  if (roundType === 'estimate') return { dotClass: 'key-green', label: 'Grünes Feld · Schätzfrage' };
+  if (roundType === 'foreignword') return { dotClass: 'key-blue', label: 'Blaues Feld · Fremdwort' };
+  if (roundType === 'drawing') return { dotClass: 'key-yellow', label: 'Gelbes Feld · Zeichnen' };
+  return { dotClass: 'key-purple', label: 'Lila Feld · Normale Frage' };
 }
 
 const screens = {
@@ -695,6 +695,7 @@ document.getElementById('btn-cancel-pending').addEventListener('click', () => {
 
 // ---------- LOBBY ----------
 document.getElementById('btn-start-round').addEventListener('click', () => {
+  showError('');
   socket.emit('startRound', { code: currentCode });
 });
 
@@ -1034,7 +1035,12 @@ function showWinnerOverlay(winnerName, awards) {
   (awards || []).forEach(a => {
     const div = document.createElement('div');
     div.className = 'award-item';
-    div.innerHTML = `<span class="award-title">${escapeHtml(a.title)}</span><span class="award-names">${a.names.map(escapeHtml).join(' & ')}</span>`;
+    const unitLabel = a.title.includes('Bluffer') ? 'x Mitspieler getäuscht'
+      : a.title.includes('Getäuscht') ? 'x reingefallen'
+      : a.title.includes('Schätz') ? 'x am nächsten dran'
+      : 'x';
+    const namesWithCount = (a.names || []).map(n => `${escapeHtml(n)} (${a.count}${unitLabel})`).join(' & ');
+    div.innerHTML = `<span class="award-title">${escapeHtml(a.title)}</span><span class="award-names">${namesWithCount}</span>`;
     awardsBox.appendChild(div);
   });
   document.getElementById('winner-overlay').classList.remove('hidden');
@@ -1350,6 +1356,14 @@ function updateConnectionBanner(state) {
 
 // ---------- MAIN STATE HANDLER ----------
 socket.on('state', (state) => {
+  if (!lastState || lastState.phase !== state.phase) {
+    // Phasenwechsel: alte Fehlermeldungen (z.B. "keine Fragen hinterlegt") sollen nicht
+    // ewig hängen bleiben, sobald der Spielprozess erfolgreich weiterläuft.
+    ['error-msg', 'setup-error-msg', 'lobby-error-msg'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = '';
+    });
+  }
   const enteringVoting = state.phase === 'voting' && (!lastState || lastState.phase !== 'voting');
   if (enteringVoting) {
     if (state.myVote) {
@@ -1422,6 +1436,7 @@ socket.on('state', (state) => {
       document.getElementById('qp-swap-area').classList.add('hidden');
     }
     const qp = state.questionPreview;
+    document.getElementById('qp-phase-tag').classList.toggle('hidden', !qp);
     if (qp) {
       // Ich bin Moderator:in - Vorschau anzeigen
       qpCurrentIndex = qp.currentIndex;
@@ -1471,7 +1486,6 @@ socket.on('state', (state) => {
 
     if (iAmModerator) {
       document.getElementById('answer-input-box').classList.add('hidden');
-      document.getElementById('moderator-wait-box').classList.remove('hidden');
       document.getElementById('real-answer-box').classList.remove('hidden');
       document.getElementById('real-answer-box').textContent = (isEstimate ? 'Echte Zahl (nur für dich): ' : 'Echte Antwort (nur für dich): ') + (state.realAnswer ?? '');
       const previewBox = document.getElementById('moderator-answers-preview');
@@ -1479,17 +1493,19 @@ socket.on('state', (state) => {
       previewBox.innerHTML = '';
       (state.answersPreview || []).forEach(a => {
         const div = document.createElement('div');
-        div.className = 'reveal-item' + (a.submitted ? '' : ' typing-preview');
+        div.className = 'reveal-item compact-preview-item' + (a.submitted ? '' : ' typing-preview');
         const statusTag = a.submitted
           ? ''
           : `<span class="typing-tag">${a.text ? 'tippt gerade …' : 'noch nichts eingegeben'}</span>`;
         const shownText = a.text ? escapeHtml(String(a.text)) : '<span class="placeholder-text">…</span>';
-        div.innerHTML = `${shownText}${statusTag}<br><span class="owner">${escapeHtml(a.name)}</span>`;
+        const headerRow = document.createElement('div');
+        headerRow.className = 'compact-preview-header';
+        headerRow.innerHTML = `<span class="owner">${escapeHtml(a.name)}</span>${statusTag}`;
         // Moderator-Werkzeug: eingereichte Antworten manuell bearbeiten oder löschen -
         // z.B. wenn eine Antwort sinngleich mit der echten ist, aber anders formuliert,
         // und daher von der automatischen Dopplungs-Erkennung nicht erfasst wurde.
         if (a.submitted) {
-          const toolsDiv = document.createElement('div');
+          const toolsDiv = document.createElement('span');
           toolsDiv.className = 'mod-answer-tools';
           const editBtn = document.createElement('button');
           editBtn.className = 'mod-answer-tool-btn';
@@ -1512,8 +1528,13 @@ socket.on('state', (state) => {
           });
           toolsDiv.appendChild(editBtn);
           toolsDiv.appendChild(deleteBtn);
-          div.appendChild(toolsDiv);
+          headerRow.appendChild(toolsDiv);
         }
+        div.appendChild(headerRow);
+        const textRow = document.createElement('div');
+        textRow.className = 'compact-preview-text';
+        textRow.innerHTML = shownText;
+        div.appendChild(textRow);
         previewBox.appendChild(div);
       });
 
@@ -1549,7 +1570,6 @@ socket.on('state', (state) => {
       }
     } else {
       document.getElementById('answer-input-box').classList.remove('hidden');
-      document.getElementById('moderator-wait-box').classList.add('hidden');
       document.getElementById('real-answer-box').classList.add('hidden');
       document.getElementById('moderator-answers-preview').classList.add('hidden');
       document.getElementById('duplicate-conflict-box').classList.add('hidden');
@@ -1722,14 +1742,13 @@ socket.on('state', (state) => {
       realBox.classList.remove('hidden');
       realBox.innerHTML = `<span class="answer-label">Antwort:</span> <span class="answer-value">${state.estimateRealAnswer}</span>`;
       const medals = ['🥇', '🥈', '🥉'];
-      const closenessCallouts = ['🎯 Am nächsten dran!', '👏 Ziemlich nah dran', '👍 Auch nicht schlecht'];
       (state.estimateResults || []).forEach(r => {
         const div = document.createElement('div');
         div.className = 'reveal-item' + (r.points > 0 ? ' real' : '');
         const medal = medals[r.rank - 1] || `${r.rank}.`;
-        const callout = r.points > 0 ? (closenessCallouts[r.rank - 1] || '') : '';
         const pointsText = r.points > 0 ? `+${r.points} Punkte` : 'keine Punkte';
-        div.innerHTML = `${medal} ${escapeHtml(r.name)}: <strong>${r.value}</strong>${callout ? ` <span class="closeness-tag">${callout}</span>` : ''}<br><span class="owner">${pointsText}</span>`;
+        const diffText = r.diff !== undefined ? ` <span class="closeness-tag">Abweichung: ${r.diff}</span>` : '';
+        div.innerHTML = `${medal} ${escapeHtml(r.name)}: <strong>${r.value}</strong>${diffText}<br><span class="owner">${pointsText}</span>`;
         list.appendChild(div);
       });
     } else {

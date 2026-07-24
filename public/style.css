@@ -230,13 +230,17 @@ h2 { font-family: var(--font-display); font-weight: 700; font-size: 24px; text-a
 
 .reveal-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 18px; }
 .reveal-item { border-radius: 12px; padding: 16px; font-size: 17px; font-weight: 600; line-height: 1.4; background: var(--night-2); border-left: 4px solid transparent; border: 1px solid transparent; border-left-width: 4px; }
-.mod-answer-tools { display: flex; gap: 8px; margin-top: 10px; }
+.mod-answer-tools { display: flex; gap: 6px; }
+.compact-preview-item { padding: 10px 12px; }
+.compact-preview-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.compact-preview-header .owner { font-size: 13px; font-weight: 700; color: var(--ink-dim); margin: 0; }
+.compact-preview-text { font-size: 14px; font-weight: 500; margin-top: 4px; }
 .mod-answer-tool-btn {
   background: rgba(255,255,255,0.08);
   border: 1px solid rgba(255,255,255,0.15);
-  border-radius: 8px;
-  padding: 6px 10px;
-  font-size: 15px;
+  border-radius: 6px;
+  padding: 3px 7px;
+  font-size: 13px;
   cursor: pointer;
 }
 .mod-answer-tool-btn:hover { background: rgba(255,255,255,0.16); }
@@ -272,7 +276,8 @@ h2 { font-family: var(--font-display); font-weight: 700; font-size: 24px; text-a
 /* Kompaktere Darstellung für die Live-Übersicht + Antwortmöglichkeiten während der
    Abstimm-Phase (Moderator-Ansicht) - sonst verschwindet der "Auflösen"-Button unten */
 #moderator-vote-preview.reveal-list,
-#moderator-answer-options.reveal-list { gap: 6px; margin-bottom: 12px; }
+#moderator-answer-options.reveal-list,
+#moderator-answers-preview.reveal-list { gap: 6px; margin-bottom: 12px; }
 #moderator-vote-preview .reveal-item,
 #moderator-answer-options .reveal-item { padding: 8px 12px; font-size: 14px; line-height: 1.3; }
 #moderator-vote-preview .typing-tag { display: inline; margin-top: 0; margin-left: 6px; }
@@ -393,6 +398,7 @@ h2 { font-family: var(--font-display); font-weight: 700; font-size: 24px; text-a
   z-index: 50;
 }
 .overlay-card { background: var(--night-2); border-radius: var(--radius); padding: 32px; text-align: center; max-width: 340px; }
+.overlay-card.winner-card { max-width: 420px; width: 92%; }
 .overlay-card h2 { margin: 10px 0 20px; }
 
 /* Einstellungen-Zahnrad: nur auf dem Startbildschirm sichtbar, oben links (wo sonst der
