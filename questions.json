@@ -449,5 +449,19 @@
     "question": "Was passierte der ersten Spionage-Katze, die die CIA in den 1960ern für 20 Millionen Dollar zur Abhör-Waffe umgebaut hatte, bei ihrem allerersten Einsatz?",
     "answer": "Sie wurde direkt beim Losschicken von einem Taxi überfahren",
     "reviewed": true
+  },
+  {
+    "category": "Historischer Kontext",
+    "topic": "Wissenschaft & Forschung",
+    "question": "Was geschah 1962 an einer Mädchenschule im heutigen Tansania, das binnen 18 Monaten 14 Schulen zur Schließung zwang?",
+    "answer": "Eine „Lach-Epidemie“ – unkontrollierbares, ansteckendes Lachen befiel über 1.000 Menschen, ganz ohne erkennbaren Auslöser",
+    "reviewed": true
+  },
+  {
+    "category": "Historischer Kontext",
+    "topic": "Militär & Kriegsführung",
+    "question": "Welchen bizarren Plan verfolgte das US-Militär im Zweiten Weltkrieg mit Fledermäusen?",
+    "answer": "Ihnen kleine Brandbomben umzuschnallen und sie über japanischen Städten auszusetzen – ein Testlauf setzte versehentlich sogar einen eigenen Militärstützpunkt in Brand",
+    "reviewed": true
   }
 ]
