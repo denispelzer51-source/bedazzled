@@ -1452,6 +1452,7 @@ io.on('connection', (socket) => {
       if (!a.isReal) {
         const foolerIds = Object.entries(room.votes).filter(([, v]) => v === a.ownerId).map(([voterId]) => voterId);
         a.foolCount = foolerIds.length;
+        a.foolerIds = foolerIds;
         a.foolerNames = foolerIds.map(id => (room.players.find(p => p.id === id) || {}).name || '???');
       }
     });

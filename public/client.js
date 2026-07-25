@@ -1773,9 +1773,12 @@ socket.on('state', (state) => {
         const myVoteBadge = isMyVote
           ? `<span class="my-vote-badge">${a.isReal ? `✔ Richtig getippt! (+${state.pointsCorrectGuess} Punkte)` : '✗ Reingefallen'}</span>`
           : '';
-        const foolerNamesText = (a.foolerNames || []).map(escapeHtml).join(', ');
+        const foolerNames = (a.foolerIds || []).map((id, i) => id === myId ? 'Du' : escapeHtml((a.foolerNames || [])[i]));
+        const foolerNamesText = foolerNames.join(', ');
+        const iAmTheOnlyFooler = a.foolCount === 1 && (a.foolerIds || [])[0] === myId;
+        const verb = iAmTheOnlyFooler ? 'bist' : (a.foolCount === 1 ? 'ist' : 'sind');
         const foolCallout = (!a.isReal && a.foolCount > 0)
-          ? `<span class="fool-callout">🎣 ${foolerNamesText} ${a.foolCount === 1 ? 'ist' : 'sind'} darauf reingefallen! ${ownerName} bekommt +${a.foolCount * state.pointsPerFooled} Punkte</span>`
+          ? `<span class="fool-callout">🎣 ${foolerNamesText} ${verb} darauf reingefallen! ${ownerName} bekommt +${a.foolCount * state.pointsPerFooled} Punkte</span>`
           : '';
         div.innerHTML = `${escapeHtml(a.text)}<br><span class="owner">${ownerName}</span>${myVoteBadge}${foolCallout}`;
         list.appendChild(div);
