@@ -300,7 +300,8 @@
       <p class="progress-text"><span id="answered-count">0</span>/<span id="answering-total">0</span> haben geantwortet</p>
       <button id="btn-to-voting" class="btn btn-primary mod-only">Weiter zur Abstimmung</button>
       <button id="btn-reveal-estimate" class="btn btn-primary mod-only hidden">Auswerten</button>
-      <button class="btn-leave-game">Spiel verlassen</button>
+      <button id="btn-show-scoreboard" class="btn btn-secondary" style="margin-top:22px;">📊 Punkteliste</button>
+      <button class="btn-leave-game" style="margin-top:14px;">Spiel verlassen</button>
     </div>
   </section>
 
@@ -484,6 +485,15 @@
       </div>
     </div>
     <button id="btn-close-settings" class="btn btn-primary">Schließen</button>
+  </div>
+</div>
+
+<div id="scoreboard-overlay" class="overlay hidden">
+  <div class="overlay-card" style="max-width:360px; width:92%;">
+    <h2 style="margin-top:0;">📊 Punkteliste</h2>
+    <p id="scoreboard-win-hint" class="hint" style="margin-bottom:16px;"></p>
+    <div id="scoreboard-list" style="display:flex; flex-direction:column; gap:8px; margin-bottom:20px;"></div>
+    <button id="btn-close-scoreboard" class="btn btn-primary">Schließen</button>
   </div>
 </div>
 

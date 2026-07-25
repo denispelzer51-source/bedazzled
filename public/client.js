@@ -150,6 +150,39 @@ document.getElementById('btn-close-settings').addEventListener('click', () => {
   document.getElementById('settings-overlay').classList.add('hidden');
 });
 
+// ---------- PUNKTELISTE-POPUP ----------
+document.getElementById('btn-show-scoreboard').addEventListener('click', () => {
+  renderScoreboard();
+  document.getElementById('scoreboard-overlay').classList.remove('hidden');
+});
+document.getElementById('btn-close-scoreboard').addEventListener('click', () => {
+  document.getElementById('scoreboard-overlay').classList.add('hidden');
+});
+
+function renderScoreboard() {
+  const box = document.getElementById('scoreboard-list');
+  box.innerHTML = '';
+  document.getElementById('scoreboard-win-hint').textContent =
+    `Wer zuerst Feld ${BOARD_LENGTH} erreicht, gewinnt das Spiel.`;
+  if (!lastState || !lastState.players) return;
+  const sorted = [...lastState.players].sort((a, b) => b.position - a.position);
+  sorted.forEach((p, i) => {
+    const row = document.createElement('div');
+    row.style.display = 'flex';
+    row.style.justifyContent = 'space-between';
+    row.style.alignItems = 'center';
+    row.style.background = 'rgba(255,255,255,0.05)';
+    row.style.borderRadius = '10px';
+    row.style.padding = '10px 14px';
+    const isMe = p.id === myId;
+    row.innerHTML = `
+      <span>${i === 0 ? '🥇 ' : ''}${avatarFor(p)} ${escapeHtml(p.name)}${isMe ? ' (du)' : ''}</span>
+      <span style="font-weight:700; color:var(--gold);">Feld ${p.position}</span>
+    `;
+    box.appendChild(row);
+  });
+}
+
 // ---------- IN-GAME ADMIN-TOOL (nur für dich, per Geheim-Code, geräteübergreifend) ----------
 const ADMIN_CODE_KEY = 'bedazzled_admin_code';
 let isSuperAdminUnlocked = false;
