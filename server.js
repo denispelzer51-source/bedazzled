@@ -1454,6 +1454,10 @@ io.on('connection', (socket) => {
         a.foolCount = foolerIds.length;
         a.foolerIds = foolerIds;
         a.foolerNames = foolerIds.map(id => (room.players.find(p => p.id === id) || {}).name || '???');
+        // Eigene Stimme auf die eigene Antwort zählt zwar für die "X ist reingefallen"-Anzeige
+        // mit, bringt aber keine Punkte (siehe Scoring oben) - das muss auch die
+        // Punkte-Anzeige korrekt widerspiegeln, statt fälschlich Punkte zu suggerieren.
+        a.pointsAwardedFoolCount = foolerIds.filter(id => id !== a.ownerId).length;
       }
     });
 

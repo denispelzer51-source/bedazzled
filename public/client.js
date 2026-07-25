@@ -305,9 +305,11 @@ if (roomFromLink && localStorage.getItem(ROOM_KEY) && localStorage.getItem(ROOM_
   localStorage.removeItem(ROOM_KEY);
 }
 
+let justReconnected = false;
 socket.on('connect', () => {
   connectionTroubleShown = false;
   showError('');
+  justReconnected = true;
   const savedCode = localStorage.getItem(ROOM_KEY);
   if (savedCode) {
     showReconnecting(true);
@@ -1407,7 +1409,7 @@ socket.on('state', (state) => {
       voteSubmitted = false;
     }
   }
-  const enteringAnswering = state.phase === 'answering' && (!lastState || lastState.phase !== 'answering');
+  const enteringAnswering = state.phase === 'answering' && ((!lastState || lastState.phase !== 'answering') || justReconnected);
   const enteringBoard = state.phase === 'board' && (!lastState || lastState.phase !== 'board');
   const enteringReveal = state.phase === 'reveal' && (!lastState || lastState.phase !== 'reveal');
   if (enteringReveal) playRevealSound();
@@ -1439,6 +1441,7 @@ socket.on('state', (state) => {
   }
 
   lastState = state;
+  justReconnected = false;
   updateConnectionBanner(state);
   if (state.estimateTriggerFields) estimateTriggerFields = state.estimateTriggerFields;
   if (state.foreignwordTriggerFields) foreignwordTriggerFields = state.foreignwordTriggerFields;
@@ -1811,7 +1814,7 @@ socket.on('state', (state) => {
         const iAmTheOnlyFooler = a.foolCount === 1 && (a.foolerIds || [])[0] === myId;
         const verb = iAmTheOnlyFooler ? 'bist' : (a.foolCount === 1 ? 'ist' : 'sind');
         const foolCallout = (!a.isReal && a.foolCount > 0)
-          ? `<span class="fool-callout">🎣 ${foolerNamesText} ${verb} darauf reingefallen! ${ownerName} bekommt +${a.foolCount * state.pointsPerFooled} Punkte</span>`
+          ? `<span class="fool-callout">🎣 ${foolerNamesText} ${verb} darauf reingefallen!${a.pointsAwardedFoolCount > 0 ? ` ${ownerName} bekommt +${a.pointsAwardedFoolCount * state.pointsPerFooled} Punkte` : ''}</span>`
           : '';
         div.innerHTML = `${escapeHtml(a.text)}<br><span class="owner">${ownerName}</span>${myVoteBadge}${foolCallout}`;
         list.appendChild(div);
