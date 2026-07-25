@@ -277,6 +277,7 @@
     const prevNewCat = newCategorySelect.value;
     newCategorySelect.innerHTML = categoryNames.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
     if (categoryNames.includes(prevNewCat)) newCategorySelect.value = prevNewCat;
+    updateNewAnswerFieldForCategory();
 
     const newTopicSelect = document.getElementById('new-topic');
     const prevNewTopic = newTopicSelect.value;
@@ -394,13 +395,30 @@
     row.querySelector('.btn-cancel').addEventListener('click', renderQuestions);
   }
 
+  function updateNewAnswerFieldForCategory() {
+    const cat = document.getElementById('new-category').value.trim();
+    const isDrawing = cat === 'Zeichnen';
+    const answerLabel = document.getElementById('new-answer-label');
+    const answerField = document.getElementById('new-answer');
+    if (category === 'estimate') return; // Schätzen-Tab hat sowieso ein eigenes Zahlenfeld
+    answerLabel.textContent = isDrawing ? 'Antwort (optional bei Zeichnen)' : 'Echte Antwort';
+    answerField.placeholder = isDrawing
+      ? 'Leer lassen - wird automatisch auf die Frage/den Begriff gesetzt'
+      : 'Die tatsächliche, ungewöhnliche Antwort';
+  }
+  document.getElementById('new-category').addEventListener('change', updateNewAnswerFieldForCategory);
+
   document.getElementById('btn-add-question').addEventListener('click', async () => {
     const cat = document.getElementById('new-category').value.trim() || DEFAULT_CATEGORY;
     const topic = document.getElementById('new-topic').value.trim() || DEFAULT_TOPIC;
     const question = document.getElementById('new-question').value.trim();
-    const answer = category === 'estimate'
+    const isDrawing = category !== 'estimate' && cat === 'Zeichnen';
+    let answer = category === 'estimate'
       ? document.getElementById('new-answer-number').value.trim()
       : document.getElementById('new-answer').value.trim();
+    // Bei "Zeichnen" gibt es keine echte Antwort - der Begriff selbst (die "Frage") ist,
+    // was erraten werden muss, also braucht es hier kein separates Antwortfeld.
+    if (isDrawing && !answer) answer = question;
     if (!question || !answer) return alert('Bitte Frage und Antwort ausfüllen.');
     questions = await apiCall(apiBase(), {
       method: 'POST',
