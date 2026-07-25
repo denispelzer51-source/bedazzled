@@ -1256,6 +1256,17 @@ io.on('connection', (socket) => {
       if (player) player.position = Math.min(BOARD_LENGTH, player.position + DRAWING_GUESS_POINTS[place]);
       broadcastState(code);
 
+      // Sobald die/der Erste richtig geraten hat, bekommen alle anderen (noch ratenden)
+      // Mitspieler:innen eine kurze Benachrichtigung, damit sie wissen, dass es jetzt um
+      // den 2. Platz geht - der Moderator zeichnet einfach weiter, bekommt also keine.
+      if (place === 0 && player) {
+        room.players.forEach(p => {
+          if (p.id !== myId && p.id !== moderatorId && p.socketId) {
+            io.to(p.socketId).emit('someoneGuessedCorrectly', { name: player.name });
+          }
+        });
+      }
+
       // Sobald die ersten beiden richtig geraten haben, endet die Runde automatisch
       if (room.correctGuessers.length >= DRAWING_GUESS_POINTS.length) {
         finishDrawingRound(room, code);
@@ -1449,7 +1460,11 @@ io.on('connection', (socket) => {
 
     // Für jede erfundene Antwort merken, wer darauf reingefallen ist (für die Anzeige)
     room.shuffledAnswers.forEach(a => {
-      if (!a.isReal) {
+      if (a.isReal) {
+        const correctIds = Object.entries(room.votes).filter(([, v]) => v === a.ownerId).map(([voterId]) => voterId);
+        a.correctGuesserIds = correctIds;
+        a.correctGuesserNames = correctIds.map(id => (room.players.find(p => p.id === id) || {}).name || '???');
+      } else {
         const foolerIds = Object.entries(room.votes).filter(([, v]) => v === a.ownerId).map(([voterId]) => voterId);
         a.foolCount = foolerIds.length;
         a.foolerIds = foolerIds;

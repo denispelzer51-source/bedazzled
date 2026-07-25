@@ -1051,6 +1051,12 @@ socket.on('guessWrong', () => {
   setTimeout(() => { if (fb.textContent.includes('Leider')) fb.textContent = ''; }, 2000);
 });
 
+socket.on('someoneGuessedCorrectly', ({ name }) => {
+  const fb = document.getElementById('drawing-guess-feedback');
+  fb.textContent = `🏃 ${name} hat schon richtig geraten! Nur noch 1 Platz übrig …`;
+  setTimeout(() => { if (fb.textContent.includes(name)) fb.textContent = ''; }, 4000);
+});
+
 // ---------- REVEAL ----------
 document.getElementById('btn-to-board').addEventListener('click', () => {
   socket.emit('showBoard', { code: currentCode });
@@ -1816,7 +1822,14 @@ socket.on('state', (state) => {
         const foolCallout = (!a.isReal && a.foolCount > 0)
           ? `<span class="fool-callout">🎣 ${foolerNamesText} ${verb} darauf reingefallen!${a.pointsAwardedFoolCount > 0 ? ` ${ownerName} bekommt +${a.pointsAwardedFoolCount * state.pointsPerFooled} Punkte` : ''}</span>`
           : '';
-        div.innerHTML = `${escapeHtml(a.text)}<br><span class="owner">${ownerName}</span>${myVoteBadge}${foolCallout}`;
+        const correctGuesserNames = (a.correctGuesserIds || []).map((id, i) => id === myId ? 'Du' : escapeHtml((a.correctGuesserNames || [])[i]));
+        const correctGuesserText = correctGuesserNames.join(', ');
+        const correctCallout = a.isReal
+          ? ((a.correctGuesserIds || []).length > 0
+              ? `<span class="fool-callout">🎯 ${correctGuesserText} ${correctGuesserNames.length === 1 ? 'hat' : 'haben'} die echte Antwort erkannt!</span>`
+              : `<span class="fool-callout" style="opacity:0.7;">Niemand hat die echte Antwort erkannt.</span>`)
+          : '';
+        div.innerHTML = `${escapeHtml(a.text)}<br><span class="owner">${ownerName}</span>${myVoteBadge}${foolCallout}${correctCallout}`;
         list.appendChild(div);
       });
     }
