@@ -1293,6 +1293,13 @@ io.on('connection', (socket) => {
       socket.emit('errorMsg', 'Bitte erst alle Dopplungen auflösen, bevor es zur Abstimmung geht.');
       return;
     }
+    const moderatorId = room.players[room.moderatorIndex].id;
+    const totalAnswerers = room.players.filter(p => p.id !== moderatorId).length;
+    const answeredCount = Object.keys(room.answers).length;
+    if (answeredCount < totalAnswerers) {
+      socket.emit('errorMsg', 'Noch nicht alle haben geantwortet.');
+      return;
+    }
     startVotingPhase(room, code);
   });
 

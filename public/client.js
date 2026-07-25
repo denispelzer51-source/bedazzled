@@ -1475,14 +1475,24 @@ socket.on('state', (state) => {
     document.getElementById('answering-phase-tag').innerHTML =
       `<span class="key-dot ${answeringFieldInfo.dotClass}" style="margin-right:6px; vertical-align:middle;"></span>${isEstimate ? 'Schätz-Frage 🔢' : 'Antwort-Phase'}`;
     document.getElementById('question-text-2').textContent = state.currentQuestion || '';
+    const modPlayer = state.players.find(p => p.id === state.moderatorId);
+    const modHint = document.getElementById('moderator-name-hint');
+    modHint.textContent = (!iAmModerator && modPlayer) ? `${modPlayer.name} ist in dieser Runde Moderator:in` : '';
     document.getElementById('answered-count').textContent = state.answeredCount;
-    document.getElementById('answering-total').textContent = Math.max(state.players.length - 1, 0);
+    const totalAnswerers = Math.max(state.players.length - 1, 0);
+    document.getElementById('answering-total').textContent = totalAnswerers;
     document.getElementById('answer-input-label').classList.toggle('hidden', isEstimate);
     document.getElementById('answer-input-label').textContent = 'Denk dir eine überzeugende Antwort aus:';
     document.getElementById('input-answer').classList.toggle('hidden', isEstimate);
     document.getElementById('input-answer-number').classList.toggle('hidden', !isEstimate);
     document.getElementById('btn-to-voting').classList.toggle('hidden', isEstimate);
     document.getElementById('btn-reveal-estimate').classList.toggle('hidden', !isEstimate);
+    // Erst klickbar, sobald wirklich alle geantwortet haben - vorher soll die Antwort-Phase
+    // nicht vorzeitig beendet werden können
+    const allAnswered = state.answeredCount >= totalAnswerers && totalAnswerers > 0;
+    const toVotingBtn = document.getElementById('btn-to-voting');
+    toVotingBtn.disabled = !allAnswered;
+    toVotingBtn.title = allAnswered ? '' : 'Warten, bis alle geantwortet haben …';
 
     if (iAmModerator) {
       document.getElementById('answer-input-box').classList.add('hidden');
