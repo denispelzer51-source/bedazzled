@@ -23,9 +23,6 @@
   textarea#bulk-import { min-height: 140px; }
   .count-badge { color: var(--ink-dim); font-size: 13px; margin-bottom: 14px; }
   #login-box { max-width: 360px; margin: 80px auto; }
-  .tabs { display: flex; gap: 8px; margin-bottom: 20px; }
-  .tab-btn { flex: 1; padding: 12px; border-radius: 12px; border: 1.5px solid rgba(255,255,255,0.12); background: var(--night-2); color: var(--ink-dim); font-weight: 700; cursor: pointer; font-family: var(--font-body); font-size: 14px; }
-  .tab-btn.active { border-color: var(--gold); color: var(--gold); background: rgba(242,183,5,0.08); }
 
   .filter-bar { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 18px; }
   .filter-bar select, .filter-bar input {
@@ -66,11 +63,6 @@
   <div id="main-box" class="hidden">
     <h1 style="font-size:26px;">Fragen-Verwaltung</h1>
 
-    <div class="tabs">
-      <button id="tab-bluff" class="tab-btn active">🎭 Bluff-Fragen</button>
-      <button id="tab-estimate" class="tab-btn">🔢 Schätzen-Fragen</button>
-    </div>
-
     <p class="count-badge"><span id="q-count">0</span> Fragen aktuell hinterlegt, <span id="q-count-filtered">0</span> nach Filter sichtbar</p>
     <p class="count-badge" id="storage-status-badge">Speicherort wird geprüft …</p>
 
@@ -96,8 +88,8 @@
 
     <h2 class="section-title">Massen-Import</h2>
     <div class="card">
-      <p class="hint" style="margin-top:0;" id="import-format-hint">Ein Eintrag pro Zeile im Format <code>Kategorie;Thema;Frage;Antwort</code>:</p>
-      <textarea id="bulk-import" placeholder="Kuriositäten;Tiere & Natur;Frage 1?;Antwort 1&#10;Fremdwörter;Sprache & Wortschatz;Frage 2?;Antwort 2"></textarea>
+      <p class="hint" style="margin-top:0;" id="import-format-hint">Ein Eintrag pro Zeile im Format <code>Kategorie;Thema;Frage;Antwort</code>. Bei Kategorie <code>Schätzfragen</code> wird die Antwort automatisch als Zahl interpretiert:</p>
+      <textarea id="bulk-import" placeholder="Kuriositäten;Tiere & Natur;Frage 1?;Antwort 1&#10;Schätzfragen;Architektur;Wie hoch ist der Kölner Dom in Metern?;157"></textarea>
       <button id="btn-import" class="btn btn-secondary">Import starten</button>
       <p id="import-result" class="hint"></p>
     </div>
@@ -128,7 +120,6 @@
 <script>
   let adminKey = sessionStorage.getItem('bedazzled_admin_key') || '';
   let questions = [];
-  let category = 'bluff'; // 'bluff' | 'estimate'
   let openTopics = new Set();
   let filterCategory = '';
   let filterTopic = '';
@@ -136,9 +127,12 @@
   let filterSearch = '';
   const DEFAULT_CATEGORY = 'Sonstige';
   const DEFAULT_TOPIC = 'Sonstiges';
+  const ESTIMATE_CATEGORY = 'Schätzfragen';
 
-  // Feste Grund-Kategorien (die vier Haupt-Kategorien des Spiels)
-  const BASE_CATEGORIES = ['Kuriositäten', 'Fremdwörter', 'Historischer Kontext', 'Zeichnen'];
+  // Feste Grund-Kategorien (die vier Haupt-Kategorien des Spiels + Schätzfragen, die früher
+  // über einen eigenen Reiter oben getrennt verwaltet wurden und jetzt einfach eine ganz
+  // normale, fünfte Kategorie in dieser Liste sind)
+  const BASE_CATEGORIES = ['Kuriositäten', 'Fremdwörter', 'Historischer Kontext', 'Zeichnen', 'Schätzfragen'];
 
   // Feste, erweiterte Themenliste - steht immer komplett zur Auswahl, auch wenn noch keine
   // Frage mit diesem Thema existiert (für künftige Fragen-Batches gedacht)
@@ -172,8 +166,8 @@
   const loginBox = document.getElementById('login-box');
   const mainBox = document.getElementById('main-box');
 
-  function apiBase() {
-    return category === 'estimate' ? '/api/estimate-questions' : '/api/questions';
+  function apiBase(source) {
+    return source === 'estimate' ? '/api/estimate-questions' : '/api/questions';
   }
 
   async function apiCall(path, options = {}) {
@@ -192,7 +186,18 @@
 
   async function loadQuestions() {
     try {
-      questions = await apiCall(apiBase());
+      const [bluffList, estimateList] = await Promise.all([
+        apiCall(apiBase('bluff')),
+        apiCall(apiBase('estimate')),
+      ]);
+      // Zusammenführen zu EINER Liste. _source/_srcIdx merken sich intern, aus welcher der
+      // beiden echten Ablagen (questions.json / estimate_questions.json) der Eintrag stammt
+      // und an welcher Stelle dort - damit Bearbeiten/Löschen weiterhin die richtige Ablage
+      // trifft, obwohl im Filter/Suche-Bereich alles wie EINE Liste aussieht und sich anfühlt.
+      questions = [
+        ...bluffList.map((q, i) => ({ ...q, _source: 'bluff', _srcIdx: i })),
+        ...estimateList.map((q, i) => ({ ...q, _source: 'estimate', _srcIdx: i })),
+      ];
       renderQuestions();
       loginBox.classList.add('hidden');
       mainBox.classList.remove('hidden');
@@ -219,24 +224,6 @@
     sessionStorage.setItem('bedazzled_admin_key', adminKey);
     loadQuestions();
   });
-
-  function setCategory(cat) {
-    category = cat;
-    openTopics = new Set();
-    filterCategory = ''; filterTopic = ''; filterSearch = '';
-    document.getElementById('filter-search').value = '';
-    document.getElementById('tab-bluff').classList.toggle('active', cat === 'bluff');
-    document.getElementById('tab-estimate').classList.toggle('active', cat === 'estimate');
-    document.getElementById('new-answer-label').textContent = cat === 'estimate' ? 'Echte Zahl' : 'Echte Antwort';
-    document.getElementById('new-answer').classList.toggle('hidden', cat === 'estimate');
-    document.getElementById('new-answer-number').classList.toggle('hidden', cat !== 'estimate');
-    document.getElementById('import-format-hint').innerHTML = cat === 'estimate'
-      ? 'Ein Eintrag pro Zeile im Format <code>Kategorie;Thema;Frage;Zahl</code>:'
-      : 'Ein Eintrag pro Zeile im Format <code>Kategorie;Thema;Frage;Antwort</code>:';
-    if (adminKey) loadQuestions();
-  }
-  document.getElementById('tab-bluff').addEventListener('click', () => setCategory('bluff'));
-  document.getElementById('tab-estimate').addEventListener('click', () => setCategory('estimate'));
 
   document.getElementById('filter-category').addEventListener('change', (e) => { filterCategory = e.target.value; renderQuestions(); });
   document.getElementById('filter-topic').addEventListener('change', (e) => { filterTopic = e.target.value; renderQuestions(); });
@@ -294,7 +281,7 @@
     topicFilterSelect.innerHTML = '<option value="">Alle Themen</option>' + topicNames.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('');
     topicFilterSelect.value = prevTopicVal;
 
-    const filtered = applyFilters(questions.map((q, idx) => ({ ...q, _globalIdx: idx })));
+    const filtered = applyFilters(questions);
     document.getElementById('q-count-filtered').textContent = filtered.length;
 
     const groups = groupByTopic(filtered);
@@ -341,17 +328,17 @@
           `;
           row.querySelector('.btn-delete').addEventListener('click', async () => {
             if (!confirm('Diese Frage wirklich löschen?')) return;
-            questions = await apiCall(apiBase() + '/' + q._globalIdx, { method: 'DELETE' });
-            renderQuestions();
+            await apiCall(apiBase(q._source) + '/' + q._srcIdx, { method: 'DELETE' });
+            await loadQuestions();
           });
           row.querySelector('.btn-toggle-reviewed').addEventListener('click', async () => {
-            questions = await apiCall(apiBase() + '/' + q._globalIdx + '/reviewed', {
+            await apiCall(apiBase(q._source) + '/' + q._srcIdx + '/reviewed', {
               method: 'PUT',
               body: JSON.stringify({ reviewed: !isReviewed }),
             });
-            renderQuestions();
+            await loadQuestions();
           });
-          row.querySelector('.btn-edit').addEventListener('click', () => startEdit(row, q, q._globalIdx));
+          row.querySelector('.btn-edit').addEventListener('click', () => startEdit(row, q));
           body.appendChild(row);
         });
       }
@@ -360,8 +347,8 @@
     });
   }
 
-  function startEdit(row, q, idx) {
-    const isEstimate = category === 'estimate';
+  function startEdit(row, q) {
+    const isEstimate = q._source === 'estimate';
     const categoryNames = [...new Set([...BASE_CATEGORIES, ...questions.map(x => x.category || DEFAULT_CATEGORY)])].sort();
     const topicNames = [...new Set([...BASE_TOPICS, ...questions.map(x => x.topic || DEFAULT_TOPIC)])].sort();
     const currentCat = q.category || DEFAULT_CATEGORY;
@@ -386,21 +373,28 @@
       const question = row.querySelector('.q-question-edit').value.trim();
       const answer = row.querySelector('.a-text-edit').value.trim();
       if (!question || !answer) return;
-      questions = await apiCall(apiBase() + '/' + idx, {
+      await apiCall(apiBase(q._source) + '/' + q._srcIdx, {
         method: 'PUT',
         body: JSON.stringify({ question, answer, category: cat || DEFAULT_CATEGORY, topic: topic || DEFAULT_TOPIC }),
       });
-      renderQuestions();
+      await loadQuestions();
     });
     row.querySelector('.btn-cancel').addEventListener('click', renderQuestions);
   }
 
   function updateNewAnswerFieldForCategory() {
     const cat = document.getElementById('new-category').value.trim();
-    const isDrawing = cat === 'Zeichnen';
+    const isEstimate = cat === ESTIMATE_CATEGORY;
+    const isDrawing = !isEstimate && cat === 'Zeichnen';
     const answerLabel = document.getElementById('new-answer-label');
     const answerField = document.getElementById('new-answer');
-    if (category === 'estimate') return; // Schätzen-Tab hat sowieso ein eigenes Zahlenfeld
+    const answerNumberField = document.getElementById('new-answer-number');
+    answerField.classList.toggle('hidden', isEstimate);
+    answerNumberField.classList.toggle('hidden', !isEstimate);
+    if (isEstimate) {
+      answerLabel.textContent = 'Echte Zahl';
+      return;
+    }
     answerLabel.textContent = isDrawing ? 'Antwort (optional bei Zeichnen)' : 'Echte Antwort';
     answerField.placeholder = isDrawing
       ? 'Leer lassen - wird automatisch auf die Frage/den Begriff gesetzt'
@@ -412,15 +406,16 @@
     const cat = document.getElementById('new-category').value.trim() || DEFAULT_CATEGORY;
     const topic = document.getElementById('new-topic').value.trim() || DEFAULT_TOPIC;
     const question = document.getElementById('new-question').value.trim();
-    const isDrawing = category !== 'estimate' && cat === 'Zeichnen';
-    let answer = category === 'estimate'
+    const isEstimate = cat === ESTIMATE_CATEGORY;
+    const isDrawing = !isEstimate && cat === 'Zeichnen';
+    let answer = isEstimate
       ? document.getElementById('new-answer-number').value.trim()
       : document.getElementById('new-answer').value.trim();
     // Bei "Zeichnen" gibt es keine echte Antwort - der Begriff selbst (die "Frage") ist,
     // was erraten werden muss, also braucht es hier kein separates Antwortfeld.
     if (isDrawing && !answer) answer = question;
-    if (!question || !answer) return alert('Bitte Frage und Antwort ausfüllen.');
-    questions = await apiCall(apiBase(), {
+    if (!question || !answer) return alert(isEstimate ? 'Bitte Frage und die echte Zahl ausfüllen.' : 'Bitte Frage und Antwort ausfüllen.');
+    await apiCall(apiBase(isEstimate ? 'estimate' : 'bluff'), {
       method: 'POST',
       body: JSON.stringify({ question, answer, category: cat, topic }),
     });
@@ -428,44 +423,56 @@
     document.getElementById('new-answer').value = '';
     document.getElementById('new-answer-number').value = '';
     openTopics.add(topic);
-    renderQuestions();
+    await loadQuestions();
   });
 
   document.getElementById('btn-import').addEventListener('click', async () => {
     const raw = document.getElementById('bulk-import').value;
     const lines = raw.split('\n').map(l => l.trim()).filter(Boolean);
-    const items = lines.map(line => {
+    const bluffItems = [];
+    const estimateItems = [];
+    lines.forEach(line => {
       const parts = line.split(';');
-      if (parts.length < 4) return null;
+      if (parts.length < 4) return;
       const [cat, topic, q, ...rest] = parts;
-      return { category: cat.trim() || DEFAULT_CATEGORY, topic: topic.trim() || DEFAULT_TOPIC, question: q.trim(), answer: rest.join(';').trim() };
-    }).filter(Boolean);
+      const trimmedCat = cat.trim() || DEFAULT_CATEGORY;
+      const item = { category: trimmedCat, topic: topic.trim() || DEFAULT_TOPIC, question: q.trim(), answer: rest.join(';').trim() };
+      // Kategorie "Schätzfragen" landet automatisch in der Schätzen-Ablage (numerische
+      // Antwort), alles andere ganz normal bei den Bluff-Fragen - so kann eine einzige
+      // Import-Liste beide Fragetypen gemischt enthalten.
+      if (trimmedCat === ESTIMATE_CATEGORY) estimateItems.push(item);
+      else bluffItems.push(item);
+    });
 
-    if (items.length === 0) {
-      document.getElementById('import-result').textContent = 'Kein gültiges Format gefunden (Kategorie;Thema;Frage;Antwort pro Zeile).';
+    const totalItems = bluffItems.length + estimateItems.length;
+    if (totalItems === 0) {
+      document.getElementById('import-result').textContent = 'Kein gültiges Format gefunden (Kategorie;Thema;Frage;Antwort bzw. Zahl pro Zeile).';
       return;
     }
     try {
-      questions = await apiCall(apiBase() + '/import', {
-        method: 'POST',
-        body: JSON.stringify({ items }),
-      });
-      document.getElementById('import-result').textContent = `${items.length} Fragen importiert.`;
+      if (bluffItems.length) await apiCall(apiBase('bluff') + '/import', { method: 'POST', body: JSON.stringify({ items: bluffItems }) });
+      if (estimateItems.length) await apiCall(apiBase('estimate') + '/import', { method: 'POST', body: JSON.stringify({ items: estimateItems }) });
+      document.getElementById('import-result').textContent = `${totalItems} Fragen importiert (${bluffItems.length} Bluff, ${estimateItems.length} Schätzen).`;
       document.getElementById('bulk-import').value = '';
-      renderQuestions();
+      await loadQuestions();
     } catch (e) {
       document.getElementById('import-result').textContent = 'Fehler: ' + e.message;
     }
   });
 
   document.getElementById('btn-export').addEventListener('click', () => {
-    const filename = category === 'estimate' ? 'estimate_questions.json' : 'questions.json';
-    const blob = new Blob([JSON.stringify(questions, null, 2)], { type: 'application/json' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = filename;
-    a.click();
+    const strip = (q) => { const { _source, _srcIdx, ...rest } = q; return rest; };
+    const download = (filename, data) => {
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = filename;
+      a.click();
+    };
+    download('questions.json', questions.filter(q => q._source === 'bluff').map(strip));
+    download('estimate_questions.json', questions.filter(q => q._source === 'estimate').map(strip));
   });
+
 
   function escapeHtml(str) {
     const div = document.createElement('div');
