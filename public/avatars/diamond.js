@@ -1,69 +1,61 @@
 import * as THREE from 'three';
+import { shinyMat } from './shared.js';
 
-// Diamant V6: KOMPLETTER Neuaufbau, nichts von den alten Versionen übernommen. Statt der
-// symmetrischen Krone/Tafel/Pavillon-Kombination aus Zylindern & Kegeln jetzt ein
-// unregelmäßiger, roher Kristall-Cluster aus mehreren facettierten Ikosaedern (flach
-// schattiert, damit man die einzelnen Facetten wirklich sieht) - wirkt wie ein echtes,
-// rau geschliffenes Rohkristall-Cluster statt einer geometrischen Diamant-Schliffform.
-//
-// TODO / Kandidat für Referenzbild-Umbau: Diese Figur war bisher am schwersten per
-// Text-Beschreibung zu treffen. Wenn ein Referenzbild (JPEG/PNG) oder ein fertiges
-// .glb-Modell vorliegt, hier `build()` durch einen GLTFLoader-Import ersetzen (siehe
-// README.md im avatars/-Ordner für das Vorgehen).
+// Diamant V7: nachgebaut nach Referenzbild (klassisches Diamant-Symbol) - breite, flache
+// Oberseite mit sichtbaren Facetten (Krone + Tafel), scharfe Gürtelkante, spitz zulaufender
+// Pavillon unten. Sechseckige Grundform (6-seitige Zylinder/Kegel/Torus), damit die
+// Facetten-Kanten wie im Referenzbild als klare gerade Linien erscheinen (kein Rundschliff).
 export function build(colorHex) {
   const g = new THREE.Group();
 
-  function crystalMat(hex, emissiveHex) {
-    return new THREE.MeshPhysicalMaterial({
-      color: hex, flatShading: true, metalness: 0.05, roughness: 0.1,
-      transmission: 0.3, thickness: 0.35, ior: 1.55, clearcoat: 1, clearcoatRoughness: 0.08,
-      emissive: emissiveHex || hex, emissiveIntensity: 0.2,
-    });
-  }
+  // Tafel (die große, flache Facette ganz oben) - hellstes Eisblau/Weißblau, wie die
+  // aufleuchtende Mitte im Referenzbild
+  const tableMat = shinyMat('#EAF7FF', { metalness: 0.05, roughness: 0.08, clearcoat: 1, clearcoatRoughness: 0.05, emissive: '#EAF7FF', emissiveIntensity: 0.25 });
+  const table = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.014, 6), tableMat);
+  table.position.y = 0.145;
+  g.add(table);
 
-  // Hauptkristall: in die Länge gezogenes, leicht schräg gestelltes Ikosaeder
-  const mainGeo = new THREE.IcosahedronGeometry(0.22, 0);
-  mainGeo.scale(0.8, 1.5, 0.8);
-  const main = new THREE.Mesh(mainGeo, crystalMat('#3D8FF2', '#1F6FE0'));
-  main.rotation.set(0.12, 0.5, -0.08);
-  main.position.y = 0.02;
-  main.castShadow = true;
-  g.add(main);
+  // Krone (die schrägen Facetten zwischen Tafel und Gürtelkante) - mittleres, kräftiges
+  // Himmelblau, flach schattiert damit jede der 6 Facetten als eigene ebene Fläche sichtbar ist
+  const crownMat = shinyMat('#5AA9F2', { flatShading: true, metalness: 0.08, roughness: 0.1, clearcoat: 1, clearcoatRoughness: 0.08, emissive: '#5AA9F2', emissiveIntensity: 0.2 });
+  const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.3, 0.14, 6), crownMat);
+  crown.position.y = 0.068;
+  crown.castShadow = true;
+  g.add(crown);
 
-  // Zwei kleinere, versetzt angeordnete Begleitkristalle - typisch für ein Kristall-Cluster,
-  // jeder mit eigenem Farbton (helleres Eisblau) und eigener Neigung
-  const sideGeoA = new THREE.IcosahedronGeometry(0.1, 0);
-  sideGeoA.scale(0.75, 1.6, 0.75);
-  const sideA = new THREE.Mesh(sideGeoA, crystalMat('#BFE1FF', '#8ec9fb'));
-  sideA.rotation.set(-0.3, 1.1, 0.4);
-  sideA.position.set(0.16, -0.1, 0.09);
-  sideA.castShadow = true;
-  g.add(sideA);
+  // Gürtelkante (Girdle) - schmaler, sechseckiger Ring als klare Trennlinie zwischen Krone
+  // und Pavillon, wie die durchgehende Horizontlinie im Referenzbild
+  const girdleMat = shinyMat('#2E6FD9', { metalness: 0.15, roughness: 0.12, emissive: '#2E6FD9', emissiveIntensity: 0.2 });
+  const girdle = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.014, 4, 6), girdleMat);
+  girdle.rotation.x = Math.PI / 2;
+  girdle.rotation.y = Math.PI / 6;
+  g.add(girdle);
 
-  const sideGeoB = new THREE.IcosahedronGeometry(0.075, 0);
-  sideGeoB.scale(0.7, 1.5, 0.7);
-  const sideB = new THREE.Mesh(sideGeoB, crystalMat('#7EC8F7', '#5AA9F2'));
-  sideB.rotation.set(0.5, -0.7, -0.2);
-  sideB.position.set(-0.15, -0.14, -0.07);
-  sideB.castShadow = true;
-  g.add(sideB);
+  // Pavillon (der spitz zulaufende untere Teil) - kräftiges, dunkleres Saphirblau, wie die
+  // tiefe Farbe im unteren/linken Bereich des Referenzbilds
+  const pavilionMat = shinyMat('#1F5FCC', { flatShading: true, transmission: 0.12, roughness: 0.08, clearcoat: 1, clearcoatRoughness: 0.08, emissive: '#1F5FCC', emissiveIntensity: 0.22 });
+  const pavilion = new THREE.Mesh(new THREE.ConeGeometry(0.3, 0.34, 6), pavilionMat);
+  pavilion.position.y = -0.17;
+  pavilion.castShadow = true;
+  g.add(pavilion);
 
-  // Kleiner, dunkler Sockel-Splitter unten, damit das Cluster nicht "schwebt", sondern
-  // sichtbar aus einem Bruchstück herauswächst
-  const baseGeo = new THREE.OctahedronGeometry(0.09, 0);
-  baseGeo.scale(1, 0.4, 1);
-  const base = new THREE.Mesh(baseGeo, new THREE.MeshStandardMaterial({ color: '#12306b', metalness: 0.3, roughness: 0.5, flatShading: true }));
-  base.position.y = -0.2;
-  g.add(base);
-
-  // Glanzpunkt für den typischen Kristall-Glitzer
+  // Glanzpunkt oben links, wie das große Funkeln im Referenzbild
   const sparkle = new THREE.Mesh(
-    new THREE.PlaneGeometry(0.055, 0.055),
-    new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9 })
+    new THREE.PlaneGeometry(0.075, 0.075),
+    new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.95 })
   );
   sparkle.rotation.x = -Math.PI / 2;
-  sparkle.position.set(-0.04, 0.28, 0.02);
+  sparkle.position.set(-0.09, 0.155, 0.06);
   g.add(sparkle);
+
+  // Zwei winzige Funkel-Punkte drumherum, wie die kleinen Sternchen im Referenzbild
+  const tinySparkleMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 });
+  [[0.16, 0.02, 0.08], [-0.14, -0.16, -0.05]].forEach(([x, y, z]) => {
+    const tiny = new THREE.Mesh(new THREE.PlaneGeometry(0.025, 0.025), tinySparkleMat);
+    tiny.rotation.x = -Math.PI / 2;
+    tiny.position.set(x, y, z);
+    g.add(tiny);
+  });
 
   return g;
 }
