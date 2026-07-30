@@ -1132,16 +1132,28 @@ document.getElementById('btn-drawing-guess-submit').addEventListener('click', ()
 document.getElementById('input-drawing-guess').addEventListener('keydown', (e) => {
   if (e.key === 'Enter') document.getElementById('btn-drawing-guess-submit').click();
 });
+let firstCorrectGuesserName = null; // bleibt bis zum Rundenende bestehen (siehe unten)
+
 socket.on('guessWrong', () => {
   const fb = document.getElementById('drawing-guess-feedback');
   fb.textContent = '❌ Leider falsch, versuch\'s nochmal!';
-  setTimeout(() => { if (fb.textContent.includes('Leider')) fb.textContent = ''; }, 2000);
+  setTimeout(() => {
+    if (fb.textContent.includes('Leider')) {
+      // Nach der kurzen "falsch"-Meldung wieder die bleibende Hinweis-Meldung zeigen,
+      // falls schon jemand anderes richtig geraten hat (statt das Feld einfach zu leeren).
+      fb.textContent = firstCorrectGuesserName
+        ? `🏃 ${firstCorrectGuesserName} hat schon richtig geraten! Nur noch 1 Platz übrig …`
+        : '';
+    }
+  }, 2000);
 });
 
 socket.on('someoneGuessedCorrectly', ({ name }) => {
+  firstCorrectGuesserName = name;
   const fb = document.getElementById('drawing-guess-feedback');
+  // WICHTIG: bleibt jetzt stehen (kein Auto-Ausblenden mehr) - es geht ja nur noch darum,
+  // den zweiten richtigen Rater zu finden, das soll die ganze Zeit sichtbar bleiben.
   fb.textContent = `🏃 ${name} hat schon richtig geraten! Nur noch 1 Platz übrig …`;
-  setTimeout(() => { if (fb.textContent.includes(name)) fb.textContent = ''; }, 4000);
 });
 
 // ---------- REVEAL ----------
@@ -1163,12 +1175,12 @@ function showWinnerOverlay(winnerName, awards) {
   (awards || []).forEach(a => {
     const div = document.createElement('div');
     div.className = 'award-item';
-    const unitLabel = a.title.includes('Bluffer') ? 'x Mitspieler getäuscht'
-      : a.title.includes('Getäuscht') ? 'x reingefallen'
-      : a.title.includes('Schätz') ? 'x am nächsten dran'
-      : 'x';
-    const namesWithCount = (a.names || []).map(n => `${escapeHtml(n)} (${a.count}${unitLabel})`).join(' & ');
-    div.innerHTML = `<span class="award-title">${escapeHtml(a.title)}</span><span class="award-names">${namesWithCount}</span>`;
+    const unitLabel = a.title.includes('Bluffer') ? '× Mitspieler getäuscht'
+      : a.title.includes('Getäuscht') ? '× reingefallen'
+      : a.title.includes('Schätz') ? '× am nächsten dran'
+      : '×';
+    const namesText = (a.names || []).map(n => escapeHtml(n)).join(', ');
+    div.innerHTML = `<span class="award-title">${escapeHtml(a.title)}</span><span class="award-names">${namesText} — ${a.count}${unitLabel}</span>`;
     awardsBox.appendChild(div);
   });
   document.getElementById('winner-overlay').classList.remove('hidden');
@@ -1859,6 +1871,7 @@ socket.on('state', (state) => {
       drawingCtx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
       document.getElementById('input-drawing-guess').value = '';
       document.getElementById('drawing-guess-feedback').textContent = '';
+      firstCorrectGuesserName = null;
       document.getElementById('drawing-guess-correct-msg').classList.add('hidden');
     }
     if (iAmModerator) {

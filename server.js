@@ -385,35 +385,6 @@ function isTooSimilarToRealAnswer(candidate, realAnswer) {
   return charSimilarity > 0.82 || wordSimilarity > 0.7;
 }
 
-async function autoCorrectGerman(text) {
-  if (!text || !text.trim()) return text;
-  try {
-    const params = new URLSearchParams({ text, language: 'de-DE' });
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 4000);
-    const res = await fetch('https://api.languagetool.org/v2/check', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: params,
-      signal: controller.signal,
-    });
-    clearTimeout(timeout);
-    if (!res.ok) return text;
-    const data = await res.json();
-    const matches = (data.matches || []).slice().sort((a, b) => b.offset - a.offset); // rückwärts anwenden, damit Offsets stabil bleiben
-    let corrected = text;
-    for (const m of matches) {
-      if (m.replacements && m.replacements.length > 0) {
-        const replacement = m.replacements[0].value;
-        corrected = corrected.slice(0, m.offset) + replacement + corrected.slice(m.offset + m.length);
-      }
-    }
-    return corrected;
-  } catch (e) {
-    return text;
-  }
-}
-
 function getTakenAvatars(room) {
   return room.players.map(p => p.avatar).filter(Boolean);
 }
@@ -1174,8 +1145,12 @@ io.on('connection', (socket) => {
     }
 
     const rawText = (text || '').trim().slice(0, 140);
-    socket.emit('answerChecking'); // UI: "wird geprüft ..."
-    const corrected = await autoCorrectGerman(rawText);
+    // WICHTIG: Keine automatische Korrektur/Umschreibung der Spieler-Antwort mehr (vorher
+    // wurde jede Antwort an einen externen Grammatik-Dienst geschickt, der eigenmächtig
+    // Wörter ausgetauscht/zusammengezogen hat - genau das sorgte für das Problem, dass
+    // Antworten sich selbst nach Löschen/Neueingabe immer wieder "von selbst" veränderten).
+    // Die Spieler-Eingabe wird jetzt 1:1 übernommen.
+    const corrected = rawText;
 
     // Falls sich der Raum/die Phase währenddessen geändert hat, nichts mehr speichern
     const stillRoom = rooms[code];

@@ -571,7 +571,7 @@ h2 { font-family: var(--font-display); font-weight: 700; font-size: 24px; text-a
 
 .awards-list { display: flex; flex-direction: column; gap: 8px; margin: 16px 0; }
 .award-item {
-  display: flex; justify-content: space-between; align-items: center;
+  display: flex; flex-direction: column; align-items: flex-start; gap: 4px;
   background: rgba(172,88,249,0.1);
   border: 1px solid rgba(172,88,249,0.25);
   border-radius: 10px;
@@ -579,7 +579,7 @@ h2 { font-family: var(--font-display); font-weight: 700; font-size: 24px; text-a
   font-size: 13px;
 }
 .award-title { font-weight: 700; color: var(--glow); }
-.award-names { font-weight: 600; color: var(--ink); }
+.award-names { font-weight: 600; color: var(--ink); line-height: 1.4; }
 
 .theme-toggle {
   position: fixed;
