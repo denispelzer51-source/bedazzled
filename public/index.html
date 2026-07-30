@@ -298,6 +298,7 @@
       <div id="moderator-answers-preview" class="reveal-list hidden"></div>
 
       <p class="progress-text"><span id="answered-count">0</span>/<span id="answering-total">0</span> haben geantwortet</p>
+      <p id="answer-timer-display" class="progress-text hidden" style="font-weight:700;"></p>
       <button id="btn-to-voting" class="btn btn-primary mod-only">Weiter zur Abstimmung</button>
       <button id="btn-reveal-estimate" class="btn btn-primary mod-only hidden">Auswerten</button>
       <button id="btn-show-scoreboard" class="btn btn-secondary" style="margin-top:22px;">📊 Punkteliste</button>
@@ -457,6 +458,19 @@
       <div id="settings-room-row" class="settings-row settings-room-row hidden">
         <span>Raum-Code</span>
         <span id="settings-room-code" class="settings-code">----</span>
+      </div>
+      <div id="settings-unlimited-swaps-row" class="settings-row hidden">
+        <span>🔁 Unbegrenzt Fragen durchskippen</span>
+        <button id="btn-toggle-unlimited-swaps" class="btn btn-secondary btn-theme-toggle">Aus</button>
+      </div>
+      <div id="settings-answer-timer-row" class="settings-row hidden" style="flex-direction:column; align-items:stretch; gap:8px;">
+        <span>⏱ Zeitlimit fürs Antworten</span>
+        <div style="display:flex; gap:6px;">
+          <button id="btn-answer-timer-60" class="btn btn-secondary" style="flex:1; padding:8px 4px;">1 Min</button>
+          <button id="btn-answer-timer-120" class="btn btn-secondary" style="flex:1; padding:8px 4px;">2 Min</button>
+          <button id="btn-answer-timer-none" class="btn btn-secondary" style="flex:1; padding:8px 4px;">Kein Limit</button>
+        </div>
+        <p id="answer-timer-setting-hint" class="hint" style="margin:0;">Gilt ab der nächsten Runde.</p>
       </div>
       <div class="settings-row">
         <span>Hell / Dunkel</span>

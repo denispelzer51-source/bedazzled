@@ -143,8 +143,55 @@ document.getElementById('btn-settings').addEventListener('click', () => {
   } else {
     roomRow.classList.add('hidden');
   }
+  // "Unbegrenzt Fragen durchskippen" ist eine Raum-Einstellung, die nur der Host ändern
+  // kann (betrifft alle Runden/Moderator:innen im Raum) - für den Fragenpool-Engpass bei
+  // kleinen Pools, damit man nicht immer wieder dieselben 3 Fragen zur Auswahl bekommt.
+  const swapsRow = document.getElementById('settings-unlimited-swaps-row');
+  const swapsBtn = document.getElementById('btn-toggle-unlimited-swaps');
+  const amHost = !!(currentCode && lastState && lastState.hostId === myId);
+  if (amHost) {
+    swapsRow.classList.remove('hidden');
+    swapsBtn.textContent = lastState.unlimitedQuestionSwaps ? 'An' : 'Aus';
+  } else {
+    swapsRow.classList.add('hidden');
+  }
+  const timerRow = document.getElementById('settings-answer-timer-row');
+  if (amHost) {
+    timerRow.classList.remove('hidden');
+    highlightAnswerTimerChoice(lastState.answerTimeLimit ?? null);
+  } else {
+    timerRow.classList.add('hidden');
+  }
   renderAdminPlayerList();
   overlay.classList.remove('hidden');
+});
+function highlightAnswerTimerChoice(seconds) {
+  const map = { 60: 'btn-answer-timer-60', 120: 'btn-answer-timer-120', null: 'btn-answer-timer-none' };
+  Object.values(map).forEach(id => { document.getElementById(id).style.outline = 'none'; });
+  const activeId = map[seconds] || map[null];
+  document.getElementById(activeId).style.outline = '2px solid var(--gold, #F2B705)';
+}
+document.getElementById('btn-answer-timer-60').addEventListener('click', () => {
+  if (!currentCode) return;
+  socket.emit('setAnswerTimeLimit', { code: currentCode, seconds: 60 });
+  highlightAnswerTimerChoice(60);
+});
+document.getElementById('btn-answer-timer-120').addEventListener('click', () => {
+  if (!currentCode) return;
+  socket.emit('setAnswerTimeLimit', { code: currentCode, seconds: 120 });
+  highlightAnswerTimerChoice(120);
+});
+document.getElementById('btn-answer-timer-none').addEventListener('click', () => {
+  if (!currentCode) return;
+  socket.emit('setAnswerTimeLimit', { code: currentCode, seconds: null });
+  highlightAnswerTimerChoice(null);
+});
+document.getElementById('btn-toggle-unlimited-swaps').addEventListener('click', () => {
+  if (!currentCode || !lastState) return;
+  const next = !lastState.unlimitedQuestionSwaps;
+  socket.emit('setUnlimitedQuestionSwaps', { code: currentCode, enabled: next });
+  // Optimistisch sofort den Button-Text umschalten, der echte state-Broadcast bestätigt es gleich
+  document.getElementById('btn-toggle-unlimited-swaps').textContent = next ? 'An' : 'Aus';
 });
 document.getElementById('btn-close-settings').addEventListener('click', () => {
   document.getElementById('settings-overlay').classList.add('hidden');
@@ -261,6 +308,18 @@ function renderAdminPlayerList() {
       socket.emit('kickPlayer', { code: currentCode, targetPlayerId: p.id });
     });
     row.appendChild(kickBtn);
+
+    // Kurz vors Ziel setzen (zum Testen von Spielende/Board-Animation/Gewinner-Popup) -
+    // ausschließlich hier im Super-Admin-Panel, nicht mehr für alle Spieler sichtbar.
+    const nearFinishBtn = document.createElement('button');
+    nearFinishBtn.className = 'btn-kick';
+    nearFinishBtn.title = 'Kurz vors Ziel setzen (Spielende testen)';
+    nearFinishBtn.textContent = '🧪';
+    nearFinishBtn.addEventListener('click', () => {
+      socket.emit('adminSetNearFinish', { code: currentCode, targetPlayerId: p.id });
+    });
+    row.appendChild(nearFinishBtn);
+
     box.appendChild(row);
   });
 }
@@ -874,6 +933,34 @@ socket.on('answerLocked', ({ reason }) => {
   document.getElementById('answer-reject-msg').classList.remove('hidden');
 });
 
+// Der/die Moderator:in hat meine Antwort bearbeitet oder gelöscht - direkt sichtbar machen
+// (genau wie der/die Moderator:in live sieht, was ich tippe, soll ich live sehen, wenn er/sie
+// an meiner Antwort etwas ändert). Sonst landet man in der nächsten Runde und erkennt seine
+// eigene Antwort nicht mehr wieder.
+socket.on('yourAnswerEditedByModerator', ({ newText }) => {
+  const ta = document.getElementById('input-answer');
+  ta.value = newText;
+  ta.disabled = false;
+  document.getElementById('btn-submit-answer').disabled = false;
+  document.getElementById('btn-submit-answer').textContent = 'Antwort abschicken';
+  const msg = document.getElementById('answer-reject-msg');
+  msg.textContent = `✏️ Der Moderator/die Moderatorin hat deine Antwort angepasst zu: „${newText}“`;
+  msg.classList.remove('hidden');
+});
+
+socket.on('yourAnswerDeletedByModerator', () => {
+  const ta = document.getElementById('input-answer');
+  ta.value = '';
+  ta.disabled = false;
+  document.getElementById('input-answer-number').value = '';
+  document.getElementById('input-answer-number').disabled = false;
+  document.getElementById('btn-submit-answer').disabled = false;
+  document.getElementById('btn-submit-answer').textContent = 'Antwort abschicken';
+  const msg = document.getElementById('answer-reject-msg');
+  msg.textContent = '🗑️ Der Moderator/die Moderatorin hat deine Antwort gelöscht - bitte gib eine neue ein.';
+  msg.classList.remove('hidden');
+});
+
 socket.on('answerCorrected', ({ text, wasChanged }) => {
   document.getElementById('input-answer').value = text;
   document.getElementById('input-answer').disabled = false; // Änderung bleibt möglich, solange nicht alle fertig sind
@@ -1309,16 +1396,6 @@ function renderLobbyPlayerList(state) {
       });
       li.appendChild(kickBtn);
     }
-    // ===== DEV-TOOL: NUR ZUM TESTEN, SPÄTER WIEDER ENTFERNEN =====
-    const devBtn = document.createElement('button');
-    devBtn.className = 'btn-kick';
-    devBtn.title = 'DEV: kurz vors Ziel setzen (Spielende testen)';
-    devBtn.textContent = '🧪';
-    devBtn.addEventListener('click', () => {
-      socket.emit('devNearFinish', { code: currentCode, targetPlayerId: p.id });
-    });
-    li.appendChild(devBtn);
-    // ===== ENDE DEV-TOOL =====
     list.appendChild(li);
   });
 
@@ -1395,6 +1472,34 @@ function updateConnectionBanner(state) {
   banner.classList.remove('hidden');
 }
 
+// ---------- ANTWORT-ZEITLIMIT: Live-Countdown (serverseitige Deadline, damit alle
+// dieselbe Zeit sehen, unabhängig von der eigenen Geräte-Uhr) ----------
+let answerCountdownIntervalId = null;
+function updateAnswerTimerDisplay(state) {
+  const el = document.getElementById('answer-timer-display');
+  if (answerCountdownIntervalId) { clearInterval(answerCountdownIntervalId); answerCountdownIntervalId = null; }
+  if (!state.answerDeadline) {
+    el.classList.add('hidden');
+    return;
+  }
+  el.classList.remove('hidden');
+  const deadline = state.answerDeadline;
+  function tick() {
+    const remainingMs = deadline - Date.now();
+    if (remainingMs <= 0) {
+      el.textContent = '⏱ Zeit abgelaufen';
+      if (answerCountdownIntervalId) { clearInterval(answerCountdownIntervalId); answerCountdownIntervalId = null; }
+      return;
+    }
+    const totalSec = Math.ceil(remainingMs / 1000);
+    const m = Math.floor(totalSec / 60);
+    const s = totalSec % 60;
+    el.textContent = `⏱ Noch ${m}:${String(s).padStart(2, '0')} min`;
+  }
+  tick();
+  answerCountdownIntervalId = setInterval(tick, 1000);
+}
+
 // ---------- MAIN STATE HANDLER ----------
 socket.on('state', (state) => {
   if (!lastState || lastState.phase !== state.phase) {
@@ -1404,6 +1509,11 @@ socket.on('state', (state) => {
       const el = document.getElementById(id);
       if (el) el.textContent = '';
     });
+    if (state.phase !== 'answering' && answerCountdownIntervalId) {
+      clearInterval(answerCountdownIntervalId);
+      answerCountdownIntervalId = null;
+      document.getElementById('answer-timer-display').classList.add('hidden');
+    }
   }
   const enteringVoting = state.phase === 'voting' && (!lastState || lastState.phase !== 'voting');
   if (enteringVoting) {
@@ -1499,9 +1609,11 @@ socket.on('state', (state) => {
       document.getElementById('btn-qp-prev').disabled = qp.currentIndex <= 0;
       document.getElementById('btn-qp-next-candidate').disabled = qp.currentIndex >= qp.candidates.length - 1;
       document.getElementById('btn-qp-swap').disabled = !qp.canSwapMore;
-      document.getElementById('qp-swap-hint').textContent = qp.canSwapMore
-        ? `Du kannst noch ${3 - qp.candidates.length}x wechseln.`
-        : 'Kein Wechsel mehr übrig – das war die letzte Möglichkeit.';
+      document.getElementById('qp-swap-hint').textContent = state.unlimitedQuestionSwaps
+        ? 'Unbegrenzt viele Wechsel möglich.'
+        : (qp.canSwapMore
+          ? `Du kannst noch ${3 - qp.candidates.length}x wechseln.`
+          : 'Kein Wechsel mehr übrig – das war die letzte Möglichkeit.');
     } else {
       // Ich bin nicht Moderator:in - einfacher Warte-Screen
       document.getElementById('qp-moderator-view').classList.add('hidden');
@@ -1530,11 +1642,19 @@ socket.on('state', (state) => {
     document.getElementById('btn-to-voting').classList.toggle('hidden', isEstimate);
     document.getElementById('btn-reveal-estimate').classList.toggle('hidden', !isEstimate);
     // Erst klickbar, sobald wirklich alle geantwortet haben - vorher soll die Antwort-Phase
-    // nicht vorzeitig beendet werden können
-    const allAnswered = state.answeredCount >= totalAnswerers && totalAnswerers > 0;
+    // nicht vorzeitig beendet werden können. Ausnahme: das Host-Zeitlimit ist abgelaufen -
+    // dann darf der/die Moderator:in auch mit fehlenden Antworten weitermachen.
+    const allAnswered = (state.answeredCount >= totalAnswerers && totalAnswerers > 0) || state.answerTimeExpired;
     const toVotingBtn = document.getElementById('btn-to-voting');
     toVotingBtn.disabled = !allAnswered;
     toVotingBtn.title = allAnswered ? '' : 'Warten, bis alle geantwortet haben …';
+    // Dieselbe Sperre auch für Schätzfragen - hier fehlte sie bisher komplett, der
+    // Moderator hätte theoretisch auswerten können, während noch jemand mitten in einer
+    // Änderung seiner Zahl war.
+    const revealEstimateBtn = document.getElementById('btn-reveal-estimate');
+    revealEstimateBtn.disabled = !allAnswered;
+    revealEstimateBtn.title = allAnswered ? '' : 'Warten, bis alle geantwortet haben …';
+    updateAnswerTimerDisplay(state);
 
     if (iAmModerator) {
       document.getElementById('answer-input-box').classList.add('hidden');
@@ -1626,13 +1746,24 @@ socket.on('state', (state) => {
       document.getElementById('moderator-answers-preview').classList.add('hidden');
       document.getElementById('duplicate-conflict-box').classList.add('hidden');
 
-      // Sobald alle abgeschickt haben, keine weiteren Änderungen mehr zulassen
-      const allAnswered = state.answeredCount >= Math.max(state.players.length - 1, 0);
+      // Sobald alle abgeschickt haben, keine weiteren Änderungen mehr zulassen - aber
+      // WICHTIG: sobald der Moderator eine Antwort löscht/bearbeitet und dadurch nicht
+      // mehr "alle" abgegeben haben, muss das Feld wieder nutzbar werden (vorher fehlte
+      // hier der else-Zweig, wodurch das Feld für den betroffenen Spieler für den Rest
+      // der Runde ausgegraut blieb, obwohl er ja gar keine Antwort mehr im System hatte).
+      const allAnswered = (state.answeredCount >= Math.max(state.players.length - 1, 0)) || state.answerTimeExpired;
       if (allAnswered) {
         document.getElementById('input-answer').disabled = true;
         document.getElementById('input-answer-number').disabled = true;
         document.getElementById('btn-submit-answer').disabled = true;
-        document.getElementById('btn-submit-answer').textContent = 'Alle fertig – keine Änderung mehr möglich';
+        document.getElementById('btn-submit-answer').textContent = state.answerTimeExpired
+          ? 'Zeit abgelaufen – keine Änderung mehr möglich'
+          : 'Alle fertig – keine Änderung mehr möglich';
+      } else {
+        document.getElementById('input-answer').disabled = false;
+        document.getElementById('input-answer-number').disabled = false;
+        document.getElementById('btn-submit-answer').disabled = false;
+        document.getElementById('btn-submit-answer').textContent = 'Antwort abschicken';
       }
     }
     showScreen('answering');
