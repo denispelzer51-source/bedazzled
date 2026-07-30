@@ -1373,9 +1373,6 @@ function highlightLobbyTimerChoice(seconds) {
   const activeId = map[seconds] || map[null];
   document.getElementById(activeId).style.outline = '2px solid var(--gold, #F2B705)';
 }
-function timerLabel(seconds) {
-  return seconds === 60 ? '1 Minute' : seconds === 120 ? '2 Minuten' : 'kein Limit';
-}
 function renderLobbyGameSettings(state) {
   const block = document.getElementById('lobby-game-settings-block');
   const amHost = state.hostId === myId;
@@ -1389,14 +1386,15 @@ function renderLobbyGameSettings(state) {
   const confirmed = state.answerTimeLimit ?? null;
   const shown = lobbyTimerPendingChoice !== undefined ? lobbyTimerPendingChoice : confirmed;
   highlightLobbyTimerChoice(shown);
-  const statusEl = document.getElementById('lobby-timer-status');
-  if (lobbyTimerPendingChoice !== undefined && lobbyTimerPendingChoice !== confirmed) {
-    statusEl.textContent = `Ausgewählt: ${timerLabel(lobbyTimerPendingChoice)} - bitte bestätigen.`;
-  } else if (state.answerTimeLimitSet) {
-    statusEl.textContent = `✓ Festgelegt: ${timerLabel(confirmed)} (kann hier noch geändert werden)`;
-  } else {
-    statusEl.textContent = 'Bitte auswählen und mit „Bestätigen” festlegen.';
-  }
+
+  // Bestätigen-Button gibt visuelles Feedback (Text + dieselbe Ausgrau-Optik wie andere
+  // "erledigt"-Buttons im Spiel), solange die gerade markierte Auswahl der bereits
+  // bestätigten entspricht. Wählt man danach etwas anderes aus, wird er automatisch
+  // wieder normal aktiv, damit man erneut bestätigen kann.
+  const confirmBtn = document.getElementById('btn-lobby-timer-confirm');
+  const alreadyConfirmed = state.answerTimeLimitSet && shown === confirmed;
+  confirmBtn.disabled = alreadyConfirmed;
+  confirmBtn.textContent = alreadyConfirmed ? 'Bestätigt ✓' : 'Bestätigen';
 }
 function selectLobbyTimerChoice(seconds) {
   lobbyTimerPendingChoice = seconds;
