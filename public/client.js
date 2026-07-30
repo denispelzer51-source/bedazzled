@@ -909,7 +909,13 @@ socket.on('answerLocked', ({ reason }) => {
 // (genau wie der/die Moderator:in live sieht, was ich tippe, soll ich live sehen, wenn er/sie
 // an meiner Antwort etwas ändert). Sonst landet man in der nächsten Runde und erkennt seine
 // eigene Antwort nicht mehr wieder.
+// Kurzes Gnaden-Fenster nach einer Moderator-Bearbeitung/-Löschung der eigenen Antwort:
+// verhindert, dass eine fast zeitgleiche "alle fertig"-State-Aktualisierung das Feld
+// direkt danach wieder fälschlich sperrt, solange andere noch am Schreiben sind.
+let moderatorEditGraceUntil = 0;
+
 socket.on('yourAnswerEditedByModerator', ({ newText }) => {
+  moderatorEditGraceUntil = Date.now() + 1500;
   const ta = document.getElementById('input-answer');
   ta.value = newText;
   ta.disabled = false;
@@ -921,6 +927,7 @@ socket.on('yourAnswerEditedByModerator', ({ newText }) => {
 });
 
 socket.on('yourAnswerDeletedByModerator', () => {
+  moderatorEditGraceUntil = Date.now() + 1500;
   const ta = document.getElementById('input-answer');
   ta.value = '';
   ta.disabled = false;
@@ -1539,17 +1546,30 @@ function updateConnectionBanner(state) {
 // ---------- ANTWORT-ZEITLIMIT: Live-Countdown (serverseitige Deadline, damit alle
 // dieselbe Zeit sehen, unabhängig von der eigenen Geräte-Uhr) ----------
 let answerCountdownIntervalId = null;
+let lastAnswerDeadline = null;
 function updateAnswerTimerDisplay(state) {
   const el = document.getElementById('answer-timer-display');
-  if (answerCountdownIntervalId) { clearInterval(answerCountdownIntervalId); answerCountdownIntervalId = null; }
   if (!state.answerDeadline) {
+    if (answerCountdownIntervalId) { clearInterval(answerCountdownIntervalId); answerCountdownIntervalId = null; }
+    lastAnswerDeadline = null;
     el.classList.add('hidden');
     return;
   }
   el.classList.remove('hidden');
+  // Diese Funktion wird bei JEDER State-Aktualisierung aufgerufen (z.B. bei jedem
+  // Live-Tipp-Update anderer Spieler) - das Intervall aber nur bei einer wirklich NEUEN
+  // Runde neu starten, sonst einfach weiterlaufen lassen. Ständiges Neustarten war die
+  // Ursache dafür, dass die Anzeige nicht sauber im Sekundentakt runtergezählt hat.
+  if (state.answerDeadline === lastAnswerDeadline && answerCountdownIntervalId) return;
+  lastAnswerDeadline = state.answerDeadline;
+  if (answerCountdownIntervalId) { clearInterval(answerCountdownIntervalId); answerCountdownIntervalId = null; }
   const deadline = state.answerDeadline;
+  const totalLimitMs = (state.answerTimeLimit || 0) * 1000;
   function tick() {
-    const remainingMs = deadline - Date.now();
+    let remainingMs = deadline - Date.now();
+    // Sicherheitsnetz: die Anzeige darf die eingestellte Zeit (1 bzw. 2 Minuten) rechnerisch
+    // nie überschreiten, egal was passiert.
+    if (totalLimitMs > 0) remainingMs = Math.min(remainingMs, totalLimitMs);
     if (remainingMs <= 0) {
       el.textContent = '⏱ Zeit abgelaufen';
       if (answerCountdownIntervalId) { clearInterval(answerCountdownIntervalId); answerCountdownIntervalId = null; }
@@ -1820,7 +1840,12 @@ socket.on('state', (state) => {
       // mehr "alle" abgegeben haben, muss das Feld wieder nutzbar werden (vorher fehlte
       // hier der else-Zweig, wodurch das Feld für den betroffenen Spieler für den Rest
       // der Runde ausgegraut blieb, obwohl er ja gar keine Antwort mehr im System hatte).
-      const allAnswered = (state.answeredCount >= Math.max(state.players.length - 1, 0)) || state.answerTimeExpired;
+      // Zusätzlich: kurzes Gnaden-Fenster nach einer Moderator-Bearbeitung, damit eine fast
+      // zeitgleiche "alle fertig"-Aktualisierung das Feld nicht doch wieder sperrt, solange
+      // andere Mitspieler:innen noch schreiben.
+      const countBasedAllAnswered = state.answeredCount >= Math.max(state.players.length - 1, 0);
+      const inModeratorEditGrace = Date.now() < moderatorEditGraceUntil;
+      const allAnswered = (countBasedAllAnswered && !inModeratorEditGrace) || state.answerTimeExpired;
       if (allAnswered) {
         document.getElementById('input-answer').disabled = true;
         document.getElementById('input-answer-number').disabled = true;
