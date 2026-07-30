@@ -477,6 +477,9 @@ function publicRoomState(room, forPlayerId) {
         }
       : null,
     unlimitedQuestionSwaps: !!room.unlimitedQuestionSwaps,
+    answerTimeLimit: room.answerTimeLimit || null,
+    answerDeadline: room.phase === 'answering' ? (room.answerDeadline || null) : null,
+    answerTimeExpired: !!room.answerTimeExpired,
     duplicateConflicts: (isModerator && room.phase === 'answering')
       ? (room.duplicateConflicts || []).map(pid => {
           const p = room.players.find(pp => pp.id === pid);
@@ -517,6 +520,34 @@ function publicRoomState(room, forPlayerId) {
     drawingResult: (room.phase === 'reveal' && room.drawingResult) ? room.drawingResult : null,
     catchUpAnnouncement: room.catchUpAnnouncement || null,
   };
+}
+
+// ---- Antwort-Timer (Host-Einstellung: 60s / 120s / kein Limit) ----
+// Läuft serverseitig, damit alle Spieler denselben Countdown sehen (unabhängig von der
+// jeweiligen Client-Uhr) und der Moderator nach Ablauf auch dann weiterkommt, wenn
+// noch nicht alle geantwortet haben.
+function clearAnswerTimer(room) {
+  if (room.answerTimerId) {
+    clearTimeout(room.answerTimerId);
+    room.answerTimerId = null;
+  }
+}
+function startAnswerTimerIfNeeded(room, code) {
+  clearAnswerTimer(room);
+  room.answerTimeExpired = false;
+  if (room.answerTimeLimit) {
+    room.answerDeadline = Date.now() + room.answerTimeLimit * 1000;
+    room.answerTimerId = setTimeout(() => {
+      const r = rooms[code];
+      if (!r || r.phase !== 'answering') return; // Runde hat sich in der Zwischenzeit geändert - nichts tun
+      r.answerTimeExpired = true;
+      r.answerTimerId = null;
+      broadcastState(code);
+      console.log(`[Antwort-Timer] Zeit abgelaufen in Raum ${code}.`);
+    }, room.answerTimeLimit * 1000);
+  } else {
+    room.answerDeadline = null;
+  }
 }
 
 function broadcastState(roomCode) {
@@ -693,6 +724,10 @@ function createRoomFromMatchmaking(entries) {
     catchUpBonusGiven: false,
     catchUpAnnouncement: null,
     unlimitedQuestionSwaps: false,
+    answerTimeLimit: null,
+    answerDeadline: null,
+    answerTimerId: null,
+    answerTimeExpired: false,
     isMultiplayerMatch: true,
   };
   entries.forEach(e => {
@@ -799,6 +834,10 @@ io.on('connection', (socket) => {
       catchUpBonusGiven: false,
       catchUpAnnouncement: null,
       unlimitedQuestionSwaps: false,
+      answerTimeLimit: null,
+      answerDeadline: null,
+      answerTimerId: null,
+      answerTimeExpired: false,
     };
     console.log(`[Raum erstellt] Code=${code} von Spieler "${name}". Aktive Räume: ${Object.keys(rooms).join(', ')}`);
     socket.join(code);
@@ -1008,6 +1047,18 @@ io.on('connection', (socket) => {
     broadcastState(code);
   });
 
+  // Host legt fest, ob und wie lange die Antwort-Phase pro Runde begrenzt ist (1 Min /
+  // 2 Min / kein Limit) - gilt ab der nächsten gestarteten Runde.
+  socket.on('setAnswerTimeLimit', ({ code, seconds }) => {
+    const room = rooms[code];
+    if (!room) return;
+    if (socket.data.token !== room.hostId && !socket.data.isSuperAdmin) return;
+    const allowed = [60, 120, null];
+    if (!allowed.includes(seconds)) return;
+    room.answerTimeLimit = seconds;
+    broadcastState(code);
+  });
+
   // Host kann den Fragenpool-Engpass umgehen: statt max. 2x (3 Fragen insgesamt) darf der
   // Moderator dann beliebig oft durch die Fragen der Kategorie durchskippen, um Dopplungen
   // zu vermeiden, solange der Fragenpool noch klein ist.
@@ -1083,6 +1134,7 @@ io.on('connection', (socket) => {
     }
 
     room.phase = 'answering';
+    startAnswerTimerIfNeeded(room, code);
     broadcastState(code);
 
     // Push: alle außer dem Moderator müssen jetzt eine Antwort abgeben
@@ -1173,6 +1225,7 @@ io.on('connection', (socket) => {
   });
 
   function startVotingPhase(room, code) {
+    clearAnswerTimer(room);
     const moderator = room.players[room.moderatorIndex];
     const excluded = room.excludeFromPoolPlayerIds || [];
     const combined = [];
@@ -1217,6 +1270,13 @@ io.on('connection', (socket) => {
     if (!trimmed) return;
     room.answers[playerId] = trimmed;
     broadcastState(code);
+    // Dem betroffenen Spieler direkt zeigen, was geändert wurde - sonst erkennt er seine
+    // eigene Antwort in der nächsten Runde nicht wieder, weil er von der Änderung nichts
+    // mitbekommen hat.
+    const targetPlayer = room.players.find(p => p.id === playerId);
+    if (targetPlayer && targetPlayer.socketId) {
+      io.to(targetPlayer.socketId).emit('yourAnswerEditedByModerator', { newText: trimmed });
+    }
   });
 
   socket.on('deletePlayerAnswer', ({ code, playerId }) => {
@@ -1228,6 +1288,13 @@ io.on('connection', (socket) => {
       room.duplicateConflicts = room.duplicateConflicts.filter(id => id !== playerId);
     }
     broadcastState(code);
+    // Dem betroffenen Spieler direkt Bescheid geben, dass seine Antwort weg ist und er
+    // eine neue eingeben kann (statt dass er nur ein plötzlich wieder leeres/aktives Feld
+    // sieht, ohne zu wissen warum).
+    const targetPlayer = room.players.find(p => p.id === playerId);
+    if (targetPlayer && targetPlayer.socketId) {
+      io.to(targetPlayer.socketId).emit('yourAnswerDeletedByModerator');
+    }
   });
 
   // ==================== ZEICHENRUNDE (gelbe Felder) ====================
@@ -1321,7 +1388,7 @@ io.on('connection', (socket) => {
     const moderatorId = room.players[room.moderatorIndex].id;
     const totalAnswerers = room.players.filter(p => p.id !== moderatorId).length;
     const answeredCount = Object.keys(room.answers).length;
-    if (answeredCount < totalAnswerers) {
+    if (answeredCount < totalAnswerers && !room.answerTimeExpired) {
       socket.emit('errorMsg', 'Noch nicht alle haben geantwortet.');
       return;
     }
@@ -1502,6 +1569,7 @@ io.on('connection', (socket) => {
   socket.on('revealEstimate', ({ code }) => {
     const room = rooms[code];
     if (!room || !isModerator(room, socket) || room.roundType !== 'estimate') return;
+    clearAnswerTimer(room);
 
     const prevPositions = {};
     room.players.forEach(p => { prevPositions[p.id] = p.position; });
@@ -1562,6 +1630,7 @@ io.on('connection', (socket) => {
     room.drawingResult = null;
     room.drawingStartPositions = {};
     room.adminForcedFromPositions = null;
+    clearAnswerTimer(room);
     room.phase = 'lobby';
 
     // Vorgemerkte Spieler jetzt automatisch einlassen
@@ -1620,6 +1689,7 @@ io.on('connection', (socket) => {
     room.drawingStartPositions = {};
     room.usedDrawTerms = [];
     room.usedForeignwordQuestions = [];
+    clearAnswerTimer(room);
     room.phase = 'lobby';
     broadcastState(code);
     console.log(`[Neues Spiel] Raum ${code} wurde in derselben Lobby neu gestartet.`);
@@ -1677,6 +1747,7 @@ io.on('connection', (socket) => {
     room.questionCandidates = [];
     room.previewIndex = 0;
     room.adminForcedFromPositions = null;
+    clearAnswerTimer(room);
     room.phase = 'lobby';
     broadcastState(code);
     console.log(`[ADMIN-TOOL] Runde in Raum ${code} übersprungen.`);
