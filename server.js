@@ -448,6 +448,7 @@ function publicRoomState(room, forPlayerId) {
         }
       : null,
     unlimitedQuestionSwaps: !!room.unlimitedQuestionSwaps,
+    gameStarted: !!room.gameStarted,
     answerTimeLimit: room.answerTimeLimit || null,
     answerDeadline: room.phase === 'answering' ? (room.answerDeadline || null) : null,
     answerTimeExpired: !!room.answerTimeExpired,
@@ -488,6 +489,7 @@ function publicRoomState(room, forPlayerId) {
       : [],
     myGuessCorrect: room.phase === 'drawing' ? (room.correctGuessers || []).includes(forPlayerId) : false,
     drawingRoundId: room.drawingRoundId || 0,
+    drawingStartedAt: room.phase === 'drawing' ? (room.drawingStartedAt || null) : null,
     drawingResult: (room.phase === 'reveal' && room.drawingResult) ? room.drawingResult : null,
     catchUpAnnouncement: room.catchUpAnnouncement || null,
   };
@@ -695,6 +697,7 @@ function createRoomFromMatchmaking(entries) {
     catchUpBonusGiven: false,
     catchUpAnnouncement: null,
     unlimitedQuestionSwaps: false,
+    gameStarted: false,
     answerTimeLimit: null,
     answerDeadline: null,
     answerTimerId: null,
@@ -805,6 +808,7 @@ io.on('connection', (socket) => {
       catchUpBonusGiven: false,
       catchUpAnnouncement: null,
       unlimitedQuestionSwaps: false,
+      gameStarted: false,
       answerTimeLimit: null,
       answerDeadline: null,
       answerTimerId: null,
@@ -997,6 +1001,7 @@ io.on('connection', (socket) => {
       return;
     }
     room.roundType = roundType;
+    room.gameStarted = true; // Spieleinstellungen (z.B. Antwort-Zeitlimit) sind ab jetzt fix
     room.pendingRoundType = 'question';
     room.phase = 'previewQuestion';
     room.answers = {};
@@ -1019,11 +1024,12 @@ io.on('connection', (socket) => {
   });
 
   // Host legt fest, ob und wie lange die Antwort-Phase pro Runde begrenzt ist (1 Min /
-  // 2 Min / kein Limit) - gilt ab der nächsten gestarteten Runde.
+  // 2 Min / kein Limit) - nur EINMAL vor Rundenstart 1 einstellbar, siehe gameStarted.
   socket.on('setAnswerTimeLimit', ({ code, seconds }) => {
     const room = rooms[code];
     if (!room) return;
     if (socket.data.token !== room.hostId && !socket.data.isSuperAdmin) return;
+    if (room.gameStarted && !socket.data.isSuperAdmin) return; // nach Rundenstart 1 nicht mehr änderbar
     const allowed = [60, 120, null];
     if (!allowed.includes(seconds)) return;
     room.answerTimeLimit = seconds;
@@ -1090,6 +1096,7 @@ io.on('connection', (socket) => {
 
     if (room.roundType === 'drawing') {
       room.drawingRoundId = (room.drawingRoundId || 0) + 1;
+      room.drawingStartedAt = Date.now();
       room.phase = 'drawing';
       room.correctGuessers = [];
       room.guesses = {};
@@ -1350,6 +1357,10 @@ io.on('connection', (socket) => {
   socket.on('endDrawingRound', ({ code }) => {
     const room = rooms[code];
     if (!room || !isModerator(room, socket) || room.phase !== 'drawing') return;
+    // Serverseitig zusätzlich absichern: die ersten 60s nach Rundenstart kann die Runde
+    // nicht beendet werden (der ausgegraute Button ist nur die UI-Seite davon) - schützt
+    // davor, dass aus Versehen beendet wird, bevor überhaupt jemand raten konnte.
+    if (room.drawingStartedAt && Date.now() - room.drawingStartedAt < 60000 && !socket.data.isSuperAdmin) return;
     finishDrawingRound(room, code);
   });
 
@@ -1750,6 +1761,7 @@ io.on('connection', (socket) => {
     room.drawingStartPositions = {};
     room.players.forEach(p => { room.drawingStartPositions[p.id] = p.position; });
     room.drawingRoundId = (room.drawingRoundId || 0) + 1;
+    room.drawingStartedAt = Date.now();
     room.phase = 'drawing';
     broadcastState(code);
     console.log(`[ADMIN-TOOL] Zeichenrunde in Raum ${code} erzwungen (Test).`);

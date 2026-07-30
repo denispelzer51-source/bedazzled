@@ -155,36 +155,8 @@ document.getElementById('btn-settings').addEventListener('click', () => {
   } else {
     swapsRow.classList.add('hidden');
   }
-  const timerRow = document.getElementById('settings-answer-timer-row');
-  if (amHost) {
-    timerRow.classList.remove('hidden');
-    highlightAnswerTimerChoice(lastState.answerTimeLimit ?? null);
-  } else {
-    timerRow.classList.add('hidden');
-  }
   renderAdminPlayerList();
   overlay.classList.remove('hidden');
-});
-function highlightAnswerTimerChoice(seconds) {
-  const map = { 60: 'btn-answer-timer-60', 120: 'btn-answer-timer-120', null: 'btn-answer-timer-none' };
-  Object.values(map).forEach(id => { document.getElementById(id).style.outline = 'none'; });
-  const activeId = map[seconds] || map[null];
-  document.getElementById(activeId).style.outline = '2px solid var(--gold, #F2B705)';
-}
-document.getElementById('btn-answer-timer-60').addEventListener('click', () => {
-  if (!currentCode) return;
-  socket.emit('setAnswerTimeLimit', { code: currentCode, seconds: 60 });
-  highlightAnswerTimerChoice(60);
-});
-document.getElementById('btn-answer-timer-120').addEventListener('click', () => {
-  if (!currentCode) return;
-  socket.emit('setAnswerTimeLimit', { code: currentCode, seconds: 120 });
-  highlightAnswerTimerChoice(120);
-});
-document.getElementById('btn-answer-timer-none').addEventListener('click', () => {
-  if (!currentCode) return;
-  socket.emit('setAnswerTimeLimit', { code: currentCode, seconds: null });
-  highlightAnswerTimerChoice(null);
 });
 document.getElementById('btn-toggle-unlimited-swaps').addEventListener('click', () => {
   if (!currentCode || !lastState) return;
@@ -1134,6 +1106,35 @@ document.getElementById('input-drawing-guess').addEventListener('keydown', (e) =
 });
 let firstCorrectGuesserName = null; // bleibt bis zum Rundenende bestehen (siehe unten)
 
+// "Runde beenden" für die erste Minute ausgegraut lassen - sonst kann der Moderator (der ja
+// selbst mitzeichnet) versehentlich viel zu früh draufkommen, bevor überhaupt jemand eine
+// faire Chance zum Raten hatte.
+const DRAWING_END_LOCK_MS = 60000;
+let drawingEndLockIntervalId = null;
+function updateDrawingEndButtonLock(state) {
+  const btn = document.getElementById('btn-drawing-end');
+  if (drawingEndLockIntervalId) { clearInterval(drawingEndLockIntervalId); drawingEndLockIntervalId = null; }
+  if (!state.drawingStartedAt) {
+    btn.disabled = false;
+    btn.title = '';
+    return;
+  }
+  const unlockAt = state.drawingStartedAt + DRAWING_END_LOCK_MS;
+  function tick() {
+    const remaining = unlockAt - Date.now();
+    if (remaining <= 0) {
+      btn.disabled = false;
+      btn.title = '';
+      if (drawingEndLockIntervalId) { clearInterval(drawingEndLockIntervalId); drawingEndLockIntervalId = null; }
+      return;
+    }
+    btn.disabled = true;
+    btn.title = `Erst nutzbar, sobald die erste Minute rum ist (noch ${Math.ceil(remaining / 1000)}s)`;
+  }
+  tick();
+  drawingEndLockIntervalId = setInterval(tick, 1000);
+}
+
 socket.on('guessWrong', () => {
   const fb = document.getElementById('drawing-guess-feedback');
   fb.textContent = '❌ Leider falsch, versuch\'s nochmal!';
@@ -1142,7 +1143,7 @@ socket.on('guessWrong', () => {
       // Nach der kurzen "falsch"-Meldung wieder die bleibende Hinweis-Meldung zeigen,
       // falls schon jemand anderes richtig geraten hat (statt das Feld einfach zu leeren).
       fb.textContent = firstCorrectGuesserName
-        ? `🏃 ${firstCorrectGuesserName} hat schon richtig geraten! Nur noch 1 Platz übrig …`
+        ? `${firstCorrectGuesserName} hat schon richtig geraten! Beeil dich!`
         : '';
     }
   }, 2000);
@@ -1153,7 +1154,7 @@ socket.on('someoneGuessedCorrectly', ({ name }) => {
   const fb = document.getElementById('drawing-guess-feedback');
   // WICHTIG: bleibt jetzt stehen (kein Auto-Ausblenden mehr) - es geht ja nur noch darum,
   // den zweiten richtigen Rater zu finden, das soll die ganze Zeit sichtbar bleiben.
-  fb.textContent = `🏃 ${name} hat schon richtig geraten! Nur noch 1 Platz übrig …`;
+  fb.textContent = `${name} hat schon richtig geraten! Beeil dich!`;
 });
 
 // ---------- REVEAL ----------
@@ -1359,6 +1360,41 @@ function renderBoardLarge(players, fromPositions, animate, onComplete) {
 let pendingKickId = null;
 let lastLobbyState = null;
 
+// ---------- LOBBY: "Spieleinstellungen" (nur Host, nur vor Rundenstart 1) ----------
+// Zeitlimit fürs Antworten wird jetzt hier statt im ⚙️-Menü festgelegt - einmalig, bevor
+// die erste Runde beginnt. Danach verschwindet der Kasten und ist nicht mehr änderbar.
+function highlightLobbyTimerChoice(seconds) {
+  const map = { 60: 'btn-lobby-timer-60', 120: 'btn-lobby-timer-120', null: 'btn-lobby-timer-none' };
+  Object.values(map).forEach(id => { document.getElementById(id).style.outline = 'none'; });
+  const activeId = map[seconds] || map[null];
+  document.getElementById(activeId).style.outline = '2px solid var(--gold, #F2B705)';
+}
+function renderLobbyGameSettings(state) {
+  const block = document.getElementById('lobby-game-settings-block');
+  const amHost = state.hostId === myId;
+  if (!amHost || state.gameStarted) {
+    block.classList.add('hidden');
+    return;
+  }
+  block.classList.remove('hidden');
+  highlightLobbyTimerChoice(state.answerTimeLimit ?? null);
+}
+document.getElementById('btn-lobby-timer-60').addEventListener('click', () => {
+  if (!currentCode) return;
+  socket.emit('setAnswerTimeLimit', { code: currentCode, seconds: 60 });
+  highlightLobbyTimerChoice(60);
+});
+document.getElementById('btn-lobby-timer-120').addEventListener('click', () => {
+  if (!currentCode) return;
+  socket.emit('setAnswerTimeLimit', { code: currentCode, seconds: 120 });
+  highlightLobbyTimerChoice(120);
+});
+document.getElementById('btn-lobby-timer-none').addEventListener('click', () => {
+  if (!currentCode) return;
+  socket.emit('setAnswerTimeLimit', { code: currentCode, seconds: null });
+  highlightLobbyTimerChoice(null);
+});
+
 function renderLobbyPlayerList(state) {
   lastLobbyState = state;
   const isHost = state.hostId === myId;
@@ -1526,6 +1562,10 @@ socket.on('state', (state) => {
       answerCountdownIntervalId = null;
       document.getElementById('answer-timer-display').classList.add('hidden');
     }
+    if (state.phase !== 'drawing' && drawingEndLockIntervalId) {
+      clearInterval(drawingEndLockIntervalId);
+      drawingEndLockIntervalId = null;
+    }
   }
   const enteringVoting = state.phase === 'voting' && (!lastState || lastState.phase !== 'voting');
   if (enteringVoting) {
@@ -1587,6 +1627,7 @@ socket.on('state', (state) => {
     document.getElementById('room-code-display').textContent = state.code;
     renderLobbyPlayerList(state);
     renderLobbyAvatarPicker(state);
+    renderLobbyGameSettings(state);
     const allHaveAvatars = !state.isMultiplayerMatch || state.players.every(p => !!p.avatar);
     document.getElementById('btn-start-round').style.display =
       (state.players.length >= 3 && iAmModerator && allHaveAvatars) ? 'block' : 'none';
@@ -1880,6 +1921,7 @@ socket.on('state', (state) => {
       document.getElementById('drawing-term-display').textContent = state.currentQuestion || '';
       document.getElementById('drawing-mod-tools').classList.remove('hidden');
       document.getElementById('drawing-guess-form').classList.add('hidden');
+      updateDrawingEndButtonLock(state);
       const names = state.drawingCorrectGuessers || [];
       document.getElementById('drawing-mod-guessers').textContent = names.length > 0
         ? `✔ Schon richtig geraten: ${names.join(', ')}`
