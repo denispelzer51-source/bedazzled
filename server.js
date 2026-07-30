@@ -472,10 +472,11 @@ function publicRoomState(room, forPlayerId) {
             question: c.question, category: c.category, topic: c.topic,
           })),
           currentIndex: room.previewIndex || 0,
-          canSwapMore: (room.questionCandidates || []).length < 3,
+          canSwapMore: room.unlimitedQuestionSwaps || (room.questionCandidates || []).length < 3,
           roundType: room.roundType,
         }
       : null,
+    unlimitedQuestionSwaps: !!room.unlimitedQuestionSwaps,
     duplicateConflicts: (isModerator && room.phase === 'answering')
       ? (room.duplicateConflicts || []).map(pid => {
           const p = room.players.find(pp => pp.id === pid);
@@ -691,6 +692,7 @@ function createRoomFromMatchmaking(entries) {
     pendingPlayers: [],
     catchUpBonusGiven: false,
     catchUpAnnouncement: null,
+    unlimitedQuestionSwaps: false,
     isMultiplayerMatch: true,
   };
   entries.forEach(e => {
@@ -796,6 +798,7 @@ io.on('connection', (socket) => {
       pendingPlayers: [],
       catchUpBonusGiven: false,
       catchUpAnnouncement: null,
+      unlimitedQuestionSwaps: false,
     };
     console.log(`[Raum erstellt] Code=${code} von Spieler "${name}". Aktive Räume: ${Object.keys(rooms).join(', ')}`);
     socket.join(code);
@@ -1005,6 +1008,17 @@ io.on('connection', (socket) => {
     broadcastState(code);
   });
 
+  // Host kann den Fragenpool-Engpass umgehen: statt max. 2x (3 Fragen insgesamt) darf der
+  // Moderator dann beliebig oft durch die Fragen der Kategorie durchskippen, um Dopplungen
+  // zu vermeiden, solange der Fragenpool noch klein ist.
+  socket.on('setUnlimitedQuestionSwaps', ({ code, enabled }) => {
+    const room = rooms[code];
+    if (!room) return;
+    if (socket.data.token !== room.hostId && !socket.data.isSuperAdmin) return;
+    room.unlimitedQuestionSwaps = !!enabled;
+    broadcastState(code);
+  });
+
   // ---- Fragen-Vorschau: der/die Moderator:in sieht die Frage zuerst und kann sie vor
   // dem eigentlichen Rundenstart bis zu 2x austauschen (max. 3 Kandidaten insgesamt) und
   // zwischen bereits gezogenen Kandidaten frei hin- und herwechseln. ----
@@ -1012,8 +1026,8 @@ io.on('connection', (socket) => {
     const room = rooms[code];
     if (!room || !isModerator(room, socket) || room.phase !== 'previewQuestion') return;
     if (!room.questionCandidates) room.questionCandidates = [];
-    if (room.questionCandidates.length >= 3) {
-      socket.emit('errorMsg', 'Maximal 2x austauschen möglich (3 Fragen insgesamt).');
+    if (!room.unlimitedQuestionSwaps && room.questionCandidates.length >= 3) {
+      socket.emit('errorMsg', 'Maximal 2x austauschen möglich (3 Fragen insgesamt). Der Host kann in den Einstellungen unbegrenztes Durchskippen aktivieren.');
       return;
     }
     const excludeIndices = room.questionCandidates.map(c => c.index);
@@ -1620,26 +1634,25 @@ io.on('connection', (socket) => {
     socket.data.roomCode = null;
   });
 
-  // Nur der Host (Raum-Ersteller, unabhängig von der rotierenden Moderatorrolle) darf kicken
-  // ===== DEV-TOOL: NUR ZUM TESTEN, SPÄTER WIEDER ENTFERNEN =====
-  // Setzt einen Spieler ein Feld vor das Ziel, damit man das Spielende (Board-Animation,
-  // Gewinner-Popup, "Neue Runde") testen kann, ohne zehn echte Runden spielen zu müssen.
-  socket.on('devNearFinish', ({ code, targetPlayerId }) => {
-    const room = rooms[code];
-    if (!room) return;
-    const target = room.players.find(p => p.id === targetPlayerId);
-    if (!target) return;
-    target.position = Math.max(0, BOARD_LENGTH - 1);
-    console.log(`[DEV-TOOL] "${target.name}" in Raum ${code} auf Feld ${target.position} gesetzt (kurz vorm Ziel).`);
-    broadcastState(code);
-  });
-  // ===== ENDE DEV-TOOL =====
-
   // ==================== IN-GAME ADMIN-TOOL (nur für dich, per Geheim-Code) ====================
   socket.on('adminAuth', ({ passcode }) => {
     const ok = !!passcode && passcode === GAME_ADMIN_CODE;
     socket.data.isSuperAdmin = ok;
     socket.emit('adminAuthResult', { success: ok });
+  });
+
+  // Setzt einen Spieler ein Feld vor das Ziel, damit man das Spielende (Board-Animation,
+  // Gewinner-Popup, "Neue Runde") testen kann, ohne zehn echte Runden spielen zu müssen.
+  // Nur noch über das Super-Admin-Panel auslösbar, nicht mehr für alle Spieler sichtbar.
+  socket.on('adminSetNearFinish', ({ code, targetPlayerId }) => {
+    if (!socket.data.isSuperAdmin) return;
+    const room = rooms[code];
+    if (!room) return;
+    const target = room.players.find(p => p.id === targetPlayerId);
+    if (!target) return;
+    target.position = Math.max(0, BOARD_LENGTH - 1);
+    console.log(`[ADMIN-TOOL] "${target.name}" in Raum ${code} auf Feld ${target.position} gesetzt (kurz vorm Ziel).`);
+    broadcastState(code);
   });
 
   socket.on('adminSkipRound', ({ code }) => {

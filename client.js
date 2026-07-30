@@ -1,0 +1,2109 @@
+// In der echten App-Hülle (Capacitor) bleibt der Splash-Screen (Logo auf dunklem
+// Hintergrund) so lange sichtbar, bis wir ihn hier aktiv ausblenden - dadurch verschwindet
+// er erst, wenn die Seite wirklich fertig geladen ist, statt vorher schon wegzuspringen.
+// In einem normalen Browser passiert hier einfach nichts (kein Fehler).
+if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.SplashScreen) {
+  window.Capacitor.Plugins.SplashScreen.hide();
+}
+
+const socket = io({ timeout: 45000, reconnectionAttempts: 15 });
+
+let connectionTroubleShown = false;
+socket.on('connect_error', () => {
+  if (connectionTroubleShown) return;
+  connectionTroubleShown = true;
+  showError('Verbindung dauert länger als erwartet (der Server "wacht" evtl. gerade erst auf, das kann bis zu 50 Sekunden dauern). Falls du den Link direkt aus WhatsApp geöffnet hast: tippe oben rechts auf "..." und wähle "Im Browser öffnen" – der eingebaute WhatsApp-Browser blockiert manchmal die Verbindung, besonders auf iPhones.');
+});
+
+// Sicherheitsnetz: falls irgendwo ein unerwarteter JS-Fehler auftritt (z.B. beim Beitreten),
+// soll das NIE mehr als "nichts passiert" wirken - stattdessen wird der Fehler sichtbar
+// gemacht, damit man ihn uns melden kann, statt dass die Seite scheinbar einfach hängt.
+window.addEventListener('error', (e) => {
+  console.error('[Unerwarteter Fehler]', e.error || e.message);
+  showError('Etwas ist schiefgelaufen (' + (e.message || 'unbekannter Fehler') + '). Bitte Seite neu laden und nochmal versuchen.');
+});
+
+// ---------- SOUNDEFFEKTE (dezent, per Web Audio erzeugt, keine externen Dateien nötig) ----------
+let audioCtx = null;
+let soundMuted = localStorage.getItem('bedazzled_muted') === 'true';
+
+function getAudioCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+function beep(freq, duration, volume, type) {
+  if (soundMuted) return;
+  try {
+    const ctx = getAudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = type || 'sine';
+    osc.frequency.value = freq;
+    gain.gain.value = volume;
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + duration);
+    osc.stop(ctx.currentTime + duration);
+  } catch (e) { /* Audio nicht verfügbar, einfach stumm weitermachen */ }
+}
+function playSubmitSound() { beep(600, 0.1, 0.06, 'sine'); }
+function playRevealSound() {
+  beep(500, 0.14, 0.06, 'sine');
+  setTimeout(() => beep(760, 0.16, 0.06, 'sine'), 90);
+}
+function playHopSound() {
+  if (soundMuted) return;
+  try {
+    const ctx = getAudioCtx();
+    const now = ctx.currentTime;
+
+    // Kurzer, gefilterter Rauschimpuls simuliert das "Tock" einer Spielfigur, die auf ein
+    // Brett gesetzt wird - klingt organischer als ein reiner Sinus-/Rechteck-Ton.
+    const bufferSize = Math.floor(ctx.sampleRate * 0.05);
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = (Math.random() * 2 - 1) * (1 - i / bufferSize); // abklingendes Rauschen
+    }
+    const noise = ctx.createBufferSource();
+    noise.buffer = buffer;
+
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = 900;
+
+    const gain = ctx.createGain();
+    gain.gain.value = 0.05;
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.06);
+
+    noise.connect(filter);
+    filter.connect(gain);
+    gain.connect(ctx.destination);
+    noise.start(now);
+
+    // Ein kurzer, tiefer "Klopf"-Ton darunter für mehr Körper im Klang
+    const thud = ctx.createOscillator();
+    const thudGain = ctx.createGain();
+    thud.type = 'sine';
+    thud.frequency.setValueAtTime(180, now);
+    thud.frequency.exponentialRampToValueAtTime(90, now + 0.05);
+    thudGain.gain.value = 0.05;
+    thudGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.07);
+    thud.connect(thudGain);
+    thudGain.connect(ctx.destination);
+    thud.start(now);
+    thud.stop(now + 0.08);
+  } catch (e) { /* Audio nicht verfügbar, einfach stumm weitermachen */ }
+}
+function playWinSound() {
+  [523, 659, 784].forEach((f, i) => setTimeout(() => beep(f, 0.22, 0.07, 'triangle'), i * 110));
+}
+
+// ---------- DARK/LIGHT THEME ----------
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  const btn = document.getElementById('theme-toggle');
+  if (btn) btn.textContent = theme === 'light' ? '☀️ Hell' : '🌙 Dunkel';
+  localStorage.setItem('bedazzled_theme', theme);
+}
+const savedTheme = localStorage.getItem('bedazzled_theme') || 'dark';
+applyTheme(savedTheme);
+document.getElementById('theme-toggle').addEventListener('click', () => {
+  const current = document.documentElement.getAttribute('data-theme');
+  applyTheme(current === 'light' ? 'dark' : 'light');
+});
+
+// ---------- EINSTELLUNGEN ----------
+function applySoundMuted(muted) {
+  soundMuted = muted;
+  localStorage.setItem('bedazzled_muted', muted);
+  const btn = document.getElementById('btn-toggle-sound');
+  if (btn) btn.textContent = muted ? '🔇 Aus' : '🔊 An';
+}
+applySoundMuted(soundMuted);
+
+document.getElementById('btn-toggle-sound').addEventListener('click', () => {
+  applySoundMuted(!soundMuted);
+});
+
+document.getElementById('btn-settings').addEventListener('click', () => {
+  const overlay = document.getElementById('settings-overlay');
+  // Nochmal auf ⚙️ drücken schließt das Overlay wieder
+  if (!overlay.classList.contains('hidden')) {
+    overlay.classList.add('hidden');
+    return;
+  }
+  // Raumcode im Settings-Overlay anzeigen, wenn man gerade in einem Raum ist
+  const roomRow = document.getElementById('settings-room-row');
+  const roomCodeEl = document.getElementById('settings-room-code');
+  if (currentCode) {
+    roomCodeEl.textContent = currentCode;
+    roomRow.classList.remove('hidden');
+  } else {
+    roomRow.classList.add('hidden');
+  }
+  // "Unbegrenzt Fragen durchskippen" ist eine Raum-Einstellung, die nur der Host ändern
+  // kann (betrifft alle Runden/Moderator:innen im Raum) - für den Fragenpool-Engpass bei
+  // kleinen Pools, damit man nicht immer wieder dieselben 3 Fragen zur Auswahl bekommt.
+  const swapsRow = document.getElementById('settings-unlimited-swaps-row');
+  const swapsBtn = document.getElementById('btn-toggle-unlimited-swaps');
+  const amHost = !!(currentCode && lastState && lastState.hostId === myId);
+  if (amHost) {
+    swapsRow.classList.remove('hidden');
+    swapsBtn.textContent = lastState.unlimitedQuestionSwaps ? 'An' : 'Aus';
+  } else {
+    swapsRow.classList.add('hidden');
+  }
+  renderAdminPlayerList();
+  overlay.classList.remove('hidden');
+});
+document.getElementById('btn-toggle-unlimited-swaps').addEventListener('click', () => {
+  if (!currentCode || !lastState) return;
+  const next = !lastState.unlimitedQuestionSwaps;
+  socket.emit('setUnlimitedQuestionSwaps', { code: currentCode, enabled: next });
+  // Optimistisch sofort den Button-Text umschalten, der echte state-Broadcast bestätigt es gleich
+  document.getElementById('btn-toggle-unlimited-swaps').textContent = next ? 'An' : 'Aus';
+});
+document.getElementById('btn-close-settings').addEventListener('click', () => {
+  document.getElementById('settings-overlay').classList.add('hidden');
+});
+
+// ---------- PUNKTELISTE-POPUP ----------
+document.getElementById('btn-show-scoreboard').addEventListener('click', () => {
+  renderScoreboard();
+  document.getElementById('scoreboard-overlay').classList.remove('hidden');
+});
+document.getElementById('btn-close-scoreboard').addEventListener('click', () => {
+  document.getElementById('scoreboard-overlay').classList.add('hidden');
+});
+
+function renderScoreboard() {
+  const box = document.getElementById('scoreboard-list');
+  box.innerHTML = '';
+  document.getElementById('scoreboard-win-hint').textContent =
+    `Wer zuerst Feld ${BOARD_LENGTH} erreicht, gewinnt das Spiel.`;
+  if (!lastState || !lastState.players) return;
+  const sorted = [...lastState.players].sort((a, b) => b.position - a.position);
+  sorted.forEach((p, i) => {
+    const row = document.createElement('div');
+    row.style.display = 'flex';
+    row.style.justifyContent = 'space-between';
+    row.style.alignItems = 'center';
+    row.style.background = 'rgba(255,255,255,0.05)';
+    row.style.borderRadius = '10px';
+    row.style.padding = '10px 14px';
+    const isMe = p.id === myId;
+    row.innerHTML = `
+      <span>${i === 0 ? '🥇 ' : ''}${avatarFor(p)} ${escapeHtml(p.name)}${isMe ? ' (du)' : ''}</span>
+      <span style="font-weight:700; color:var(--gold);">Feld ${p.position}</span>
+    `;
+    box.appendChild(row);
+  });
+}
+
+// ---------- IN-GAME ADMIN-TOOL (nur für dich, per Geheim-Code, geräteübergreifend) ----------
+const ADMIN_CODE_KEY = 'bedazzled_admin_code';
+let isSuperAdminUnlocked = false;
+
+function tryAdminAuth(passcode) {
+  socket.emit('adminAuth', { passcode });
+}
+// Beim (Wieder-)Verbinden automatisch erneut freischalten, falls schon mal auf diesem
+// Gerät erfolgreich freigeschaltet wurde (jede neue Verbindung braucht eine neue Prüfung)
+const storedAdminCode = localStorage.getItem(ADMIN_CODE_KEY);
+if (storedAdminCode) {
+  socket.on('connect', () => tryAdminAuth(storedAdminCode));
+}
+
+socket.on('adminAuthResult', ({ success }) => {
+  const msgEl = document.getElementById('admin-unlock-msg');
+  if (success) {
+    isSuperAdminUnlocked = true;
+    const enteredCode = document.getElementById('input-admin-code').value.trim();
+    if (enteredCode) localStorage.setItem(ADMIN_CODE_KEY, enteredCode);
+    document.getElementById('admin-tools-box').classList.remove('hidden');
+    document.getElementById('admin-unlock-row').classList.add('hidden');
+    msgEl.textContent = '';
+    renderAdminPlayerList();
+  } else {
+    msgEl.textContent = 'Falscher Code.';
+    isSuperAdminUnlocked = false;
+    localStorage.removeItem(ADMIN_CODE_KEY);
+  }
+});
+
+document.getElementById('btn-admin-unlock').addEventListener('click', () => {
+  const code = document.getElementById('input-admin-code').value.trim();
+  if (!code) return;
+  tryAdminAuth(code);
+});
+
+document.getElementById('btn-admin-skip-round').addEventListener('click', () => {
+  if (!currentCode) return;
+  if (!confirm('Aktuelle Runde wirklich überspringen und zurück in die Lobby?')) return;
+  socket.emit('adminSkipRound', { code: currentCode });
+});
+
+document.getElementById('btn-admin-force-drawing').addEventListener('click', () => {
+  if (!currentCode) return;
+  socket.emit('adminForceDrawingRound', { code: currentCode });
+  document.getElementById('settings-overlay').classList.add('hidden');
+});
+
+document.getElementById('btn-admin-force-board').addEventListener('click', () => {
+  if (!currentCode) return;
+  socket.emit('adminForceBoardRandom', { code: currentCode });
+  document.getElementById('settings-overlay').classList.add('hidden');
+});
+
+function renderAdminPlayerList() {
+  const box = document.getElementById('admin-player-list');
+  if (!box) return;
+  if (!isSuperAdminUnlocked || !lastState || !lastState.players) {
+    box.innerHTML = '';
+    return;
+  }
+  box.innerHTML = '';
+  lastState.players.forEach(p => {
+    const row = document.createElement('div');
+    row.style.display = 'flex';
+    row.style.justifyContent = 'space-between';
+    row.style.alignItems = 'center';
+    row.style.padding = '6px 0';
+    row.innerHTML = `<span>${avatarFor(p)} ${escapeHtml(p.name)}${p.connected === false ? ' (getrennt)' : ''}</span>`;
+    const kickBtn = document.createElement('button');
+    kickBtn.className = 'btn-kick';
+    kickBtn.textContent = '✕ Entfernen';
+    kickBtn.addEventListener('click', () => {
+      if (!confirm(`${p.name} wirklich aus dem Raum entfernen?`)) return;
+      socket.emit('kickPlayer', { code: currentCode, targetPlayerId: p.id });
+    });
+    row.appendChild(kickBtn);
+
+    // Kurz vors Ziel setzen (zum Testen von Spielende/Board-Animation/Gewinner-Popup) -
+    // ausschließlich hier im Super-Admin-Panel, nicht mehr für alle Spieler sichtbar.
+    const nearFinishBtn = document.createElement('button');
+    nearFinishBtn.className = 'btn-kick';
+    nearFinishBtn.title = 'Kurz vors Ziel setzen (Spielende testen)';
+    nearFinishBtn.textContent = '🧪';
+    nearFinishBtn.addEventListener('click', () => {
+      socket.emit('adminSetNearFinish', { code: currentCode, targetPlayerId: p.id });
+    });
+    row.appendChild(nearFinishBtn);
+
+    box.appendChild(row);
+  });
+}
+
+let myId = null;
+let currentCode = null;
+let lastState = null;
+
+// ---------- SESSION PERSISTENCE (überlebt Seiten-Reload UND komplettes Schließen von
+// Tab/App - wichtig, damit ein Spieler nach dem Schließen der App wieder in seine
+// laufende Runde zurückfindet, statt als "neuer" Spieler mit Namenskollision zu landen) ----------
+// Für den Multiplayer-Simulator (/simulator.html) laufen mehrere Spieler-Instanzen als
+// iframes auf derselben Seite. iframes vom selben Ursprung teilen sich localStorage,
+// deshalb bekommt jede Instanz über ?testSlot=N ihren eigenen, getrennten Storage-Schlüssel.
+const urlParams = new URLSearchParams(window.location.search);
+const testSlot = urlParams.get('testSlot');
+const roomFromLink = urlParams.get('room');
+const TOKEN_KEY = testSlot ? `bedazzled_token_slot${testSlot}` : 'bedazzled_token';
+const ROOM_KEY = testSlot ? `bedazzled_room_slot${testSlot}` : 'bedazzled_room';
+
+function getOrCreateToken() {
+  let token = localStorage.getItem(TOKEN_KEY);
+  if (!token) {
+    token = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random());
+    localStorage.setItem(TOKEN_KEY, token);
+  }
+  return token;
+}
+let myToken = getOrCreateToken();
+
+function saveSession(code) {
+  localStorage.setItem(ROOM_KEY, code);
+}
+function clearSession() {
+  localStorage.removeItem(ROOM_KEY);
+}
+
+// Falls der Link einen ANDEREN Raum-Code enthält als eine evtl. noch gespeicherte
+// alte Sitzung (z.B. Tab von einem früheren Test wiederverwendet): die alte Sitzung
+// verwerfen, damit sie nicht mit dem Beitreten zum neuen Raum kollidiert.
+if (roomFromLink && localStorage.getItem(ROOM_KEY) && localStorage.getItem(ROOM_KEY) !== roomFromLink) {
+  localStorage.removeItem(ROOM_KEY);
+}
+
+let justReconnected = false;
+socket.on('connect', () => {
+  connectionTroubleShown = false;
+  showError('');
+  justReconnected = true;
+  const savedCode = localStorage.getItem(ROOM_KEY);
+  if (savedCode) {
+    showReconnecting(true);
+    socket.emit('rejoinRoom', { code: savedCode, token: myToken });
+  }
+});
+
+socket.on('rejoinFailed', () => {
+  clearSession();
+  showReconnecting(false);
+});
+
+function showReconnecting(active) {
+  const el = document.getElementById('reconnect-banner');
+  if (el) el.classList.toggle('hidden', !active);
+}
+
+const AVATAR_CHOICES = [
+  { emoji: '💎', label: 'Diamant' },
+  { emoji: '🎭', label: 'Maske' },
+  { emoji: '🔮', label: 'Kristallkugel' },
+  { emoji: '🃏', label: 'Joker' },
+  { emoji: '👑', label: 'Krone' },
+  { emoji: '⭐', label: 'Stern' },
+];
+let selectedAvatar = AVATAR_CHOICES[0].emoji;
+let takenAvatars = [];
+
+function avatarFor(player) {
+  return (player && player.avatar) || '❓';
+}
+
+// Ordnet jeden Rundentyp seiner Feldfarbe zu, damit überall klar erkennbar ist,
+// welche Frageart gerade dran ist (lila=normal, blau=Fremdwort, grün=Schätzen, gelb=Zeichnen)
+function fieldColorInfo(roundType) {
+  if (roundType === 'estimate') return { dotClass: 'key-green', label: 'Grünes Feld · Schätzfrage' };
+  if (roundType === 'foreignword') return { dotClass: 'key-blue', label: 'Blaues Feld · Fremdwort' };
+  if (roundType === 'drawing') return { dotClass: 'key-yellow', label: 'Gelbes Feld · Zeichnen' };
+  return { dotClass: 'key-purple', label: 'Lila Feld · Normale Frage' };
+}
+
+const screens = {
+  start: document.getElementById('screen-start'),
+  setup: document.getElementById('screen-setup'),
+  matchmaking: document.getElementById('screen-matchmaking'),
+  pending: document.getElementById('screen-pending'),
+  intro: document.getElementById('screen-intro'),
+  demo: document.getElementById('screen-demo'),
+  lobby: document.getElementById('screen-lobby'),
+  questionPreview: document.getElementById('screen-question-preview'),
+  answering: document.getElementById('screen-answering'),
+  voting: document.getElementById('screen-voting'),
+  drawing: document.getElementById('screen-drawing'),
+  reveal: document.getElementById('screen-reveal'),
+  board: document.getElementById('screen-board'),
+};
+
+function showScreen(name) {
+  Object.values(screens).forEach(s => s.classList.remove('active'));
+  screens[name].classList.add('active');
+  updateBoardBarHeightVar();
+}
+
+// Die untere Spielleiste ist unterschiedlich hoch (abhängig vom Gerät/Safe-Area) - die
+// tatsächlich gerenderte Höhe wird gemessen, damit der fest angeheftete Button-Fußbereich
+// immer exakt darüber sitzt, statt einen geschätzten Fixwert zu verwenden
+function updateBoardBarHeightVar() {
+  const bar = document.getElementById('board-bar');
+  const height = (bar && !bar.classList.contains('hidden')) ? bar.offsetHeight : 0;
+  document.documentElement.style.setProperty('--board-bar-height', height + 'px');
+}
+window.addEventListener('resize', updateBoardBarHeightVar);
+window.addEventListener('orientationchange', () => setTimeout(updateBoardBarHeightVar, 200));
+
+// ---------- AVATAR PICKER ----------
+function renderAvatarPicker() {
+  const box = document.getElementById('avatar-picker');
+  box.innerHTML = '';
+  AVATAR_CHOICES.forEach(a => {
+    const isTaken = takenAvatars.includes(a.emoji);
+    const div = document.createElement('div');
+    div.className = 'avatar-option'
+      + (a.emoji === selectedAvatar ? ' selected' : '')
+      + (isTaken ? ' taken' : '');
+    div.innerHTML = `<span class="emoji">${a.emoji}</span><span class="label">${isTaken ? 'vergeben' : a.label}</span>`;
+    if (!isTaken) {
+      div.addEventListener('click', () => {
+        selectedAvatar = a.emoji;
+        renderAvatarPicker();
+      });
+    }
+    box.appendChild(div);
+  });
+}
+renderAvatarPicker();
+
+// Simulator-Komfort: Name + Spielfigur automatisch vorausfüllen, wenn als Test-Slot geöffnet
+if (testSlot) {
+  document.getElementById('input-name-setup').value = 'Tester ' + testSlot;
+  const slotIndex = (parseInt(testSlot, 10) - 1) % AVATAR_CHOICES.length;
+  selectedAvatar = AVATAR_CHOICES[slotIndex] ? AVATAR_CHOICES[slotIndex].emoji : selectedAvatar;
+  renderAvatarPicker();
+}
+
+// ---------- START SCREEN: nur Auswahl, ob beitreten oder erstellen ----------
+// WICHTIG: diese Deklarationen müssen VOR dem "roomFromLink"-Block weiter unten stehen,
+// da dieser sie beim Laden über einen Einladungs-Link sofort verwendet (sonst kompletter
+// Skript-Absturz durch Zugriff auf "let"-Variablen vor ihrer Deklaration).
+let pendingIntent = null; // 'join' | 'create' | 'multiplayer'
+let pendingJoinCode = null;
+let awaitingJoinConfirmation = false;
+let pendingJoinCodeCheck = null;
+
+// Komfort: Wenn der Link mit einem Raum-Code geöffnet wurde (z.B. per WhatsApp geteilt),
+// direkt zum Setup-Screen springen – kein manueller "Raum beitreten"-Klick nötig
+if (roomFromLink && /^\d{4}$/.test(roomFromLink)) {
+  document.getElementById('input-code').value = roomFromLink;
+  // awaitingJoinConfirmation setzen, damit der takenAvatars-Response
+  // automatisch zum Setup-Screen weiterleitet (genau wie beim Button-Klick)
+  awaitingJoinConfirmation = true;
+  pendingJoinCodeCheck = roomFromLink;
+  document.getElementById('btn-join').disabled = true;
+  socket.emit('checkTakenAvatars', { code: roomFromLink });
+}
+
+// Prüft live, welche Figuren im eingegebenen Raum schon vergeben sind
+let avatarCheckTimeout = null;
+document.getElementById('input-code').addEventListener('input', () => {
+  clearTimeout(avatarCheckTimeout);
+  const code = document.getElementById('input-code').value.trim();
+  if (code.length !== 4) {
+    takenAvatars = [];
+    renderAvatarPicker();
+    return;
+  }
+  avatarCheckTimeout = setTimeout(() => {
+    socket.emit('checkTakenAvatars', { code });
+  }, 300);
+});
+
+socket.on('takenAvatars', ({ takenAvatars: taken, roomExists, gameInProgress }) => {
+  takenAvatars = taken || [];
+  gameWasInProgress = !!gameInProgress;
+  if (takenAvatars.includes(selectedAvatar)) {
+    const free = AVATAR_CHOICES.find(a => !takenAvatars.includes(a.emoji));
+    if (free) selectedAvatar = free.emoji;
+  }
+  renderAvatarPicker();
+
+  // Setup-Button-Text anpassen: zeigen ob normales Beitreten oder Vormerken
+  const btn = document.getElementById('btn-confirm-setup');
+  if (btn && pendingIntent === 'join') {
+    btn.textContent = gameInProgress ? '⏳ Vormerken für nächste Runde' : 'Los geht\'s';
+  }
+
+  // Falls diese Antwort die Folge eines bewussten Klicks auf "Raum beitreten" war:
+  // erst jetzt tatsächlich zum Setup-Bildschirm wechseln, und nur wenn der Raum existiert
+  if (awaitingJoinConfirmation) {
+    awaitingJoinConfirmation = false;
+    document.getElementById('btn-join').disabled = false;
+    document.getElementById('btn-join').textContent = 'Raum beitreten';
+    if (roomExists) {
+      pendingIntent = 'join';
+      pendingJoinCode = pendingJoinCodeCheck;
+      document.getElementById('avatar-picker-block').classList.remove('hidden');
+      showError('');
+      document.getElementById('setup-error-msg').textContent = '';
+      showScreen('setup');
+    } else {
+      showError('Raum nicht gefunden. Prüfe den Code.');
+    }
+  }
+});
+
+socket.on('avatarTaken', ({ takenAvatars: taken }) => {
+  takenAvatars = taken || [];
+  const free = AVATAR_CHOICES.find(a => !takenAvatars.includes(a.emoji));
+  if (free) selectedAvatar = free.emoji;
+  renderAvatarPicker();
+  showError('Diese Spielfigur wurde gerade von jemand anderem gewählt. Bitte wähle eine andere.');
+});
+
+socket.on('nameTaken', ({ name }) => {
+  showError(`Der Name "${name}" ist in diesem Raum bereits vergeben. Bitte wähle einen anderen Namen.`);
+  // Namensfeld fokussieren und Text markieren, damit man sofort tippen kann
+  const nameInput = document.getElementById('input-name-setup');
+  if (nameInput) { nameInput.focus(); nameInput.select(); }
+});
+
+// ---------- START SCREEN: nur Auswahl, ob beitreten oder erstellen ----------
+
+document.getElementById('btn-create').addEventListener('click', () => {
+  pendingIntent = 'create';
+  pendingJoinCode = null;
+  document.getElementById('avatar-picker-block').classList.remove('hidden');
+  showError('');
+  document.getElementById('setup-error-msg').textContent = '';
+  showScreen('setup');
+});
+
+// ---------- MULTIPLAYER-MATCHMAKING: zufällige Lobby (feste Größe 4 oder 6) ----------
+let pendingLobbySize = 4;
+
+document.getElementById('btn-multiplayer-toggle').addEventListener('click', () => {
+  document.getElementById('multiplayer-size-picker').classList.toggle('hidden');
+});
+
+function startMatchmakingFlow(size) {
+  pendingIntent = 'multiplayer';
+  pendingLobbySize = size;
+  pendingJoinCode = null;
+  takenAvatars = [];
+  document.getElementById('avatar-picker-block').classList.add('hidden');
+  showError('');
+  document.getElementById('setup-error-msg').textContent = '';
+  showScreen('setup');
+}
+document.getElementById('btn-mp-size-4').addEventListener('click', () => startMatchmakingFlow(4));
+document.getElementById('btn-mp-size-6').addEventListener('click', () => startMatchmakingFlow(6));
+
+document.getElementById('btn-cancel-matchmaking').addEventListener('click', () => {
+  socket.emit('cancelMatchmaking');
+  showScreen('start');
+});
+
+socket.on('matchmakingStatus', ({ waitingCount, targetSize, secondsLeft, showCountdown }) => {
+  document.getElementById('mp-waiting-count').textContent = `${waitingCount} / ${targetSize}`;
+  const countdownEl = document.getElementById('mp-countdown');
+  const statusEl = document.getElementById('mp-status-text');
+  if (showCountdown) {
+    countdownEl.classList.remove('hidden');
+    countdownEl.textContent = `Startet in ${secondsLeft}s …`;
+    statusEl.textContent = waitingCount < targetSize
+      ? 'Es wird gleich mit den aktuell wartenden Spielern gestartet.'
+      : 'Los geht\'s!';
+  } else {
+    countdownEl.classList.add('hidden');
+    statusEl.textContent = 'Warte auf weitere Spieler …';
+  }
+});
+
+// Sobald ein Match zustande kam, verhält sich alles wie ein ganz normal beigetretener Raum
+socket.on('matchFound', ({ code, playerId }) => {
+  currentCode = code;
+  myId = playerId;
+  myToken = playerId;
+  localStorage.setItem(TOKEN_KEY, playerId);
+  saveSession(code);
+  showReconnecting(false);
+  document.getElementById('board-bar').classList.remove('hidden');
+  showError('');
+  registerPushNotifications(code);
+});
+
+document.getElementById('btn-join').addEventListener('click', () => {
+  const code = document.getElementById('input-code').value.trim();
+  if (!code) return showError('Bitte gib einen Raum-Code ein.');
+  showError('');
+  awaitingJoinConfirmation = true;
+  pendingJoinCodeCheck = code;
+  document.getElementById('btn-join').disabled = true;
+  document.getElementById('btn-join').textContent = 'Wird geprüft …';
+  socket.emit('checkTakenAvatars', { code });
+});
+
+document.getElementById('btn-back-to-start').addEventListener('click', () => {
+  pendingIntent = null;
+  pendingJoinCode = null;
+  gameWasInProgress = false;
+  document.getElementById('setup-error-msg').textContent = '';
+  const btn = document.getElementById('btn-confirm-setup');
+  if (btn) btn.textContent = 'Los geht\'s';
+  showScreen('start');
+});
+
+// ---------- SETUP SCREEN: Name + Spielfigur wählen, dann tatsächlich beitreten/erstellen ----------
+let gameWasInProgress = false; // true wenn checkTakenAvatars gemeldet hat, dass Spiel läuft
+
+document.getElementById('btn-confirm-setup').addEventListener('click', () => {
+  const name = document.getElementById('input-name-setup').value.trim();
+  if (!name) return showError('Bitte gib deinen Namen ein.');
+
+  if (pendingIntent === 'create') {
+    socket.emit('createRoom', { name, avatar: selectedAvatar, token: myToken });
+  } else if (pendingIntent === 'multiplayer') {
+    socket.emit('joinMatchmaking', { name, lobbySize: pendingLobbySize, token: myToken });
+    document.getElementById('mp-waiting-count').textContent = `1 / ${pendingLobbySize}`;
+    document.getElementById('mp-countdown').classList.add('hidden');
+    document.getElementById('mp-status-text').textContent = 'Warte auf weitere Spieler …';
+    showScreen('matchmaking');
+  } else if (pendingIntent === 'join') {
+    if (gameWasInProgress) {
+      // Spiel läuft → als Pending vormerken statt sofort joinRoom
+      socket.emit('joinWhenReady', { name, code: pendingJoinCode, avatar: selectedAvatar, token: myToken });
+    } else {
+      socket.emit('joinRoom', { name, code: pendingJoinCode, avatar: selectedAvatar, token: myToken });
+    }
+  }
+});
+
+function showError(msg) {
+  const activeEntry = Object.entries(screens).find(([, el]) => el.classList.contains('active'));
+  const screenName = activeEntry ? activeEntry[0] : 'start';
+  const targetId = screenName === 'setup' ? 'setup-error-msg'
+    : screenName === 'lobby' ? 'lobby-error-msg'
+    : 'error-msg';
+  const el = document.getElementById(targetId);
+  if (el) el.textContent = msg;
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+socket.on('errorMsg', showError);
+
+socket.on('joined', ({ code, playerId }) => {
+  currentCode = code;
+  myId = playerId;
+  myToken = playerId;
+  localStorage.setItem(TOKEN_KEY, playerId);
+  saveSession(code);
+  showReconnecting(false);
+  document.getElementById('board-bar').classList.remove('hidden');
+  showError('');
+  registerPushNotifications(code);
+});
+
+// ---------- PUSH-BENACHRICHTIGUNGEN (nur in der nativen Android-App aktiv) ----------
+// Läuft im normalen Browser komplett folgenlos (Capacitor-Plugin existiert dort nicht).
+// Fordert Erlaubnis an, holt den FCM-Token und meldet ihn beim Server, damit
+// "Du bist dran!"-Push-Nachrichten (Antwort/Abstimmen/Moderieren) zugestellt werden können.
+let pushRegistered = false;
+async function registerPushNotifications(code) {
+  const Push = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.PushNotifications;
+  if (!Push) return; // kein Capacitor bzw. Plugin nicht installiert (normaler Browser)
+  try {
+    if (!pushRegistered) {
+      pushRegistered = true;
+      let permStatus = await Push.checkPermissions();
+      if (permStatus.receive !== 'granted') {
+        permStatus = await Push.requestPermissions();
+      }
+      if (permStatus.receive !== 'granted') {
+        console.log('[Push] Erlaubnis verweigert - keine Benachrichtigungen möglich.');
+        return;
+      }
+      await Push.register();
+      Push.addListener('registration', (token) => {
+        socket.emit('registerPushToken', { code, pushToken: token.value });
+      });
+      Push.addListener('registrationError', (err) => {
+        console.log('[Push] Registrierung fehlgeschlagen:', err);
+      });
+      // Falls die App im Vordergrund eine Push-Nachricht empfängt, trotzdem anzeigen
+      Push.addListener('pushNotificationReceived', (notification) => {
+        console.log('[Push] Empfangen (App im Vordergrund):', notification);
+      });
+    } else {
+      // Bereits registriert (z.B. nach Raumwechsel) - Token nur erneut mit neuem Code verknüpfen
+      const info = await Push.checkPermissions();
+      if (info.receive === 'granted') {
+        // Aktueller Token wird beim nächsten 'registration'-Event ohnehin neu gemeldet;
+        // hier reicht es, den Server über den (weiterhin gültigen) letzten Stand zu informieren,
+        // was bereits durch den Registrierungs-Listener beim ersten Aufruf abgedeckt ist.
+      }
+    }
+  } catch (e) {
+    console.log('[Push] Setup-Fehler (unkritisch, App läuft normal weiter):', e);
+  }
+}
+
+// Jemand versucht mitten im Spiel beizutreten und der Name passt zu einem getrennten
+// Spieler - fragen, ob er/sie das ist und den alten Platz (Position, Punkte, Rolle) übernehmen möchte
+socket.on('reclaimAvailable', ({ code, existingPlayerId, existingName }) => {
+  const wantsReclaim = confirm(`Es gibt schon einen getrennten Spieler namens "${existingName}" in diesem Raum. Bist du das und möchtest du an der gleichen Stelle weitermachen (mit deiner bisherigen Position und deinen Punkten)?`);
+  if (wantsReclaim) {
+    socket.emit('confirmReclaim', { code, existingPlayerId });
+  } else {
+    showError('Bitte wähle einen anderen Namen, um als neuer Spieler beizutreten (sofern das Spiel das noch zulässt).');
+  }
+});
+
+// Server hat den Spieler erfolgreich vorgemerkt → Wartescreen zeigen
+socket.on('pendingJoinQueued', ({ code, playerId }) => {
+  currentCode = code;
+  myId = playerId;
+  myToken = playerId;
+  localStorage.setItem(TOKEN_KEY, playerId);
+  saveSession(code);
+  showReconnecting(false);
+  showError('');
+  // Infoanzeige im Wartescreen: wer wartet?
+  const nameEl = document.getElementById('pending-name-display');
+  if (nameEl) {
+    const name = document.getElementById('input-name-setup').value.trim();
+    const avatar = selectedAvatar || '💎';
+    nameEl.textContent = `${avatar} ${name} wartet auf den nächsten Einlass …`;
+  }
+  showScreen('pending');
+});
+
+document.getElementById('btn-cancel-pending').addEventListener('click', () => {
+  if (currentCode) socket.emit('cancelPendingJoin', { code: currentCode });
+  clearSession();
+  currentCode = null;
+  myId = null;
+  lastState = null;
+  pendingIntent = null;
+  pendingJoinCode = null;
+  gameWasInProgress = false;
+  document.getElementById('input-code').value = '';
+  showError('');
+  showScreen('start');
+});
+
+// ---------- LOBBY ----------
+document.getElementById('btn-start-round').addEventListener('click', () => {
+  showError('');
+  socket.emit('startRound', { code: currentCode });
+});
+
+// ---------- FRAGEN-VORSCHAU (Moderator sieht/wählt die Frage vor dem Rundenstart) ----------
+let qpCurrentIndex = 0;
+let qpSwapAreaRevealed = false;
+document.getElementById('btn-qp-prev').addEventListener('click', () => {
+  if (qpCurrentIndex > 0) {
+    socket.emit('selectPreviewCandidate', { code: currentCode, index: qpCurrentIndex - 1 });
+  }
+});
+document.getElementById('btn-qp-next-candidate').addEventListener('click', () => {
+  socket.emit('selectPreviewCandidate', { code: currentCode, index: qpCurrentIndex + 1 });
+});
+document.getElementById('btn-qp-swap').addEventListener('click', () => {
+  qpSwapAreaRevealed = true;
+  document.getElementById('qp-swap-area').classList.remove('hidden');
+  socket.emit('previewOtherQuestion', { code: currentCode });
+});
+document.getElementById('btn-qp-confirm').addEventListener('click', () => {
+  socket.emit('confirmQuestion', { code: currentCode });
+});
+
+document.getElementById('btn-leave-room').addEventListener('click', () => {
+  document.getElementById('quit-overlay').classList.remove('hidden');
+});
+
+// ---- X-Button: Spiel verlassen (mit Bestätigung) ----
+function doLeaveRoom() {
+  if (currentCode) socket.emit('leaveRoom', { code: currentCode });
+  clearSession();
+  currentCode = null;
+  myId = null;
+  lastState = null;
+  pendingIntent = null;
+  pendingJoinCode = null;
+  gameWasInProgress = false;
+  document.getElementById('board-bar').classList.add('hidden');
+  document.getElementById('input-code').value = '';
+  showError('');
+  showScreen('start');
+}
+
+// ---- Spiel verlassen (alle .btn-leave-game Buttons + Quit-Modal) ----
+document.addEventListener('click', e => {
+  if (e.target.closest('.btn-leave-game')) {
+    document.getElementById('quit-overlay').classList.remove('hidden');
+  }
+});
+document.getElementById('btn-quit-confirm').addEventListener('click', () => {
+  document.getElementById('quit-overlay').classList.add('hidden');
+  doLeaveRoom();
+});
+document.getElementById('btn-quit-cancel').addEventListener('click', () => {
+  document.getElementById('quit-overlay').classList.add('hidden');
+});
+
+// ---- Spieler einladen: Popup öffnen/schließen ----
+document.getElementById('btn-invite').addEventListener('click', () => {
+  document.getElementById('invite-overlay').classList.remove('hidden');
+  document.getElementById('btn-leave-room').disabled = true;
+});
+document.getElementById('btn-invite-close').addEventListener('click', () => {
+  document.getElementById('invite-overlay').classList.add('hidden');
+  document.getElementById('btn-leave-room').disabled = false;
+});
+
+document.getElementById('btn-copy-link').addEventListener('click', async () => {
+  const link = `${window.location.origin}/?room=${currentCode}`;
+  try {
+    await navigator.clipboard.writeText(link);
+  } catch (e) {
+    // Fallback für Browser ohne Clipboard-API-Berechtigung
+    const tempInput = document.createElement('input');
+    tempInput.value = link;
+    document.body.appendChild(tempInput);
+    tempInput.select();
+    document.execCommand('copy');
+    document.body.removeChild(tempInput);
+  }
+  const msg = document.getElementById('copy-link-msg');
+  msg.classList.remove('hidden');
+  setTimeout(() => msg.classList.add('hidden'), 2500);
+});
+
+document.getElementById('btn-share-whatsapp').addEventListener('click', () => {
+  const link = `${window.location.origin}/?room=${currentCode}`;
+  const text = `Spiel mit bei Bedazzled! 🎭\n${link}`;
+  window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
+});
+
+// ---------- ANSWERING ----------
+let currentRoundType = 'question';
+
+document.getElementById('btn-submit-answer').addEventListener('click', () => {
+  if (currentRoundType === 'estimate') {
+    const numberInput = document.getElementById('input-answer-number');
+    const value = numberInput.value.trim();
+    if (value === '') return;
+    socket.emit('submitAnswer', { code: currentCode, text: value });
+    document.getElementById('btn-submit-answer').textContent = 'Schätzung abgeschickt ✓ (Änderung möglich)';
+    playSubmitSound();
+    return;
+  }
+  const text = document.getElementById('input-answer').value.trim();
+  if (!text) return;
+  socket.emit('submitAnswer', { code: currentCode, text });
+  document.getElementById('input-answer').disabled = true;
+  document.getElementById('btn-submit-answer').disabled = true;
+  document.getElementById('btn-submit-answer').textContent = 'Wird geprüft …';
+  playSubmitSound();
+});
+
+socket.on('answerChecking', () => {
+  document.getElementById('btn-submit-answer').textContent = 'Wird geprüft …';
+});
+
+socket.on('answerRejected', ({ reason }) => {
+  const ta = document.getElementById('input-answer');
+  ta.disabled = false;
+  document.getElementById('btn-submit-answer').disabled = false;
+  document.getElementById('btn-submit-answer').textContent = 'Antwort abschicken';
+  document.getElementById('answer-reject-msg').textContent = reason;
+  document.getElementById('answer-reject-msg').classList.remove('hidden');
+  ta.focus();
+});
+
+socket.on('voteLocked', ({ reason }) => {
+  document.querySelectorAll('.vote-option').forEach(el => { el.style.pointerEvents = 'none'; });
+  document.getElementById('btn-submit-vote').classList.add('hidden');
+  document.getElementById('vote-submitted-msg').classList.remove('hidden');
+  document.getElementById('vote-submitted-msg').textContent = reason;
+});
+
+socket.on('answerLocked', ({ reason }) => {
+  document.getElementById('input-answer').disabled = true;
+  document.getElementById('input-answer-number').disabled = true;
+  document.getElementById('btn-submit-answer').disabled = true;
+  document.getElementById('btn-submit-answer').textContent = 'Alle fertig – keine Änderung mehr möglich';
+  document.getElementById('answer-reject-msg').textContent = reason;
+  document.getElementById('answer-reject-msg').classList.remove('hidden');
+});
+
+socket.on('answerCorrected', ({ text, wasChanged }) => {
+  document.getElementById('input-answer').value = text;
+  document.getElementById('input-answer').disabled = false; // Änderung bleibt möglich, solange nicht alle fertig sind
+  document.getElementById('btn-submit-answer').disabled = false;
+  document.getElementById('answer-reject-msg').classList.add('hidden');
+  document.getElementById('btn-submit-answer').textContent = 'Antwort abgeschickt ✓ (Änderung möglich)';
+});
+
+// Live-Tippen: Moderator:in sieht in Echtzeit, was gerade eingetippt wird
+let typingDebounce = null;
+document.getElementById('input-answer').addEventListener('input', (e) => {
+  clearTimeout(typingDebounce);
+  const text = e.target.value;
+  typingDebounce = setTimeout(() => {
+    socket.emit('typingAnswer', { code: currentCode, text });
+  }, 250);
+});
+// Platzhalter verschwindet schon beim Reinklicken (nicht erst beim ersten Zeichen) -
+// so ist der blinkende Cursor sofort gut sichtbar, ohne dass Text im Hintergrund steht
+function hidePlaceholderOnFocus(inputEl) {
+  const original = inputEl.getAttribute('placeholder') || '';
+  inputEl.addEventListener('focus', () => { inputEl.setAttribute('placeholder', ''); });
+  inputEl.addEventListener('blur', () => {
+    if (!inputEl.value) inputEl.setAttribute('placeholder', original);
+  });
+}
+hidePlaceholderOnFocus(document.getElementById('input-answer-number'));
+hidePlaceholderOnFocus(document.getElementById('input-answer'));
+
+document.getElementById('input-answer-number').addEventListener('input', (e) => {
+  clearTimeout(typingDebounce);
+  const text = e.target.value;
+  typingDebounce = setTimeout(() => {
+    socket.emit('typingAnswer', { code: currentCode, text });
+  }, 250);
+});
+
+document.getElementById('btn-to-voting').addEventListener('click', () => {
+  socket.emit('goToVoting', { code: currentCode });
+});
+
+document.getElementById('btn-reveal-estimate').addEventListener('click', () => {
+  socket.emit('revealEstimate', { code: currentCode });
+});
+
+// ---------- VOTING ----------
+let selectedVote = null;
+let voteSubmitted = false;
+
+function renderVoteOptions(shuffledAnswers) {
+  const box = document.getElementById('vote-options');
+  box.innerHTML = '';
+  shuffledAnswers.forEach((a, i) => {
+    const div = document.createElement('div');
+    div.className = 'vote-option';
+    div.textContent = a.text;
+    div.dataset.ownerId = a.ownerId;
+    div.addEventListener('click', () => {
+      document.querySelectorAll('.vote-option').forEach(el => el.classList.remove('selected'));
+      div.classList.add('selected');
+      selectedVote = a.ownerId;
+      // Eine andere Antwort wählen ist jederzeit möglich, solange noch nicht aufgelöst
+      // wurde - auch nach einer bereits abgeschickten Stimme (z.B. wenn man sich
+      // umentscheidet, solange die anderen noch nicht alle fertig sind).
+      voteSubmitted = false;
+      document.getElementById('btn-submit-vote').classList.remove('hidden');
+      document.getElementById('btn-submit-vote').disabled = false;
+      document.getElementById('vote-submitted-msg').classList.add('hidden');
+      socket.emit('previewVote', { code: currentCode, chosenOwnerId: a.ownerId });
+    });
+    box.appendChild(div);
+  });
+}
+
+document.getElementById('btn-submit-vote').addEventListener('click', () => {
+  if (!selectedVote) return;
+  socket.emit('submitVote', { code: currentCode, chosenOwnerId: selectedVote });
+  voteSubmitted = true;
+  document.getElementById('btn-submit-vote').disabled = true;
+  document.getElementById('btn-submit-vote').classList.add('hidden');
+  document.getElementById('vote-submitted-msg').classList.remove('hidden');
+  playSubmitSound();
+});
+
+document.getElementById('btn-to-reveal').addEventListener('click', () => {
+  socket.emit('revealResults', { code: currentCode });
+});
+
+// ---------- ZEICHENRUNDE (gelbe Felder) ----------
+// Global (nicht nur lokal im state-Handler) verfügbar, da die Canvas-Funktionen
+// außerhalb des state-Handlers wissen müssen, ob gerade gezeichnet werden darf.
+let isMyTurnToDraw = false;
+let lastDrawingRoundIdSeen = null;
+
+const drawingCanvas = document.getElementById('drawing-canvas');
+const drawingCtx = drawingCanvas.getContext('2d');
+drawingCtx.lineCap = 'round';
+drawingCtx.lineJoin = 'round';
+drawingCtx.strokeStyle = '#1a0a2e';
+drawingCtx.lineWidth = 4;
+let isDrawingNow = false;
+let lastDrawPoint = null;
+
+function canvasPointFromEvent(e) {
+  const rect = drawingCanvas.getBoundingClientRect();
+  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+  // Auf die interne Canvas-Auflösung (600x420) umrechnen, egal wie groß es angezeigt wird
+  const x = (clientX - rect.left) * (drawingCanvas.width / rect.width);
+  const y = (clientY - rect.top) * (drawingCanvas.height / rect.height);
+  return { x, y };
+}
+
+function drawLineSegment(ctx, x0, y0, x1, y1) {
+  ctx.beginPath();
+  ctx.moveTo(x0, y0);
+  ctx.lineTo(x1, y1);
+  ctx.stroke();
+}
+
+function startDrawing(e) {
+  if (!isMyTurnToDraw || lastState?.phase !== 'drawing') return;
+  isDrawingNow = true;
+  lastDrawPoint = canvasPointFromEvent(e);
+  e.preventDefault();
+}
+function moveDrawing(e) {
+  if (!isDrawingNow) return;
+  const p = canvasPointFromEvent(e);
+  drawLineSegment(drawingCtx, lastDrawPoint.x, lastDrawPoint.y, p.x, p.y);
+  socket.emit('drawStroke', { code: currentCode, x0: lastDrawPoint.x, y0: lastDrawPoint.y, x1: p.x, y1: p.y });
+  lastDrawPoint = p;
+  e.preventDefault();
+}
+function stopDrawing() {
+  isDrawingNow = false;
+  lastDrawPoint = null;
+}
+drawingCanvas.addEventListener('mousedown', startDrawing);
+drawingCanvas.addEventListener('mousemove', moveDrawing);
+window.addEventListener('mouseup', stopDrawing);
+drawingCanvas.addEventListener('touchstart', startDrawing, { passive: false });
+drawingCanvas.addEventListener('touchmove', moveDrawing, { passive: false });
+drawingCanvas.addEventListener('touchend', stopDrawing);
+
+// Striche von der/dem Moderator:in empfangen und beim Zusehen nachzeichnen
+socket.on('drawStroke', ({ x0, y0, x1, y1 }) => {
+  drawLineSegment(drawingCtx, x0, y0, x1, y1);
+});
+socket.on('clearDrawing', () => {
+  drawingCtx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+});
+
+document.getElementById('btn-drawing-clear').addEventListener('click', () => {
+  drawingCtx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+  socket.emit('clearDrawing', { code: currentCode });
+});
+document.getElementById('btn-drawing-end').addEventListener('click', () => {
+  socket.emit('endDrawingRound', { code: currentCode });
+});
+
+document.getElementById('btn-drawing-guess-submit').addEventListener('click', () => {
+  const input = document.getElementById('input-drawing-guess');
+  const guess = input.value.trim();
+  if (!guess) return;
+  socket.emit('submitGuess', { code: currentCode, guess });
+  input.value = '';
+});
+document.getElementById('input-drawing-guess').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') document.getElementById('btn-drawing-guess-submit').click();
+});
+socket.on('guessWrong', () => {
+  const fb = document.getElementById('drawing-guess-feedback');
+  fb.textContent = '❌ Leider falsch, versuch\'s nochmal!';
+  setTimeout(() => { if (fb.textContent.includes('Leider')) fb.textContent = ''; }, 2000);
+});
+
+socket.on('someoneGuessedCorrectly', ({ name }) => {
+  const fb = document.getElementById('drawing-guess-feedback');
+  fb.textContent = `🏃 ${name} hat schon richtig geraten! Nur noch 1 Platz übrig …`;
+  setTimeout(() => { if (fb.textContent.includes(name)) fb.textContent = ''; }, 4000);
+});
+
+// ---------- REVEAL ----------
+document.getElementById('btn-to-board').addEventListener('click', () => {
+  socket.emit('showBoard', { code: currentCode });
+});
+
+// ---------- BOARD ----------
+document.getElementById('btn-next-round').addEventListener('click', () => {
+  socket.emit('nextRound', { code: currentCode });
+});
+
+// ---------- WINNER OVERLAY (wird nach der Spielbrett-Animation aufgerufen, nicht sofort) ----------
+let winnerOverlayShownFor = null; // verhindert doppeltes Anzeigen bei erneutem State-Update
+function showWinnerOverlay(winnerName, awards) {
+  document.getElementById('winner-text').textContent = `${winnerName} hat gewonnen!`;
+  const awardsBox = document.getElementById('awards-list');
+  awardsBox.innerHTML = '';
+  (awards || []).forEach(a => {
+    const div = document.createElement('div');
+    div.className = 'award-item';
+    const unitLabel = a.title.includes('Bluffer') ? 'x Mitspieler getäuscht'
+      : a.title.includes('Getäuscht') ? 'x reingefallen'
+      : a.title.includes('Schätz') ? 'x am nächsten dran'
+      : 'x';
+    const namesWithCount = (a.names || []).map(n => `${escapeHtml(n)} (${a.count}${unitLabel})`).join(' & ');
+    div.innerHTML = `<span class="award-title">${escapeHtml(a.title)}</span><span class="award-names">${namesWithCount}</span>`;
+    awardsBox.appendChild(div);
+  });
+  document.getElementById('winner-overlay').classList.remove('hidden');
+  playWinSound();
+}
+document.getElementById('btn-close-winner').addEventListener('click', () => {
+  document.getElementById('winner-overlay').classList.add('hidden');
+});
+document.getElementById('btn-new-game').addEventListener('click', () => {
+  document.getElementById('winner-overlay').classList.add('hidden');
+  socket.emit('newGameSameLobby', { code: currentCode });
+});
+
+// ---------- BOARD RENDER (mini bar, always visible) ----------
+let estimateTriggerFields = [5, 8, 13, 18]; // Standardwert, wird vom Server überschrieben
+let foreignwordTriggerFields = [2, 10, 16, 22];
+let drawingTriggerFields = [4, 12, 19, 24];
+
+function renderBoard(players, positionsOverride) {
+  const track = document.getElementById('board-track');
+  const BOARD_LENGTH = 26;
+  track.innerHTML = '';
+  for (let i = 0; i <= BOARD_LENGTH; i++) {
+    const field = document.createElement('div');
+    let cls = 'board-field' + (i === BOARD_LENGTH ? ' finish' : '');
+    if (estimateTriggerFields.includes(i)) cls += ' estimate-field';
+    if (foreignwordTriggerFields.includes(i)) cls += ' foreignword-field';
+    if (drawingTriggerFields.includes(i)) cls += ' drawing-field';
+    field.className = cls;
+    field.textContent = i === BOARD_LENGTH ? '🏁' : i;
+    const here = players.filter(p => (positionsOverride ? positionsOverride[p.id] : p.position) === i);
+    here.forEach((p, idx) => {
+      const tok = document.createElement('span');
+      tok.className = 'board-token';
+      tok.style.transform = `translate(${idx * 6 - 4}px, ${idx * -6}px)`;
+      tok.textContent = avatarFor(p);
+      tok.title = p.name;
+      field.appendChild(tok);
+    });
+    track.appendChild(field);
+  }
+}
+
+// ---------- BOARD RENDER (large, animated, rechteckige Laufbahn) ----------
+const BOARD_LENGTH = 26;
+const BOARD_SLOTS = BOARD_LENGTH + 1; // Felder 0..20
+const HOP_MS = 380; // Dauer pro Feld-Hop bei der Animation
+let roundStartPositions = {};
+let miniBarShowsLive = true; // Mini-Leiste zeigt neue Positionen erst, sobald das große Spielbrett sie enthüllt
+
+// Verteilt Feld i gleichmäßig entlang des Umfangs eines Rechtecks (Seitenverhältnis 2:1),
+// sodass die Abstände zwischen Feldern optisch gleich groß wirken.
+function fieldPercent(i, totalSlots) {
+  const W = 2, H = 1; // Verhältnis Breite:Höhe des Rechtecks
+  const P = 2 * W + 2 * H;
+  let d = (i / totalSlots) * P;
+  if (d <= W) return { x: (d / W) * 100, y: 0 };                       // obere Kante, links -> rechts
+  d -= W;
+  if (d <= H) return { x: 100, y: (d / H) * 100 };                     // rechte Kante, oben -> unten
+  d -= H;
+  if (d <= W) return { x: 100 - (d / W) * 100, y: 100 };               // untere Kante, rechts -> links
+  d -= W;
+  return { x: 0, y: 100 - (d / H) * 100 };                             // linke Kante, unten -> oben
+}
+
+// Berechnet für jede Figur einen Versatz: allein auf dem Feld -> Mitte, mehrere -> aufgefächert
+function computeTokenOffsets(players, positionsMap) {
+  const groups = {};
+  players.forEach(p => {
+    const pos = positionsMap[p.id];
+    if (!groups[pos]) groups[pos] = [];
+    groups[pos].push(p.id);
+  });
+  const offsets = {};
+  Object.values(groups).forEach(ids => {
+    if (ids.length === 1) {
+      offsets[ids[0]] = { dx: 0, dy: 0 };
+    } else {
+      ids.forEach((id, idx) => {
+        offsets[id] = { dx: (idx % 3) * 9 - 9, dy: Math.floor(idx / 3) * 9 - 9 };
+      });
+    }
+  });
+  return offsets;
+}
+
+function renderBoardLarge(players, fromPositions, animate, onComplete) {
+  const fieldsBox = document.getElementById('board-fields-large');
+  const tokensBox = document.getElementById('board-tokens-large');
+  fieldsBox.innerHTML = '';
+  for (let i = 0; i < BOARD_SLOTS; i++) {
+    const pos = fieldPercent(i, BOARD_SLOTS);
+    const dot = document.createElement('div');
+    let dotCls = 'board-field-dot' + (i === BOARD_LENGTH ? ' finish' : '');
+    if (estimateTriggerFields.includes(i)) dotCls += ' estimate-field';
+    if (foreignwordTriggerFields.includes(i)) dotCls += ' foreignword-field';
+    if (drawingTriggerFields.includes(i)) dotCls += ' drawing-field';
+    dot.className = dotCls;
+    dot.style.left = pos.x + '%';
+    dot.style.top = pos.y + '%';
+    dot.textContent = i === BOARD_LENGTH ? '🏁' : i;
+    fieldsBox.appendChild(dot);
+  }
+
+  tokensBox.innerHTML = '';
+  const tokenEls = {};
+  const startPositionsMap = {};
+  players.forEach(p => { startPositionsMap[p.id] = animate ? (fromPositions[p.id] ?? p.position) : p.position; });
+  const startOffsets = computeTokenOffsets(players, startPositionsMap);
+
+  players.forEach(p => {
+    const tok = document.createElement('span');
+    tok.className = 'board-token-rect';
+    tok.textContent = avatarFor(p);
+    tok.title = p.name;
+    const startPos = startPositionsMap[p.id];
+    const pos = fieldPercent(startPos, BOARD_SLOTS);
+    tok.style.left = pos.x + '%';
+    tok.style.top = pos.y + '%';
+    const off = startOffsets[p.id] || { dx: 0, dy: 0 };
+    tok.style.transform = `translate(${off.dx}px, ${off.dy}px)`;
+    tokensBox.appendChild(tok);
+    tokenEls[p.id] = tok;
+  });
+
+  if (animate) {
+    // Figuren ziehen nacheinander, nicht gleichzeitig - macht jede Bewegung einzeln sichtbar
+    const movers = players
+      .map(p => ({ p, start: fromPositions[p.id] ?? p.position, steps: p.position - (fromPositions[p.id] ?? p.position) }))
+      .filter(m => m.steps > 0);
+
+    const currentDisplayPositions = { ...startPositionsMap };
+    let cumulativeDelay = 0;
+    const PAUSE_BETWEEN_PLAYERS = 250;
+
+    function applyAllTokenPositions() {
+      const offs = computeTokenOffsets(players, currentDisplayPositions);
+      players.forEach(pp => {
+        const tok = tokenEls[pp.id];
+        if (!tok) return;
+        const pos = fieldPercent(currentDisplayPositions[pp.id], BOARD_SLOTS);
+        tok.style.left = pos.x + '%';
+        tok.style.top = pos.y + '%';
+        const off = offs[pp.id] || { dx: 0, dy: 0 };
+        tok.style.transform = `translate(${off.dx}px, ${off.dy}px)`;
+      });
+    }
+
+    movers.forEach(({ p, start, steps }) => {
+      for (let s = 1; s <= steps; s++) {
+        const delay = cumulativeDelay + s * HOP_MS;
+        setTimeout(() => {
+          currentDisplayPositions[p.id] = start + s;
+          playHopSound();
+          applyAllTokenPositions();
+        }, delay);
+      }
+      cumulativeDelay += steps * HOP_MS + PAUSE_BETWEEN_PLAYERS;
+    });
+
+    if (onComplete) setTimeout(onComplete, cumulativeDelay + 200);
+  } else if (onComplete) {
+    onComplete();
+  }
+
+  const legend = document.getElementById('board-legend');
+  legend.innerHTML = '';
+  players.forEach(p => {
+    const span = document.createElement('span');
+    span.textContent = `${avatarFor(p)} ${p.name}: Feld ${p.position}`;
+    legend.appendChild(span);
+  });
+}
+
+// ---------- LOBBY PLAYER LIST (mit Host-Kick-Funktion) ----------
+let pendingKickId = null;
+let lastLobbyState = null;
+
+function renderLobbyPlayerList(state) {
+  lastLobbyState = state;
+  const isHost = state.hostId === myId;
+  const list = document.getElementById('player-list');
+  list.innerHTML = '';
+
+  state.players.forEach(p => {
+    const li = document.createElement('li');
+    const isMod = p.id === state.moderatorId;
+    li.className = p.connected === false ? 'disconnected' : '';
+
+    if (pendingKickId === p.id) {
+      li.innerHTML = `
+        <span class="kick-confirm-text">${escapeHtml(p.name)} wirklich entfernen?</span>
+        <span class="kick-confirm-actions">
+          <button class="btn-kick-yes">Ja, entfernen</button>
+          <button class="btn-kick-no">Abbrechen</button>
+        </span>
+      `;
+      li.querySelector('.btn-kick-yes').addEventListener('click', () => {
+        socket.emit('kickPlayer', { code: currentCode, targetPlayerId: p.id });
+        pendingKickId = null;
+      });
+      li.querySelector('.btn-kick-no').addEventListener('click', () => {
+        pendingKickId = null;
+        renderLobbyPlayerList(lastLobbyState);
+      });
+      list.appendChild(li);
+      return;
+    }
+
+    li.innerHTML = `<span><span class="player-avatar">${avatarFor(p)}</span><span class="player-name">${escapeHtml(p.name)}${p.id === myId ? ' (du)' : ''}</span>${p.connected === false ? '<span class="tag-offline">getrennt</span>' : ''}</span>`;
+    if (isMod) {
+      const tag = document.createElement('span');
+      tag.className = 'tag';
+      tag.textContent = 'Moderator';
+      li.appendChild(tag);
+    }
+    if (isHost && p.id !== myId) {
+      const kickBtn = document.createElement('button');
+      kickBtn.className = 'btn-kick';
+      kickBtn.title = 'Spieler entfernen';
+      kickBtn.textContent = '🚫';
+      kickBtn.addEventListener('click', () => {
+        pendingKickId = p.id;
+        renderLobbyPlayerList(lastLobbyState);
+      });
+      li.appendChild(kickBtn);
+    }
+    list.appendChild(li);
+  });
+
+  // Hint "Mindestens 3 Spieler nötig" nur zeigen, wenn noch zu wenige da sind
+  const hintEl = document.getElementById('min-players-hint');
+  if (hintEl) hintEl.classList.toggle('hidden', state.players.length >= 3);
+}
+
+// ---------- LOBBY-AVATAR-PICKER (nur für Multiplayer-Matches, nach dem Matching) ----------
+let lobbySelectedAvatar = null;
+
+function renderLobbyAvatarPicker(state) {
+  const block = document.getElementById('lobby-avatar-picker-block');
+  const me = state.players.find(p => p.id === myId);
+  const iHaveChosen = !!(me && me.avatar);
+
+  if (!state.isMultiplayerMatch || iHaveChosen) {
+    block.classList.add('hidden');
+    return;
+  }
+  block.classList.remove('hidden');
+
+  const takenHere = state.players.filter(p => p.id !== myId && p.avatar).map(p => p.avatar);
+  if (lobbySelectedAvatar && takenHere.includes(lobbySelectedAvatar)) lobbySelectedAvatar = null;
+
+  const box = document.getElementById('lobby-avatar-picker');
+  box.innerHTML = '';
+  AVATAR_CHOICES.forEach(a => {
+    const isTaken = takenHere.includes(a.emoji);
+    const div = document.createElement('div');
+    div.className = 'avatar-option'
+      + (isTaken ? ' taken' : '')
+      + (a.emoji === lobbySelectedAvatar ? ' selected' : '');
+    div.innerHTML = `<span class="emoji">${a.emoji}</span><span class="label">${isTaken ? 'vergeben' : a.label}</span>`;
+    if (!isTaken) {
+      div.addEventListener('click', () => {
+        lobbySelectedAvatar = a.emoji;
+        renderLobbyAvatarPicker(state);
+      });
+    }
+    box.appendChild(div);
+  });
+
+  const confirmBtn = document.getElementById('btn-confirm-lobby-avatar');
+  confirmBtn.disabled = !lobbySelectedAvatar;
+}
+
+document.getElementById('btn-confirm-lobby-avatar').addEventListener('click', () => {
+  if (!lobbySelectedAvatar) return;
+  socket.emit('chooseAvatar', { code: currentCode, avatar: lobbySelectedAvatar });
+});
+
+socket.on('kicked', () => {
+  clearSession();
+  currentCode = null;
+  myId = null;
+  lastState = null;
+  pendingIntent = null;
+  pendingJoinCode = null;
+  document.getElementById('board-bar').classList.add('hidden');
+  showError('Du wurdest vom Host aus dem Raum entfernt.');
+  showScreen('start');
+});
+
+function updateConnectionBanner(state) {
+  const banner = document.getElementById('connection-issue-banner');
+  const disconnected = (state.players || []).filter(p => p.connected === false && p.id !== myId);
+  if (disconnected.length === 0) {
+    banner.classList.add('hidden');
+    return;
+  }
+  const names = disconnected.map(p => p.name).join(', ');
+  banner.textContent = `⚠️ Verbindungsprobleme bei ${names} – das Spiel läuft trotzdem normal weiter.`;
+  banner.classList.remove('hidden');
+}
+
+// ---------- MAIN STATE HANDLER ----------
+socket.on('state', (state) => {
+  if (!lastState || lastState.phase !== state.phase) {
+    // Phasenwechsel: alte Fehlermeldungen (z.B. "keine Fragen hinterlegt") sollen nicht
+    // ewig hängen bleiben, sobald der Spielprozess erfolgreich weiterläuft.
+    ['error-msg', 'setup-error-msg', 'lobby-error-msg'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = '';
+    });
+  }
+  const enteringVoting = state.phase === 'voting' && (!lastState || lastState.phase !== 'voting');
+  if (enteringVoting) {
+    if (state.myVote) {
+      selectedVote = state.myVote;
+      voteSubmitted = true;
+    } else {
+      selectedVote = null;
+      voteSubmitted = false;
+    }
+  }
+  const enteringAnswering = state.phase === 'answering' && ((!lastState || lastState.phase !== 'answering') || justReconnected);
+  const enteringBoard = state.phase === 'board' && (!lastState || lastState.phase !== 'board');
+  const enteringReveal = state.phase === 'reveal' && (!lastState || lastState.phase !== 'reveal');
+  if (enteringReveal) playRevealSound();
+  if (enteringAnswering) {
+    miniBarShowsLive = false;
+    roundStartPositions = {};
+    state.players.forEach(p => { roundStartPositions[p.id] = p.position; });
+    const ta = document.getElementById('input-answer');
+    const num = document.getElementById('input-answer-number');
+    document.getElementById('answer-reject-msg').classList.add('hidden');
+    if (state.myAnswerSubmitted) {
+      // Reload/Reconnect während der Antwort-Phase: eigenen Stand wiederherstellen,
+      // statt das Feld fälschlich leer zurückzusetzen (sonst laufen Spieler auseinander)
+      ta.value = state.myAnswerText || '';
+      num.value = state.myAnswerText || '';
+      ta.disabled = false;
+      num.disabled = false;
+      document.getElementById('btn-submit-answer').disabled = false;
+      document.getElementById('btn-submit-answer').textContent = 'Antwort abgeschickt ✓ (Änderung möglich)';
+    } else {
+      ta.value = ''; ta.disabled = false;
+      num.value = ''; num.disabled = false;
+      document.getElementById('btn-submit-answer').disabled = false;
+      document.getElementById('btn-submit-answer').textContent = 'Antwort abschicken';
+    }
+  }
+  if (enteringBoard) {
+    miniBarShowsLive = true;
+  }
+
+  lastState = state;
+  justReconnected = false;
+  updateConnectionBanner(state);
+  if (state.estimateTriggerFields) estimateTriggerFields = state.estimateTriggerFields;
+  if (state.foreignwordTriggerFields) foreignwordTriggerFields = state.foreignwordTriggerFields;
+  if (state.drawingTriggerFields) drawingTriggerFields = state.drawingTriggerFields;
+  const iAmModerator = state.moderatorId === myId;
+  isMyTurnToDraw = iAmModerator;
+
+  renderBoard(state.players, miniBarShowsLive ? null : roundStartPositions);
+
+  document.querySelectorAll('.mod-only').forEach(el => el.style.display = iAmModerator ? 'block' : 'none');
+  document.querySelectorAll('.mod-hide').forEach(el => el.style.display = iAmModerator ? 'none' : 'block');
+
+  if (state.phase === 'lobby') {
+    winnerOverlayShownFor = null;
+    document.getElementById('room-code-display').textContent = state.code;
+    renderLobbyPlayerList(state);
+    renderLobbyAvatarPicker(state);
+    const allHaveAvatars = !state.isMultiplayerMatch || state.players.every(p => !!p.avatar);
+    document.getElementById('btn-start-round').style.display =
+      (state.players.length >= 3 && iAmModerator && allHaveAvatars) ? 'block' : 'none';
+    showScreen('lobby');
+  }
+
+  if (state.phase === 'previewQuestion') {
+    const enteringQuestionPreview = !lastState || lastState.phase !== 'previewQuestion';
+    if (enteringQuestionPreview) {
+      qpSwapAreaRevealed = false;
+      document.getElementById('qp-swap-area').classList.add('hidden');
+    }
+    const qp = state.questionPreview;
+    document.getElementById('qp-phase-tag').classList.toggle('hidden', !qp);
+    if (qp) {
+      // Ich bin Moderator:in - Vorschau anzeigen
+      qpCurrentIndex = qp.currentIndex;
+      document.getElementById('qp-moderator-view').classList.remove('hidden');
+      document.getElementById('qp-waiting-view').classList.add('hidden');
+      if (qpSwapAreaRevealed) document.getElementById('qp-swap-area').classList.remove('hidden');
+
+      document.getElementById('qp-current-num').textContent = qp.currentIndex + 1;
+      document.getElementById('qp-total-num').textContent = qp.candidates.length;
+      const current = qp.candidates[qp.currentIndex];
+      if (current) {
+        const fieldInfo = fieldColorInfo(qp.roundType);
+        document.getElementById('qp-category').innerHTML =
+          `<span class="key-dot ${fieldInfo.dotClass}" style="margin-right:6px; vertical-align:middle;"></span>${fieldInfo.label}` +
+          (current.topic ? ' · ' + escapeHtml(current.topic) : '');
+        document.getElementById('qp-question-text').textContent = current.question;
+      }
+      document.getElementById('btn-qp-prev').disabled = qp.currentIndex <= 0;
+      document.getElementById('btn-qp-next-candidate').disabled = qp.currentIndex >= qp.candidates.length - 1;
+      document.getElementById('btn-qp-swap').disabled = !qp.canSwapMore;
+      document.getElementById('qp-swap-hint').textContent = state.unlimitedQuestionSwaps
+        ? 'Unbegrenzt viele Wechsel möglich.'
+        : (qp.canSwapMore
+          ? `Du kannst noch ${3 - qp.candidates.length}x wechseln.`
+          : 'Kein Wechsel mehr übrig – das war die letzte Möglichkeit.');
+    } else {
+      // Ich bin nicht Moderator:in - einfacher Warte-Screen
+      document.getElementById('qp-moderator-view').classList.add('hidden');
+      document.getElementById('qp-waiting-view').classList.remove('hidden');
+    }
+    showScreen('questionPreview');
+  }
+
+  if (state.phase === 'answering') {
+    currentRoundType = state.roundType || 'question';
+    const isEstimate = currentRoundType === 'estimate';
+    const answeringFieldInfo = fieldColorInfo(currentRoundType);
+    document.getElementById('answering-phase-tag').innerHTML =
+      `<span class="key-dot ${answeringFieldInfo.dotClass}" style="margin-right:6px; vertical-align:middle;"></span>${isEstimate ? 'Schätz-Frage 🔢' : 'Antwort-Phase'}`;
+    document.getElementById('question-text-2').textContent = state.currentQuestion || '';
+    const modPlayer = state.players.find(p => p.id === state.moderatorId);
+    const modHint = document.getElementById('moderator-name-hint');
+    modHint.textContent = (!iAmModerator && modPlayer) ? `${modPlayer.name} ist in dieser Runde Moderator:in` : '';
+    document.getElementById('answered-count').textContent = state.answeredCount;
+    const totalAnswerers = Math.max(state.players.length - 1, 0);
+    document.getElementById('answering-total').textContent = totalAnswerers;
+    document.getElementById('answer-input-label').classList.toggle('hidden', isEstimate);
+    document.getElementById('answer-input-label').textContent = 'Denk dir eine überzeugende Antwort aus:';
+    document.getElementById('input-answer').classList.toggle('hidden', isEstimate);
+    document.getElementById('input-answer-number').classList.toggle('hidden', !isEstimate);
+    document.getElementById('btn-to-voting').classList.toggle('hidden', isEstimate);
+    document.getElementById('btn-reveal-estimate').classList.toggle('hidden', !isEstimate);
+    // Erst klickbar, sobald wirklich alle geantwortet haben - vorher soll die Antwort-Phase
+    // nicht vorzeitig beendet werden können
+    const allAnswered = state.answeredCount >= totalAnswerers && totalAnswerers > 0;
+    const toVotingBtn = document.getElementById('btn-to-voting');
+    toVotingBtn.disabled = !allAnswered;
+    toVotingBtn.title = allAnswered ? '' : 'Warten, bis alle geantwortet haben …';
+    // Dieselbe Sperre auch für Schätzfragen - hier fehlte sie bisher komplett, der
+    // Moderator hätte theoretisch auswerten können, während noch jemand mitten in einer
+    // Änderung seiner Zahl war.
+    const revealEstimateBtn = document.getElementById('btn-reveal-estimate');
+    revealEstimateBtn.disabled = !allAnswered;
+    revealEstimateBtn.title = allAnswered ? '' : 'Warten, bis alle geantwortet haben …';
+
+    if (iAmModerator) {
+      document.getElementById('answer-input-box').classList.add('hidden');
+      document.getElementById('real-answer-box').classList.remove('hidden');
+      document.getElementById('real-answer-box').textContent = (isEstimate ? 'Echte Zahl (nur für dich): ' : 'Echte Antwort (nur für dich): ') + (state.realAnswer ?? '');
+      const previewBox = document.getElementById('moderator-answers-preview');
+      previewBox.classList.remove('hidden');
+      previewBox.innerHTML = '';
+      (state.answersPreview || []).forEach(a => {
+        const div = document.createElement('div');
+        div.className = 'reveal-item compact-preview-item' + (a.submitted ? '' : ' typing-preview');
+        const statusTag = a.submitted
+          ? ''
+          : `<span class="typing-tag">${a.text ? 'tippt gerade …' : 'noch nichts eingegeben'}</span>`;
+        const shownText = a.text ? escapeHtml(String(a.text)) : '<span class="placeholder-text">…</span>';
+        const headerRow = document.createElement('div');
+        headerRow.className = 'compact-preview-header';
+        headerRow.innerHTML = `<span class="owner">${escapeHtml(a.name)}</span>${statusTag}`;
+        // Moderator-Werkzeug: eingereichte Antworten manuell bearbeiten oder löschen -
+        // z.B. wenn eine Antwort sinngleich mit der echten ist, aber anders formuliert,
+        // und daher von der automatischen Dopplungs-Erkennung nicht erfasst wurde.
+        if (a.submitted) {
+          const toolsDiv = document.createElement('span');
+          toolsDiv.className = 'mod-answer-tools';
+          const editBtn = document.createElement('button');
+          editBtn.className = 'mod-answer-tool-btn';
+          editBtn.title = 'Antwort bearbeiten';
+          editBtn.textContent = '✏️';
+          editBtn.addEventListener('click', () => {
+            const newText = prompt(`Antwort von ${a.name} bearbeiten:`, a.text);
+            if (newText !== null && newText.trim()) {
+              socket.emit('editPlayerAnswer', { code: currentCode, playerId: a.id, newText: newText.trim() });
+            }
+          });
+          const deleteBtn = document.createElement('button');
+          deleteBtn.className = 'mod-answer-tool-btn';
+          deleteBtn.title = 'Antwort löschen';
+          deleteBtn.textContent = '🗑️';
+          deleteBtn.addEventListener('click', () => {
+            if (confirm(`Antwort von ${a.name} wirklich löschen? Sie fliegt dann komplett aus dieser Runde raus.`)) {
+              socket.emit('deletePlayerAnswer', { code: currentCode, playerId: a.id });
+            }
+          });
+          toolsDiv.appendChild(editBtn);
+          toolsDiv.appendChild(deleteBtn);
+          headerRow.appendChild(toolsDiv);
+        }
+        div.appendChild(headerRow);
+        const textRow = document.createElement('div');
+        textRow.className = 'compact-preview-text';
+        textRow.innerHTML = shownText;
+        div.appendChild(textRow);
+        previewBox.appendChild(div);
+      });
+
+      const dcBox = document.getElementById('duplicate-conflict-box');
+      if ((state.duplicateConflicts || []).length > 0) {
+        dcBox.classList.remove('hidden');
+        dcBox.innerHTML = '';
+        state.duplicateConflicts.forEach(c => {
+          const div = document.createElement('div');
+          div.innerHTML = `
+            <h4>⚠️ Dopplung: ${escapeHtml(c.name)}s Antwort ist fast identisch mit der echten Antwort</h4>
+            <p class="dc-text">"${escapeHtml(String(c.answerText))}"</p>
+            <p class="dc-text" style="margin-bottom:14px;">Beide sind quasi dieselbe Antwort. Wähle, welche davon im Spiel bleibt:</p>
+            <div class="dc-actions">
+              <button class="btn-dc-remove">Echte Antwort behalten (${escapeHtml(c.name)}s Version raus)</button>
+              <button class="btn-dc-keep">${escapeHtml(c.name)}s Version behalten (offizielle Antwort raus)</button>
+              <button class="btn-dc-ignore">Kein Duplikat – beide getrennt behalten</button>
+            </div>
+          `;
+          div.querySelector('.btn-dc-remove').addEventListener('click', () => {
+            socket.emit('resolveDuplicate', { code: currentCode, playerId: c.playerId, action: 'keepReal' });
+          });
+          div.querySelector('.btn-dc-keep').addEventListener('click', () => {
+            socket.emit('resolveDuplicate', { code: currentCode, playerId: c.playerId, action: 'keepPlayerVersion' });
+          });
+          div.querySelector('.btn-dc-ignore').addEventListener('click', () => {
+            socket.emit('resolveDuplicate', { code: currentCode, playerId: c.playerId, action: 'ignore' });
+          });
+          dcBox.appendChild(div);
+        });
+      } else {
+        dcBox.classList.add('hidden');
+      }
+    } else {
+      document.getElementById('answer-input-box').classList.remove('hidden');
+      document.getElementById('real-answer-box').classList.add('hidden');
+      document.getElementById('moderator-answers-preview').classList.add('hidden');
+      document.getElementById('duplicate-conflict-box').classList.add('hidden');
+
+      // Sobald alle abgeschickt haben, keine weiteren Änderungen mehr zulassen - aber
+      // WICHTIG: sobald der Moderator eine Antwort löscht/bearbeitet und dadurch nicht
+      // mehr "alle" abgegeben haben, muss das Feld wieder nutzbar werden (vorher fehlte
+      // hier der else-Zweig, wodurch das Feld für den betroffenen Spieler für den Rest
+      // der Runde ausgegraut blieb, obwohl er ja gar keine Antwort mehr im System hatte).
+      const allAnswered = state.answeredCount >= Math.max(state.players.length - 1, 0);
+      if (allAnswered) {
+        document.getElementById('input-answer').disabled = true;
+        document.getElementById('input-answer-number').disabled = true;
+        document.getElementById('btn-submit-answer').disabled = true;
+        document.getElementById('btn-submit-answer').textContent = 'Alle fertig – keine Änderung mehr möglich';
+      } else {
+        document.getElementById('input-answer').disabled = false;
+        document.getElementById('input-answer-number').disabled = false;
+        document.getElementById('btn-submit-answer').disabled = false;
+        document.getElementById('btn-submit-answer').textContent = 'Antwort abschicken';
+      }
+    }
+    showScreen('answering');
+  }
+
+  if (state.phase === 'voting') {
+    document.getElementById('question-text-3').textContent = state.currentQuestion || '';
+    document.getElementById('voted-count').textContent = state.votedCount;
+    document.getElementById('voting-total').textContent = Math.max(state.players.length - 1, 0);
+    if (iAmModerator) {
+      document.getElementById('vote-options').classList.add('hidden');
+      document.getElementById('btn-submit-vote').classList.add('hidden');
+      document.getElementById('vote-submitted-msg').classList.add('hidden');
+      document.getElementById('vote-question-hint').classList.add('hidden');
+      document.getElementById('moderator-vote-wait').classList.remove('hidden');
+
+      const optionsBox = document.getElementById('moderator-answer-options');
+      optionsBox.classList.remove('hidden');
+      optionsBox.innerHTML = '';
+      (state.shuffledAnswers || []).forEach(a => {
+        const div = document.createElement('div');
+        div.className = 'reveal-item';
+        div.textContent = a.text;
+        optionsBox.appendChild(div);
+      });
+
+      const previewBox = document.getElementById('moderator-vote-preview');
+      previewBox.classList.remove('hidden');
+      previewBox.innerHTML = '';
+      (state.votePreview || []).forEach(v => {
+        const chosenAnswer = state.shuffledAnswers.find(a => a.ownerId === v.chosenOwnerId);
+        const div = document.createElement('div');
+        div.className = 'reveal-item' + (v.submitted ? '' : ' typing-preview');
+        const text = chosenAnswer ? escapeHtml(chosenAnswer.text) : '<span class="placeholder-text">noch keine Auswahl</span>';
+        const statusTag = v.submitted ? '' : (chosenAnswer ? '<span class="typing-tag">tippt gerade drauf …</span>' : '');
+        div.innerHTML = `${text}${statusTag}<br><span class="owner">${escapeHtml(v.name)}</span>`;
+        previewBox.appendChild(div);
+      });
+
+      // "Auflösen"-Button erst freigeben, wenn alle abgestimmt haben
+      const totalVoters = Math.max(state.players.length - 1, 0);
+      const allVoted = state.votedCount >= totalVoters && totalVoters > 0;
+      const revealBtn = document.getElementById('btn-to-reveal');
+      revealBtn.disabled = !allVoted;
+      revealBtn.title = allVoted ? '' : 'Warten bis alle abgestimmt haben …';
+    } else {
+      document.getElementById('moderator-vote-wait').classList.add('hidden');
+      document.getElementById('moderator-answer-options').classList.add('hidden');
+      document.getElementById('moderator-vote-preview').classList.add('hidden');
+      document.getElementById('vote-question-hint').classList.remove('hidden');
+      if (enteringVoting) {
+        document.getElementById('vote-options').classList.remove('hidden');
+        renderVoteOptions(state.shuffledAnswers);
+        if (voteSubmitted) {
+          // Reload/Reconnect nach bereits abgegebener Stimme: bisherige Auswahl anzeigen,
+          // aber weiterhin änderbar lassen (nicht dauerhaft sperren)
+          document.querySelectorAll('.vote-option').forEach(el => {
+            if (el.dataset.ownerId === selectedVote) el.classList.add('selected');
+          });
+          document.getElementById('btn-submit-vote').classList.add('hidden');
+          document.getElementById('vote-submitted-msg').classList.remove('hidden');
+        } else {
+          document.getElementById('btn-submit-vote').classList.remove('hidden');
+          document.getElementById('btn-submit-vote').disabled = true;
+          document.getElementById('vote-submitted-msg').classList.add('hidden');
+        }
+      }
+
+      // Sobald ALLE abgestimmt haben, wird für alle gesperrt - egal wer's zuletzt war.
+      // Läuft bei jedem State-Update (nicht nur beim ersten Betreten der Phase), da sich
+      // der Stand ändert, während andere noch abstimmen.
+      const totalVotersHere = Math.max(state.players.length - 1, 0);
+      const allVotedHere = state.votedCount >= totalVotersHere && totalVotersHere > 0;
+      if (allVotedHere) {
+        document.querySelectorAll('.vote-option').forEach(el => { el.style.pointerEvents = 'none'; });
+        document.getElementById('btn-submit-vote').classList.add('hidden');
+        document.getElementById('vote-submitted-msg').classList.remove('hidden');
+        document.getElementById('vote-submitted-msg').textContent = 'Alle haben abgestimmt – keine Änderung mehr möglich.';
+      } else {
+        document.querySelectorAll('.vote-option').forEach(el => { el.style.pointerEvents = 'auto'; });
+        if (voteSubmitted) {
+          document.getElementById('vote-submitted-msg').textContent = 'Stimme abgeschickt ✓ (Änderung möglich, solange nicht alle fertig sind)';
+        }
+      }
+    }
+    showScreen('voting');
+  }
+
+  const enteringDrawing = state.phase === 'drawing' && lastDrawingRoundIdSeen !== state.drawingRoundId;
+  if (state.phase === 'drawing') {
+    if (enteringDrawing) {
+      lastDrawingRoundIdSeen = state.drawingRoundId;
+      drawingCtx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+      document.getElementById('input-drawing-guess').value = '';
+      document.getElementById('drawing-guess-feedback').textContent = '';
+      document.getElementById('drawing-guess-correct-msg').classList.add('hidden');
+    }
+    if (iAmModerator) {
+      document.getElementById('drawing-mod-hint').classList.remove('hidden');
+      document.getElementById('drawing-guess-hint').classList.add('hidden');
+      document.getElementById('drawing-term-display').textContent = state.currentQuestion || '';
+      document.getElementById('drawing-mod-tools').classList.remove('hidden');
+      document.getElementById('drawing-guess-form').classList.add('hidden');
+      const names = state.drawingCorrectGuessers || [];
+      document.getElementById('drawing-mod-guessers').textContent = names.length > 0
+        ? `✔ Schon richtig geraten: ${names.join(', ')}`
+        : 'Noch niemand hat richtig geraten.';
+    } else {
+      document.getElementById('drawing-mod-hint').classList.add('hidden');
+      document.getElementById('drawing-guess-hint').classList.remove('hidden');
+      document.getElementById('drawing-mod-tools').classList.add('hidden');
+      document.getElementById('drawing-mod-guessers').textContent = '';
+      if (state.myGuessCorrect) {
+        document.getElementById('drawing-guess-form').classList.add('hidden');
+        document.getElementById('drawing-guess-correct-msg').classList.remove('hidden');
+      } else {
+        document.getElementById('drawing-guess-form').classList.remove('hidden');
+        document.getElementById('drawing-guess-correct-msg').classList.add('hidden');
+      }
+    }
+    showScreen('drawing');
+  }
+
+  if (state.phase === 'reveal') {
+    const catchupBanner = document.getElementById('catchup-banner');
+    if (state.catchUpAnnouncement) {
+      const { names, amount } = state.catchUpAnnouncement;
+      catchupBanner.textContent = `🚀 Aufholjagd! ${names.join(' & ')} bekommt +${amount} Bonus-Felder!`;
+      catchupBanner.classList.remove('hidden');
+    } else {
+      catchupBanner.classList.add('hidden');
+    }
+    document.getElementById('question-text-4').textContent = state.roundType === 'drawing' ? '' : (state.currentQuestion || '');
+    const list = document.getElementById('reveal-list');
+    const realBox = document.getElementById('estimate-real-answer');
+    list.innerHTML = '';
+
+    if (state.roundType === 'drawing') {
+      realBox.classList.remove('hidden');
+      const term = state.drawingResult ? state.drawingResult.term : '';
+      realBox.innerHTML = `<span class="answer-label">🎨 Gesuchter Begriff:</span> <span class="answer-value">${escapeHtml(term)}</span>`;
+      const guesserNames = state.drawingResult ? state.drawingResult.guesserNames : [];
+      if (guesserNames.length === 0) {
+        const div = document.createElement('div');
+        div.className = 'reveal-item';
+        div.innerHTML = `Niemand hat es erraten. Schade!`;
+        list.appendChild(div);
+      } else {
+        const medals = ['🥇', '🥈'];
+        const drawingPoints = [3, 2];
+        guesserNames.forEach((name, i) => {
+          const div = document.createElement('div');
+          div.className = 'reveal-item real';
+          div.innerHTML = `${medals[i] || ''} ${escapeHtml(name)}<br><span class="owner">✔ Richtig geraten (+${drawingPoints[i] || 0} Punkte)</span>`;
+          list.appendChild(div);
+        });
+      }
+    } else if (state.roundType === 'estimate') {
+      realBox.classList.remove('hidden');
+      realBox.innerHTML = `<span class="answer-label">Antwort:</span> <span class="answer-value">${state.estimateRealAnswer}</span>`;
+      const medals = ['🥇', '🥈', '🥉'];
+      (state.estimateResults || []).forEach(r => {
+        const div = document.createElement('div');
+        div.className = 'reveal-item' + (r.points > 0 ? ' real' : '');
+        const medal = medals[r.rank - 1] || `${r.rank}.`;
+        const pointsText = r.points > 0 ? `+${r.points} Punkte` : 'keine Punkte';
+        const diffText = r.diff !== undefined ? ` <span class="closeness-tag">Abweichung: ${r.diff}</span>` : '';
+        div.innerHTML = `${medal} ${escapeHtml(r.name)}: <strong>${r.value}</strong>${diffText}<br><span class="owner">${pointsText}</span>`;
+        list.appendChild(div);
+      });
+    } else {
+      realBox.classList.add('hidden');
+      state.shuffledAnswers.forEach(a => {
+        const div = document.createElement('div');
+        const isMyVote = state.myVote === a.ownerId;
+        let cls = 'reveal-item' + (a.isReal ? ' real' : '');
+        if (isMyVote) cls += a.isReal ? ' my-correct' : ' my-wrong';
+        div.className = cls;
+        const ownerName = a.isReal ? 'Echte Antwort ✔' : (state.players.find(p => p.id === a.ownerId)?.name || '???');
+        const myVoteBadge = isMyVote
+          ? `<span class="my-vote-badge">${a.isReal ? `✔ Richtig getippt! (+${state.pointsCorrectGuess} Punkte)` : '✗ Reingefallen'}</span>`
+          : '';
+        const foolerNames = (a.foolerIds || []).map((id, i) => id === myId ? 'Du' : escapeHtml((a.foolerNames || [])[i]));
+        const foolerNamesText = foolerNames.join(', ');
+        const iAmTheOnlyFooler = a.foolCount === 1 && (a.foolerIds || [])[0] === myId;
+        const verb = iAmTheOnlyFooler ? 'bist' : (a.foolCount === 1 ? 'ist' : 'sind');
+        const foolCallout = (!a.isReal && a.foolCount > 0)
+          ? `<span class="fool-callout">🎣 ${foolerNamesText} ${verb} darauf reingefallen!${a.pointsAwardedFoolCount > 0 ? ` ${ownerName} bekommt +${a.pointsAwardedFoolCount * state.pointsPerFooled} Punkte` : ''}</span>`
+          : '';
+        const correctGuesserNames = (a.correctGuesserIds || []).map((id, i) => id === myId ? 'Du' : escapeHtml((a.correctGuesserNames || [])[i]));
+        const correctGuesserText = correctGuesserNames.join(', ');
+        const correctCallout = a.isReal
+          ? ((a.correctGuesserIds || []).length > 0
+              ? `<span class="fool-callout">🎯 ${correctGuesserText} ${correctGuesserNames.length === 1 ? 'hat' : 'haben'} die echte Antwort erkannt!</span>`
+              : `<span class="fool-callout" style="opacity:0.7;">Niemand hat die echte Antwort erkannt.</span>`)
+          : '';
+        div.innerHTML = `${escapeHtml(a.text)}<br><span class="owner">${ownerName}</span>${myVoteBadge}${foolCallout}${correctCallout}`;
+        list.appendChild(div);
+      });
+    }
+    showScreen('reveal');
+  }
+
+  if (state.phase === 'board') {
+    renderBoardLarge(state.players, state.adminForcedFromPositions || roundStartPositions, enteringBoard, () => {
+      if (state.gameOver && winnerOverlayShownFor !== state.code + state.gameOver.winnerName) {
+        winnerOverlayShownFor = state.code + state.gameOver.winnerName;
+        showWinnerOverlay(state.gameOver.winnerName, state.gameOver.awards);
+      }
+    });
+    showScreen('board');
+    document.getElementById('btn-next-round').classList.toggle('hidden', !!state.gameOver);
+    document.getElementById('btn-new-game').classList.toggle('hidden', !state.gameOver);
+    if (document.getElementById('board-waiting-msg')) {
+      document.getElementById('board-waiting-msg').classList.toggle('hidden', !!state.gameOver);
+    }
+  }
+});
+
+// ============================================================
+// SPIELABLAUF & TUTORIAL
+// ============================================================
+
+// ---- Toggle Tutorial-Overlay ----
+document.getElementById('btn-tutorial-toggle').addEventListener('click', () => {
+  document.getElementById('tutorial-overlay').classList.toggle('hidden');
+});
+document.getElementById('btn-tutorial-close').addEventListener('click', () => {
+  document.getElementById('tutorial-overlay').classList.add('hidden');
+});
+
+// ---- SPIELABLAUF: 3-Slide Intro ----
+let introSlide = 0;
+const INTRO_TOTAL = 3;
+
+function showIntroSlide(n) {
+  document.querySelectorAll('.intro-slide').forEach((el, i) => el.classList.toggle('hidden', i !== n));
+  document.querySelectorAll('.intro-dot').forEach((d, i) => d.classList.toggle('active', i === n));
+  document.getElementById('btn-intro-prev').disabled = n === 0;
+  const nextBtn = document.getElementById('btn-intro-next');
+  if (n === INTRO_TOTAL - 1) {
+    nextBtn.textContent = '✓ Verstanden!';
+    nextBtn.classList.add('btn-primary');
+    nextBtn.classList.remove('btn-secondary');
+  } else {
+    nextBtn.textContent = 'Weiter →';
+  }
+}
+
+document.getElementById('btn-go-intro').addEventListener('click', () => {
+  document.getElementById('tutorial-overlay').classList.add('hidden');
+  introSlide = 0;
+  showIntroSlide(0);
+  showScreen('intro');
+});
+document.getElementById('btn-intro-back').addEventListener('click', () => showScreen('start'));
+document.getElementById('btn-intro-prev').addEventListener('click', () => {
+  if (introSlide > 0) { introSlide--; showIntroSlide(introSlide); }
+});
+document.getElementById('btn-intro-next').addEventListener('click', () => {
+  if (introSlide < INTRO_TOTAL - 1) {
+    introSlide++;
+    showIntroSlide(introSlide);
+  } else {
+    showScreen('start');
+  }
+});
+
+// Swipe-Gesten für Intro-Slides
+(function() {
+  let touchStartX = 0;
+  const el = document.getElementById('screen-intro');
+  el.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; }, { passive: true });
+  el.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - touchStartX;
+    if (Math.abs(dx) < 40) return; // zu kurze Geste ignorieren
+    if (dx < 0 && introSlide < INTRO_TOTAL - 1) { introSlide++; showIntroSlide(introSlide); }
+    if (dx > 0 && introSlide > 0) { introSlide--; showIntroSlide(introSlide); }
+  }, { passive: true });
+})();
+
+// ---- DEMO: Simulierte Runde mit Bots ----
+const DEMO_QUESTION = 'Welchen ungewöhnlichen Trick nutzte Victor Hugo, als er unbedingt sein Buch „Der Glöckner von Notre-Dame" fertigschreiben musste?';
+const DEMO_REAL_ANSWER = 'Er ließ fast seine gesamte Kleidung wegschließen, damit er das Haus nicht verlassen konnte';
+const DEMO_BOTS = [
+  { name: 'Mia', avatar: '🎭', answer: 'Er schloss sich für Wochen in einen Klosterkeller ein', vote: 1 },
+  { name: 'Leo', avatar: '🔮', answer: 'Er ließ sich die Hände mit Seide bandagieren', vote: 2 },
+  { name: 'Zoe', avatar: '🃏', answer: 'Sein Verleger pfändete all seine Möbel als Druckmittel', vote: 0 },
+];
+
+const DEMO_SHUFFLED = [
+  { text: DEMO_BOTS[0].answer, ownerId: 'bot0', isReal: false },
+  { text: DEMO_REAL_ANSWER,    ownerId: 'REAL',  isReal: true  },
+  { text: DEMO_BOTS[1].answer, ownerId: 'bot1',  isReal: false },
+  { text: DEMO_BOTS[2].answer, ownerId: 'bot2',  isReal: false },
+];
+
+// Demo-Phasen: 0=Lobby, 1=Frage/Antworten tippen, 2=Abstimmung, 3=Auflösung, 4=Ergebnis
+let demoPhase = 0;
+let demoUserVote = null;
+
+function renderDemo() {
+  const content = document.getElementById('demo-content');
+  const nextBtn  = document.getElementById('btn-demo-next');
+  const exitBtn  = document.getElementById('btn-demo-exit');
+  nextBtn.classList.remove('hidden');
+  // Auf dem letzten Schritt übernimmt der obere Button ("✓ Tutorial beenden") das Beenden -
+  // der separate Abbrechen-Button wird dort ausgeblendet, um doppelte Buttons zu vermeiden.
+  exitBtn.classList.toggle('hidden', demoPhase === 4);
+
+  if (demoPhase === 0) {
+    const userAvatar = '👑'; // Fest für Demo – kein Clash mit Bot-Avataren
+    const userName = document.getElementById('input-name-setup')?.value?.trim() || 'Du';
+    content.innerHTML = `
+      <p class="demo-phase-label">Demo-Lobby</p>
+      <h2 style="text-align:center;color:var(--ink);">Tutorial-Runde</h2>
+      <p style="text-align:center;color:var(--ink-dim);font-size:14px;margin-bottom:20px;"><strong>Du bist Moderator:in</strong> – du liest die Frage vor, die anderen tippen ihre Antworten.</p>
+      <div class="demo-bots" style="align-items:center;gap:14px;">
+        <div class="demo-bot active" style="border:1.5px solid rgba(172,88,249,0.5);border-radius:12px;padding:10px 14px;">
+          <div class="demo-bot-avatar">${userAvatar}</div>
+          <div style="font-weight:700;color:var(--ink);">${escapeHtml(userName)}</div>
+          <div style="font-size:11px;color:var(--color-primary,#AC58F9);">Moderator:in</div>
+        </div>
+        ${DEMO_BOTS.map(b => `
+          <div class="demo-bot active">
+            <div class="demo-bot-avatar">${b.avatar}</div>
+            <div>${b.name}</div>
+          </div>`).join('')}
+      </div>
+      <p class="demo-hint">Tippe auf „Weiter" um die Runde zu starten.</p>`;
+    nextBtn.textContent = 'Runde starten →';
+
+  } else if (demoPhase === 1) {
+    content.innerHTML = `
+      <p class="demo-phase-label">Antwort-Phase</p>
+      <p class="question-text small" style="margin-bottom:16px;color:var(--ink);">${DEMO_QUESTION}</p>
+      <p style="font-size:14px;color:var(--ink-dim);">Du bist Moderator:in – die anderen tippen gerade ihre Antworten …</p>
+      <div class="demo-bots" style="margin:20px 0;">
+        ${DEMO_BOTS.map((b, i) => `<div class="demo-bot active"><div class="demo-bot-avatar">${b.avatar}</div><div>${b.name}</div><div class="demo-typing">${i < 2 ? '✓ fertig' : '…tippt'}</div></div>`).join('')}
+      </div>
+      <p class="demo-hint">Im echten Spiel siehst du live, wer schon fertig ist.</p>`;
+    nextBtn.textContent = 'Zur Abstimmung →';
+
+  } else if (demoPhase === 2) {
+    demoUserVote = null;
+    content.innerHTML = `
+      <p class="demo-phase-label">Abstimm-Phase</p>
+      <p class="question-text small" style="margin-bottom:16px;color:var(--ink);">${DEMO_QUESTION}</p>
+      <p style="font-size:14px;margin-bottom:12px;color:var(--ink);">Welche Antwort ist die <strong>echte</strong>?</p>
+      <div class="demo-answer-list">
+        ${DEMO_SHUFFLED.map((a, i) => `<button class="demo-answer-btn" data-idx="${i}">${a.text}</button>`).join('')}
+      </div>
+      <p class="demo-hint">Tippe auf eine Antwort, dann auf Weiter.</p>`;
+    nextBtn.textContent = 'Abstimmen →';
+    nextBtn.classList.add('hidden');
+    content.querySelectorAll('.demo-answer-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        content.querySelectorAll('.demo-answer-btn').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        demoUserVote = parseInt(btn.dataset.idx, 10);
+        nextBtn.classList.remove('hidden');
+      });
+    });
+
+  } else if (demoPhase === 3) {
+    const userChose = demoUserVote !== null ? DEMO_SHUFFLED[demoUserVote] : null;
+    const userRight = userChose && userChose.isReal;
+    content.innerHTML = `
+      <p class="demo-phase-label">Auflösung</p>
+      <p class="question-text small" style="margin-bottom:16px;color:var(--ink);">${DEMO_QUESTION}</p>
+      <div class="demo-answer-list">
+        ${DEMO_SHUFFLED.map((a, i) => {
+          let cls = 'demo-answer-btn';
+          if (a.isReal) cls += ' correct';
+          else if (i === demoUserVote && !a.isReal) cls += ' wrong';
+          const owner = a.isReal ? '✅ Echte Antwort' : `😈 von ${DEMO_BOTS[['bot0','bot1','bot2'].indexOf(a.ownerId)]?.name || '?'}`;
+          return `<div class="${cls}" style="color:var(--ink);">${a.text} <span style="font-size:12px;opacity:0.7;">${owner}</span></div>`;
+        }).join('')}
+      </div>
+      <p style="margin-top:16px;font-weight:700;text-align:center;font-size:1.1rem;color:${userRight ? 'var(--teal,#00E5A0)' : 'var(--pink,#e8547a)'}">
+        ${userRight ? '🎉 Richtig! Du bekommst +3 Punkte!' : '😅 Nicht ganz – schau dir die echte Antwort an!'}
+      </p>`;
+    nextBtn.textContent = 'Spielbrett ansehen →';
+
+  } else if (demoPhase === 4) {
+    const userRight = demoUserVote !== null && DEMO_SHUFFLED[demoUserVote].isReal;
+    const allPlayers = [
+      { name: 'Du 👑', pts: userRight ? 3 : 0 },
+      { name: 'Mia 🎭', pts: DEMO_SHUFFLED[DEMO_BOTS[0].vote].isReal ? 3 : 0 },
+      { name: 'Leo 🔮', pts: DEMO_SHUFFLED[DEMO_BOTS[1].vote].isReal ? 3 : 0 },
+      { name: 'Zoe 🃏', pts: DEMO_SHUFFLED[DEMO_BOTS[2].vote].isReal ? 3 : 0 },
+    ];
+
+    content.innerHTML = `
+      <p class="demo-phase-label">Spielbrett</p>
+      <h2 style="text-align:center;color:var(--ink);margin-bottom:4px;">Figuren ziehen!</h2>
+      <p style="text-align:center;color:var(--ink-dim);font-size:13px;margin-bottom:12px;">So bewegen sich die Figuren nach einer Runde – das echte Spielbrett aus dem Spiel.</p>
+      <div id="board-rect" class="board-rect">
+        <div id="board-fields-large"></div>
+        <div id="board-tokens-large"></div>
+      </div>
+      <div id="board-legend" class="board-legend"></div>
+      <p class="demo-hint" style="margin-top:12px;">Im echten Spiel siehst du die Figuren animiert übers Spielbrett hüpfen!</p>`;
+    nextBtn.textContent = '✓ Tutorial beenden';
+
+    // Echtes Spielbrett wiederverwenden (gleiche Komponente wie im echten Spiel),
+    // mit vier Demo-Figuren, die von Feld 0 aus starten und je nach Ergebnis ziehen.
+    const demoPlayers = [
+      { id: 'you',  name: 'Du',        avatar: '👑', position: userRight ? 3 : 0 },
+      { id: 'bot0', name: DEMO_BOTS[0].name, avatar: DEMO_BOTS[0].avatar, position: DEMO_SHUFFLED[DEMO_BOTS[0].vote].isReal ? 3 : 0 },
+      { id: 'bot1', name: DEMO_BOTS[1].name, avatar: DEMO_BOTS[1].avatar, position: DEMO_SHUFFLED[DEMO_BOTS[1].vote].isReal ? 3 : 0 },
+      { id: 'bot2', name: DEMO_BOTS[2].name, avatar: DEMO_BOTS[2].avatar, position: DEMO_SHUFFLED[DEMO_BOTS[2].vote].isReal ? 3 : 0 },
+    ];
+    const demoFromPositions = { you: 0, bot0: 0, bot1: 0, bot2: 0 };
+    requestAnimationFrame(() => {
+      renderBoardLarge(demoPlayers, demoFromPositions, true);
+    });
+  }
+}
+
+document.getElementById('btn-go-demo').addEventListener('click', () => {
+  document.getElementById('tutorial-overlay').classList.add('hidden');
+  demoPhase = 0;
+  demoUserVote = null;
+  renderDemo();
+  showScreen('demo');
+});
+document.getElementById('btn-demo-exit').addEventListener('click', () => showScreen('start'));
+document.getElementById('btn-demo-next').addEventListener('click', () => {
+  if (demoPhase < 4) {
+    demoPhase++;
+    renderDemo();
+  } else {
+    showScreen('start');
+  }
+});
