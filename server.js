@@ -449,6 +449,7 @@ function publicRoomState(room, forPlayerId) {
       : null,
     unlimitedQuestionSwaps: !!room.unlimitedQuestionSwaps,
     gameStarted: !!room.gameStarted,
+    answerTimeLimitSet: !!room.answerTimeLimitSet,
     answerTimeLimit: room.answerTimeLimit || null,
     answerDeadline: room.phase === 'answering' ? (room.answerDeadline || null) : null,
     answerTimeExpired: !!room.answerTimeExpired,
@@ -616,17 +617,33 @@ function computeAwards(room) {
   const awards = [];
   const entries = Object.entries(room.stats || {});
   const nameFor = id => { const p = room.players.find(pp => pp.id === id); return p ? p.name : null; };
+  const mentionedIds = new Set();
 
   function topAward(key, title, emoji) {
     const max = Math.max(0, ...entries.map(([, s]) => s[key]));
     if (max === 0) return;
-    const winners = entries.filter(([, s]) => s[key] === max).map(([id]) => nameFor(id)).filter(Boolean);
-    if (winners.length > 0) awards.push({ title: `${emoji} ${title}`, names: winners, count: max });
+    const winnerIds = entries.filter(([, s]) => s[key] === max).map(([id]) => id);
+    const names = winnerIds.map(nameFor).filter(Boolean);
+    if (names.length > 0) {
+      awards.push({ title: `${emoji} ${title}`, names, count: max });
+      winnerIds.forEach(id => mentionedIds.add(id));
+    }
   }
 
   topAward('fooled', 'Bester Bluffer', '🎭');
   topAward('timesFooled', 'Meist Getäuscht', '🙈');
   topAward('estimateBest', 'Schätz-Ass', '🎯');
+
+  // WICHTIG: jede:r Spieler:in muss irgendwo auftauchen, auch wenn er/sie in keiner der
+  // Kategorien vorne lag - sonst fehlen manche Spieler:innen komplett im Abschluss-Popup.
+  const remaining = room.players.filter(p => !mentionedIds.has(p.id));
+  if (remaining.length > 0) {
+    const names = remaining.map(p => {
+      const s = (room.stats && room.stats[p.id]) || { fooled: 0, timesFooled: 0, estimateBest: 0 };
+      return `${p.name} (${s.fooled}× geblufft, ${s.timesFooled}× reingefallen)`;
+    });
+    awards.push({ title: '🎉 Ebenfalls mit dabei', names, count: null });
+  }
   return awards;
 }
 
@@ -698,6 +715,7 @@ function createRoomFromMatchmaking(entries) {
     catchUpAnnouncement: null,
     unlimitedQuestionSwaps: false,
     gameStarted: false,
+    answerTimeLimitSet: false,
     answerTimeLimit: null,
     answerDeadline: null,
     answerTimerId: null,
@@ -809,6 +827,7 @@ io.on('connection', (socket) => {
       catchUpAnnouncement: null,
       unlimitedQuestionSwaps: false,
       gameStarted: false,
+      answerTimeLimitSet: false,
       answerTimeLimit: null,
       answerDeadline: null,
       answerTimerId: null,
@@ -1033,6 +1052,7 @@ io.on('connection', (socket) => {
     const allowed = [60, 120, null];
     if (!allowed.includes(seconds)) return;
     room.answerTimeLimit = seconds;
+    room.answerTimeLimitSet = true;
     broadcastState(code);
   });
 

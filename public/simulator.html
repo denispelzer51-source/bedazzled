@@ -61,6 +61,7 @@
   <h1>🧪 Test-Simulator</h1>
   <div class="slot-buttons" id="slot-buttons"></div>
   <span class="hint-inline">Jedes Fenster ist ein unabhängiger Mitspieler. Raum in Fenster 1 erstellen, Code dann in den anderen Fenstern beitreten.</span>
+  <button id="sim-close-lobby">🏠 Lobby schließen (Startseite)</button>
   <button id="sim-reset">🔄 Alle zurücksetzen</button>
 </div>
 
@@ -95,12 +96,28 @@
     }
   }
 
+  // WICHTIGER BUGFIX: die echten Sitzungsdaten (Token/Raum) liegen in localStorage, nicht in
+  // sessionStorage - hier wurde bisher die falsche Speicherart geleert, weshalb nach einem
+  // "Zurücksetzen" trotzdem wieder alle im selben Raum/Stand landeten.
+  function clearAllSimSessions() {
+    for (let i = 1; i <= 6; i++) {
+      localStorage.removeItem('bedazzled_token_slot' + i);
+      localStorage.removeItem('bedazzled_room_slot' + i);
+    }
+  }
+
   document.getElementById('sim-reset').addEventListener('click', () => {
     if (!confirm('Alle simulierten Spieler zurücksetzen? (lädt alle Fenster neu, Sitzungen gehen verloren)')) return;
-    for (let i = 1; i <= 6; i++) {
-      sessionStorage.removeItem('bedazzled_token_slot' + i);
-      sessionStorage.removeItem('bedazzled_room_slot' + i);
-    }
+    clearAllSimSessions();
+    renderGrid();
+  });
+
+  // Bringt wirklich ALLE Fenster auf die Startseite, bevor irgendein Raum geöffnet ist -
+  // z.B. um den allerersten Moment (vor Rundenstart 1) erneut zu testen, ohne jeden
+  // einzelnen simulierten Spieler manuell aus dem Raum verlassen zu müssen.
+  document.getElementById('sim-close-lobby').addEventListener('click', () => {
+    if (!confirm('Aktuelle Lobby/Raum für ALLE simulierten Spieler komplett schließen und auf die Startseite zurück? Der Fortschritt geht verloren.')) return;
+    clearAllSimSessions();
     renderGrid();
   });
 

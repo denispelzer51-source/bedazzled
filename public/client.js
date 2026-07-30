@@ -1181,7 +1181,8 @@ function showWinnerOverlay(winnerName, awards) {
       : a.title.includes('Schätz') ? '× am nächsten dran'
       : '×';
     const namesText = (a.names || []).map(n => escapeHtml(n)).join(', ');
-    div.innerHTML = `<span class="award-title">${escapeHtml(a.title)}</span><span class="award-names">${namesText} — ${a.count}${unitLabel}</span>`;
+    const suffix = (a.count === null || a.count === undefined) ? '' : ` — ${a.count}${unitLabel}`;
+    div.innerHTML = `<span class="award-title">${escapeHtml(a.title)}</span><span class="award-names">${namesText}${suffix}</span>`;
     awardsBox.appendChild(div);
   });
   document.getElementById('winner-overlay').classList.remove('hidden');
@@ -1363,36 +1364,53 @@ let lastLobbyState = null;
 // ---------- LOBBY: "Spieleinstellungen" (nur Host, nur vor Rundenstart 1) ----------
 // Zeitlimit fürs Antworten wird jetzt hier statt im ⚙️-Menü festgelegt - einmalig, bevor
 // die erste Runde beginnt. Danach verschwindet der Kasten und ist nicht mehr änderbar.
+// Der Kasten erscheint außerdem erst, NACHDEM der Moderator (Host) seine eigene Spielfigur
+// ausgewählt hat - nicht schon währenddessen.
+let lobbyTimerPendingChoice; // undefined = in dieser Sitzung noch nichts (neu) ausgewählt
 function highlightLobbyTimerChoice(seconds) {
   const map = { 60: 'btn-lobby-timer-60', 120: 'btn-lobby-timer-120', null: 'btn-lobby-timer-none' };
   Object.values(map).forEach(id => { document.getElementById(id).style.outline = 'none'; });
   const activeId = map[seconds] || map[null];
   document.getElementById(activeId).style.outline = '2px solid var(--gold, #F2B705)';
 }
+function timerLabel(seconds) {
+  return seconds === 60 ? '1 Minute' : seconds === 120 ? '2 Minuten' : 'kein Limit';
+}
 function renderLobbyGameSettings(state) {
   const block = document.getElementById('lobby-game-settings-block');
   const amHost = state.hostId === myId;
-  if (!amHost || state.gameStarted) {
+  const hostPlayer = state.players.find(p => p.id === state.hostId);
+  const hostHasChosenAvatar = !!(hostPlayer && hostPlayer.avatar);
+  if (!amHost || state.gameStarted || !hostHasChosenAvatar) {
     block.classList.add('hidden');
     return;
   }
   block.classList.remove('hidden');
-  highlightLobbyTimerChoice(state.answerTimeLimit ?? null);
+  const confirmed = state.answerTimeLimit ?? null;
+  const shown = lobbyTimerPendingChoice !== undefined ? lobbyTimerPendingChoice : confirmed;
+  highlightLobbyTimerChoice(shown);
+  const statusEl = document.getElementById('lobby-timer-status');
+  if (lobbyTimerPendingChoice !== undefined && lobbyTimerPendingChoice !== confirmed) {
+    statusEl.textContent = `Ausgewählt: ${timerLabel(lobbyTimerPendingChoice)} - bitte bestätigen.`;
+  } else if (state.answerTimeLimitSet) {
+    statusEl.textContent = `✓ Festgelegt: ${timerLabel(confirmed)} (kann hier noch geändert werden)`;
+  } else {
+    statusEl.textContent = 'Bitte auswählen und mit „Bestätigen” festlegen.';
+  }
 }
-document.getElementById('btn-lobby-timer-60').addEventListener('click', () => {
+function selectLobbyTimerChoice(seconds) {
+  lobbyTimerPendingChoice = seconds;
+  if (lastState) renderLobbyGameSettings(lastState);
+}
+document.getElementById('btn-lobby-timer-60').addEventListener('click', () => selectLobbyTimerChoice(60));
+document.getElementById('btn-lobby-timer-120').addEventListener('click', () => selectLobbyTimerChoice(120));
+document.getElementById('btn-lobby-timer-none').addEventListener('click', () => selectLobbyTimerChoice(null));
+document.getElementById('btn-lobby-timer-confirm').addEventListener('click', () => {
   if (!currentCode) return;
-  socket.emit('setAnswerTimeLimit', { code: currentCode, seconds: 60 });
-  highlightLobbyTimerChoice(60);
-});
-document.getElementById('btn-lobby-timer-120').addEventListener('click', () => {
-  if (!currentCode) return;
-  socket.emit('setAnswerTimeLimit', { code: currentCode, seconds: 120 });
-  highlightLobbyTimerChoice(120);
-});
-document.getElementById('btn-lobby-timer-none').addEventListener('click', () => {
-  if (!currentCode) return;
-  socket.emit('setAnswerTimeLimit', { code: currentCode, seconds: null });
-  highlightLobbyTimerChoice(null);
+  const confirmed = lastState ? (lastState.answerTimeLimit ?? null) : null;
+  const seconds = lobbyTimerPendingChoice !== undefined ? lobbyTimerPendingChoice : confirmed;
+  socket.emit('setAnswerTimeLimit', { code: currentCode, seconds });
+  lobbyTimerPendingChoice = undefined;
 });
 
 function renderLobbyPlayerList(state) {
