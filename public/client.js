@@ -299,6 +299,7 @@ function renderAdminPlayerList() {
 let myId = null;
 let currentCode = null;
 let lastState = null;
+let lastRevealState = null; // für den "Ergebnisse"-Button auf dem Spielbrett zwischengespeichert
 
 // ---------- SESSION PERSISTENCE (überlebt Seiten-Reload UND komplettes Schließen von
 // Tab/App - wichtig, damit ein Spieler nach dem Schließen der App wieder in seine
@@ -393,6 +394,7 @@ const screens = {
   questionPreview: document.getElementById('screen-question-preview'),
   answering: document.getElementById('screen-answering'),
   voting: document.getElementById('screen-voting'),
+  drawingPresence: document.getElementById('screen-drawing-presence'),
   drawing: document.getElementById('screen-drawing'),
   reveal: document.getElementById('screen-reveal'),
   board: document.getElementById('screen-board'),
@@ -1097,6 +1099,11 @@ document.getElementById('btn-drawing-clear').addEventListener('click', () => {
   drawingCtx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
   socket.emit('clearDrawing', { code: currentCode });
 });
+document.getElementById('btn-confirm-drawing-presence').addEventListener('click', () => {
+  if (!currentCode) return;
+  socket.emit('confirmDrawingPresence', { code: currentCode });
+});
+
 document.getElementById('btn-drawing-end').addEventListener('click', () => {
   socket.emit('endDrawingRound', { code: currentCode });
 });
@@ -1704,9 +1711,13 @@ socket.on('state', (state) => {
           ? `Du kannst noch ${3 - qp.candidates.length}x wechseln.`
           : 'Kein Wechsel mehr übrig – das war die letzte Möglichkeit.');
     } else {
-      // Ich bin nicht Moderator:in - einfacher Warte-Screen
+      // Ich bin nicht Moderator:in - einfacher Warte-Screen, aber mit echtem Namen statt
+      // der generischen "Der/die Moderator:in"-Formulierung, damit klar ist, wer gerade dran ist
       document.getElementById('qp-moderator-view').classList.add('hidden');
       document.getElementById('qp-waiting-view').classList.remove('hidden');
+      const moderatorPlayer = state.players.find(p => p.id === state.moderatorId);
+      const moderatorName = moderatorPlayer ? moderatorPlayer.name : 'Der/die Moderator:in';
+      document.getElementById('qp-waiting-heading').textContent = `${moderatorName} wählt gerade die Frage aus …`;
     }
     showScreen('questionPreview');
   }
@@ -1946,6 +1957,24 @@ socket.on('state', (state) => {
     showScreen('voting');
   }
 
+  if (state.phase === 'drawingPresence') {
+    const isModeratorHere = state.moderatorId === myId;
+    document.getElementById('drawing-presence-hint-mod').classList.toggle('hidden', !isModeratorHere);
+    document.getElementById('drawing-presence-hint-guesser').classList.toggle('hidden', isModeratorHere);
+    const confirmBtn = document.getElementById('btn-confirm-drawing-presence');
+    const dp = state.drawingPresence || { total: 0, confirmedCount: 0, confirmedNames: [], iHaveConfirmed: false };
+    if (isModeratorHere) {
+      confirmBtn.classList.add('hidden');
+    } else {
+      confirmBtn.classList.remove('hidden');
+      confirmBtn.disabled = dp.iHaveConfirmed;
+      confirmBtn.textContent = dp.iHaveConfirmed ? '✅ Bestätigt - warte auf die anderen …' : '✅ Ich bin da';
+    }
+    const statusEl = document.getElementById('drawing-presence-status');
+    statusEl.textContent = `${dp.confirmedCount} von ${dp.total} bereit` + (dp.confirmedNames.length > 0 ? `: ${dp.confirmedNames.join(', ')}` : '');
+    showScreen('drawingPresence');
+  }
+
   const enteringDrawing = state.phase === 'drawing' && lastDrawingRoundIdSeen !== state.drawingRoundId;
   if (state.phase === 'drawing') {
     if (enteringDrawing) {
@@ -1984,6 +2013,7 @@ socket.on('state', (state) => {
   }
 
   if (state.phase === 'reveal') {
+    lastRevealState = state; // für den "Ergebnisse"-Button auf dem Spielbrett zwischenspeichern
     const catchupBanner = document.getElementById('catchup-banner');
     if (state.catchUpAnnouncement) {
       const { names, amount } = state.catchUpAnnouncement;
@@ -2077,6 +2107,94 @@ socket.on('state', (state) => {
       document.getElementById('board-waiting-msg').classList.toggle('hidden', !!state.gameOver);
     }
   }
+});
+
+// ---------- "Ergebnisse"-Button auf dem Spielbrett: letzte Auflösung noch mal ansehen ----------
+// Baut denselben Inhalt wie der normale Auflösungs-Screen, aber unabhängig davon in ein
+// Overlay - für den Fall, dass die Auflösung zu kurz zu sehen war, bevor es zum Brett ging.
+function buildRevealRecapHTML(state) {
+  if (!state) return '<p class="hint">Für diese Runde liegt noch keine Auflösung vor.</p>';
+  let html = '';
+  if (state.roundType === 'drawing') {
+    const term = state.drawingResult ? state.drawingResult.term : '';
+    html += `<span class="answer-label">🎨 Gesuchter Begriff:</span> <span class="answer-value">${escapeHtml(term)}</span>`;
+    const guesserNames = state.drawingResult ? state.drawingResult.guesserNames : [];
+    if (guesserNames.length === 0) {
+      html += `</p><div class="reveal-item">Niemand hat es erraten. Schade!</div>`;
+    } else {
+      html += `</p>`;
+      const medals = ['🥇', '🥈'];
+      const drawingPoints = [3, 2];
+      guesserNames.forEach((name, i) => {
+        html += `<div class="reveal-item real">${medals[i] || ''} ${escapeHtml(name)}<br><span class="owner">✔ Richtig geraten (+${drawingPoints[i] || 0} Punkte)</span></div>`;
+      });
+    }
+  } else if (state.roundType === 'estimate') {
+    html += `<span class="answer-label">Antwort:</span> <span class="answer-value">${state.estimateRealAnswer}</span></p>`;
+    const medals = ['🥇', '🥈', '🥉'];
+    (state.estimateResults || []).forEach(r => {
+      const medal = medals[r.rank - 1] || `${r.rank}.`;
+      const pointsText = r.points > 0 ? `+${r.points} Punkte` : 'keine Punkte';
+      const diffText = r.diff !== undefined ? ` <span class="closeness-tag">Abweichung: ${r.diff}</span>` : '';
+      html += `<div class="reveal-item${r.points > 0 ? ' real' : ''}">${medal} ${escapeHtml(r.name)}: <strong>${r.value}</strong>${diffText}<br><span class="owner">${pointsText}</span></div>`;
+    });
+  } else {
+    html += `</p>`;
+    (state.shuffledAnswers || []).forEach(a => {
+      const isMyVote = state.myVote === a.ownerId;
+      let cls = 'reveal-item' + (a.isReal ? ' real' : '');
+      if (isMyVote) cls += a.isReal ? ' my-correct' : ' my-wrong';
+      const ownerName = a.isReal ? 'Echte Antwort ✔' : (state.players.find(p => p.id === a.ownerId)?.name || '???');
+      const myVoteBadge = isMyVote
+        ? `<span class="my-vote-badge">${a.isReal ? `✔ Richtig getippt! (+${state.pointsCorrectGuess} Punkte)` : '✗ Reingefallen'}</span>`
+        : '';
+      const foolerNames = (a.foolerIds || []).map((id, i) => id === myId ? 'Du' : escapeHtml((a.foolerNames || [])[i]));
+      const foolerNamesText = foolerNames.join(', ');
+      const iAmTheOnlyFooler = a.foolCount === 1 && (a.foolerIds || [])[0] === myId;
+      const verb = iAmTheOnlyFooler ? 'bist' : (a.foolCount === 1 ? 'ist' : 'sind');
+      const foolCallout = (!a.isReal && a.foolCount > 0)
+        ? `<span class="fool-callout">🎣 ${foolerNamesText} ${verb} darauf reingefallen!${a.pointsAwardedFoolCount > 0 ? ` ${ownerName} bekommt +${a.pointsAwardedFoolCount * state.pointsPerFooled} Punkte` : ''}</span>`
+        : '';
+      const correctGuesserNames = (a.correctGuesserIds || []).map((id, i) => id === myId ? 'Du' : escapeHtml((a.correctGuesserNames || [])[i]));
+      const correctGuesserText = correctGuesserNames.join(', ');
+      const correctCallout = a.isReal
+        ? ((a.correctGuesserIds || []).length > 0
+            ? `<span class="fool-callout">🎯 ${correctGuesserText} ${correctGuesserNames.length === 1 ? 'hat' : 'haben'} die echte Antwort erkannt!</span>`
+            : `<span class="fool-callout" style="opacity:0.7;">Niemand hat die echte Antwort erkannt.</span>`)
+        : '';
+      html += `<div class="${cls}">${escapeHtml(a.text)}<br><span class="owner">${ownerName}</span>${myVoteBadge}${foolCallout}${correctCallout}</div>`;
+    });
+  }
+  return html;
+}
+document.getElementById('btn-show-results-recap').addEventListener('click', () => {
+  const state = lastRevealState;
+  const catchupEl = document.getElementById('reveal-recap-catchup');
+  if (state && state.catchUpAnnouncement) {
+    const { names, amount } = state.catchUpAnnouncement;
+    catchupEl.textContent = `🚀 Aufholjagd! ${names.join(' & ')} bekommt +${amount} Bonus-Felder!`;
+    catchupEl.classList.remove('hidden');
+  } else {
+    catchupEl.classList.add('hidden');
+  }
+  document.getElementById('reveal-recap-question').textContent = (state && state.roundType !== 'drawing') ? (state.currentQuestion || '') : '';
+  const realAnswerEl = document.getElementById('reveal-recap-realanswer');
+  const showRealAnswerBox = !!(state && (state.roundType === 'drawing' || state.roundType === 'estimate'));
+  realAnswerEl.classList.toggle('hidden', !showRealAnswerBox);
+  const full = buildRevealRecapHTML(state);
+  // Der erste Teil (bis zum schließenden </p>) gehört in die real-answer-Box, der Rest in
+  // die Liste darunter.
+  const splitIndex = full.indexOf('</p>');
+  if (showRealAnswerBox && splitIndex !== -1) {
+    realAnswerEl.innerHTML = full.slice(0, splitIndex);
+    document.getElementById('reveal-recap-list').innerHTML = full.slice(splitIndex + 4);
+  } else {
+    document.getElementById('reveal-recap-list').innerHTML = full;
+  }
+  document.getElementById('reveal-recap-overlay').classList.remove('hidden');
+});
+document.getElementById('btn-close-reveal-recap').addEventListener('click', () => {
+  document.getElementById('reveal-recap-overlay').classList.add('hidden');
 });
 
 // ============================================================

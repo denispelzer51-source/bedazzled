@@ -102,7 +102,7 @@ const ESTIMATE_POINTS = [3, 2, 1]; // Platz 1, 2, 3 – Rest geht leer aus
 
 // Blaue Felder: Fremdwörter-Fragen (etwas seltener als die lila Standardfelder)
 const FOREIGNWORD_TRIGGER_FIELDS = [2, 10, 16, 22];
-// Gelbe Felder: Zeichenrunde (Moderator zeichnet einen Begriff, andere raten mit)
+// Gelbe Felder: Zeichnenrunde (Moderator zeichnet einen Begriff, andere raten mit)
 const DRAWING_TRIGGER_FIELDS = [4, 12, 19, 24];
 const DRAWING_GUESS_POINTS = [3, 2]; // 1. und 2. richtig Ratende:r - danach endet die Runde automatisch
 
@@ -483,7 +483,7 @@ function publicRoomState(room, forPlayerId) {
     estimateRealAnswer: (room.phase === 'reveal' && room.roundType === 'estimate' && room.currentQuestionObj)
       ? room.currentQuestionObj.answer
       : null,
-    // Zeichenrunde: Moderator sieht, wer schon richtig geraten hat; Mitspieler sehen
+    // Zeichnenrunde: Moderator sieht, wer schon richtig geraten hat; Mitspieler sehen
     // nur ihren eigenen Status (nicht die anderen, um kein Rennen/Gruppenzwang zu erzeugen)
     drawingCorrectGuessers: (isModerator && room.phase === 'drawing')
       ? (room.correctGuessers || []).map(id => (room.players.find(p => p.id === id) || {}).name || '???')
@@ -491,6 +491,19 @@ function publicRoomState(room, forPlayerId) {
     myGuessCorrect: room.phase === 'drawing' ? (room.correctGuessers || []).includes(forPlayerId) : false,
     drawingRoundId: room.drawingRoundId || 0,
     drawingStartedAt: room.phase === 'drawing' ? (room.drawingStartedAt || null) : null,
+    drawingPresence: (room.phase === 'drawingPresence')
+      ? (() => {
+          const moderatorId = room.players[room.moderatorIndex].id;
+          const guessers = room.players.filter(p => p.id !== moderatorId);
+          const confirmedIds = guessers.filter(p => room.presenceConfirmed && room.presenceConfirmed[p.id]).map(p => p.id);
+          return {
+            total: guessers.length,
+            confirmedCount: confirmedIds.length,
+            confirmedNames: confirmedIds.map(id => room.players.find(p => p.id === id)?.name).filter(Boolean),
+            iHaveConfirmed: !!(room.presenceConfirmed && room.presenceConfirmed[forPlayerId]),
+          };
+        })()
+      : null,
     drawingResult: (room.phase === 'reveal' && room.drawingResult) ? room.drawingResult : null,
     catchUpAnnouncement: room.catchUpAnnouncement || null,
   };
@@ -552,7 +565,7 @@ function pickNextQuestion(room, roundType, excludeIndices = []) {
     usedKey = 'usedQuestions';
   }
   if (pool.length === 0) {
-    // Notfall: NIE in eine andere Kategorie ausweichen (eine Zeichenrunde darf niemals
+    // Notfall: NIE in eine andere Kategorie ausweichen (eine Zeichnenrunde darf niemals
     // eine Fremdwort-/Bluff-Frage zeigen und umgekehrt) - höchstens das reviewed-Flag
     // ignorieren, falls in der richtigen Kategorie nur ungeprüfte Einträge existieren.
     if (roundType === 'estimate') {
@@ -583,7 +596,7 @@ function pickNextQuestion(room, roundType, excludeIndices = []) {
     // Gleiche Form wie eine normale Frage, damit die Fragen-Vorschau unverändert
     // wiederverwendet werden kann - "question" ist der Anzeige-Text für den/die
     // Moderator:in, "answer" ist der eigentliche zu erratende Begriff.
-    return { index: idx, question: `Zeichne: ${picked.question}`, answer: picked.answer, category: '🎨 Zeichenrunde', topic: picked.topic || '' };
+    return { index: idx, question: `Zeichne: ${picked.question}`, answer: picked.answer, category: '🎨 Zeichnenrunde', topic: picked.topic || '' };
   }
   return { index: idx, ...picked };
 }
@@ -670,6 +683,24 @@ function removePlayerForGood(roomCode, playerId) {
   }
   if (room.moderatorIndex >= room.players.length) room.moderatorIndex = 0;
   if (room.hostId === playerId) room.hostId = room.players[0].id; // Host-Rolle wandert weiter
+
+  // Falls jemand mitten im Anwesenheits-Check einer Zeichnenrunde geht: prüfen, ob die
+  // verbleibenden Mitspieler:innen jetzt vollständig bestätigt haben, statt für immer zu warten.
+  if (room.phase === 'drawingPresence') {
+    const moderatorId = room.players[room.moderatorIndex].id;
+    const guessers = room.players.filter(p => p.id !== moderatorId);
+    const allConfirmed = guessers.length > 0 && guessers.every(p => room.presenceConfirmed && room.presenceConfirmed[p.id]);
+    if (allConfirmed) {
+      room.phase = 'drawing';
+      room.drawingStartedAt = Date.now();
+      room.correctGuessers = [];
+      room.guesses = {};
+      room.drawingStartPositions = {};
+      room.players.forEach(p => { room.drawingStartPositions[p.id] = p.position; });
+      push.notifyPlayers([room.players[room.moderatorIndex]], 'Du bist dran! 🎨', 'Zeichne den Begriff.', { code: roomCode, type: 'drawing-mod' });
+    }
+  }
+
   broadcastState(roomCode);
 }
 
@@ -1116,18 +1147,14 @@ io.on('connection', (socket) => {
 
     if (room.roundType === 'drawing') {
       room.drawingRoundId = (room.drawingRoundId || 0) + 1;
-      room.drawingStartedAt = Date.now();
-      room.phase = 'drawing';
-      room.correctGuessers = [];
-      room.guesses = {};
-      // Positionen VOR der Zeichenrunde merken, da Punkte hier laufend (nicht erst am
-      // Ende) vergeben werden - für Aufhol-/Schätzen-Feld-Check am Rundenende gebraucht.
-      room.drawingStartPositions = {};
-      room.players.forEach(p => { room.drawingStartPositions[p.id] = p.position; });
+      // NEU: erst ein Zwischenscreen, auf dem alle Mitspieler (außer dem/der Moderator:in,
+      // der/die ja selbst zeichnet) ihre Anwesenheit bestätigen müssen - die eigentliche
+      // Zeichnenrunde (inkl. Zeit-Sperre fürs "Runde beenden") startet erst danach.
+      room.phase = 'drawingPresence';
+      room.presenceConfirmed = {};
       broadcastState(code);
       const guessers = room.players.filter(p => p.id !== moderatorId);
-      push.notifyPlayers(guessers, 'Zeichenrunde! 🎨', 'Rate mit, was gerade gezeichnet wird.', { code, type: 'drawing' });
-      push.notifyPlayers([room.players[room.moderatorIndex]], 'Du bist dran! 🎨', 'Zeichne den Begriff.', { code, type: 'drawing-mod' });
+      push.notifyPlayers(guessers, 'Zeichnenrunde gleich! 🎨', 'Bitte bestätige deine Anwesenheit.', { code, type: 'drawing' });
       return;
     }
 
@@ -1373,6 +1400,38 @@ io.on('connection', (socket) => {
     broadcastState(code);
     checkForWinner(code, room);
   }
+
+  // Bevor die eigentliche Zeichnenrunde losgeht, müssen alle Mitspieler:innen (außer dem/
+  // der zeichnenden Moderator:in) ihre Anwesenheit bestätigen - verhindert, dass jemand
+  // mitten in der Runde noch nicht am Bildschirm ist und dadurch keine faire Chance hatte.
+  socket.on('confirmDrawingPresence', ({ code }) => {
+    const room = rooms[code];
+    if (!room || room.phase !== 'drawingPresence') return;
+    const playerId = socket.data.token;
+    const moderatorId = room.players[room.moderatorIndex].id;
+    if (playerId === moderatorId) return; // Moderator zeichnet selbst, muss nicht bestätigen
+    if (!room.players.find(p => p.id === playerId)) return;
+    room.presenceConfirmed = room.presenceConfirmed || {};
+    room.presenceConfirmed[playerId] = true;
+
+    const guessers = room.players.filter(p => p.id !== moderatorId);
+    const allConfirmed = guessers.length > 0 && guessers.every(p => room.presenceConfirmed[p.id]);
+    if (allConfirmed) {
+      room.phase = 'drawing';
+      room.drawingStartedAt = Date.now();
+      room.correctGuessers = [];
+      room.guesses = {};
+      // Positionen VOR der Zeichnenrunde merken, da Punkte hier laufend (nicht erst am
+      // Ende) vergeben werden - für Aufhol-/Schätzen-Feld-Check am Rundenende gebraucht.
+      room.drawingStartPositions = {};
+      room.players.forEach(p => { room.drawingStartPositions[p.id] = p.position; });
+      broadcastState(code);
+      push.notifyPlayers([room.players[room.moderatorIndex]], 'Du bist dran! 🎨', 'Zeichne den Begriff.', { code, type: 'drawing-mod' });
+      console.log(`[Zeichnenrunde] Alle bereit in Raum ${code} - Runde startet.`);
+    } else {
+      broadcastState(code);
+    }
+  });
 
   socket.on('endDrawingRound', ({ code }) => {
     const room = rooms[code];
@@ -1759,7 +1818,7 @@ io.on('connection', (socket) => {
     console.log(`[ADMIN-TOOL] Runde in Raum ${code} übersprungen.`);
   });
 
-  // Springt sofort in den Anfang einer Zeichenrunde (zum Testen des Zeichen-Screens),
+  // Springt sofort in den Anfang einer Zeichnenrunde (zum Testen des Zeichen-Screens),
   // ohne die Fragen-Vorschau und ohne den Begriff als "verwendet" zu markieren.
   socket.on('adminForceDrawingRound', ({ code }) => {
     if (!socket.data.isSuperAdmin) return;
@@ -1784,7 +1843,7 @@ io.on('connection', (socket) => {
     room.drawingStartedAt = Date.now();
     room.phase = 'drawing';
     broadcastState(code);
-    console.log(`[ADMIN-TOOL] Zeichenrunde in Raum ${code} erzwungen (Test).`);
+    console.log(`[ADMIN-TOOL] Zeichnenrunde in Raum ${code} erzwungen (Test).`);
   });
 
   // Simuliert, dass eine komplette Runde stattgefunden hat: jede Figur macht einen

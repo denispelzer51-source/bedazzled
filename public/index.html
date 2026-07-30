@@ -283,7 +283,7 @@
 
       <div id="qp-waiting-view" class="hidden" style="text-align:center; padding-top:40px;">
         <p style="font-size:40px;">🎴</p>
-        <h2>Der/die Moderator:in wählt gerade die Frage aus …</h2>
+        <h2 id="qp-waiting-heading">Der/die Moderator:in wählt gerade die Frage aus …</h2>
         <p class="hint">Gleich geht's los!</p>
       </div>
     </div>
@@ -340,9 +340,22 @@
   </section>
 
   <!-- ZEICHENRUNDE (gelbe Felder): Moderator zeichnet, andere raten mit -->
+  <!-- ZEICHNENRUNDE: Anwesenheits-Check, bevor es wirklich losgeht -->
+  <section id="screen-drawing-presence" class="screen">
+    <div class="screen-scroll" style="text-align:center;">
+      <div class="phase-tag">🎨 Zeichnenrunde gleich</div>
+      <h2 style="margin-top:20px;">Bist du bereit?</h2>
+      <p class="hint" id="drawing-presence-hint-mod" style="margin-top:10px;">Warte, bis alle Mitspieler:innen ihre Anwesenheit bestätigt haben - erst dann kannst du loszeichnen.</p>
+      <p class="hint" id="drawing-presence-hint-guesser" style="margin-top:10px;">Gleich beginnt die Zeichnenrunde - bestätige kurz, dass du bereit bist mitzuraten.</p>
+      <button id="btn-confirm-drawing-presence" class="btn btn-primary" style="margin-top:16px;">✅ Ich bin da</button>
+      <p id="drawing-presence-status" class="hint" style="margin-top:16px;"></p>
+      <button class="btn-leave-game" style="margin-top:20px;">Spiel verlassen</button>
+    </div>
+  </section>
+
   <section id="screen-drawing" class="screen">
     <div class="screen-scroll">
-      <div class="phase-tag">🎨 Zeichenrunde</div>
+      <div class="phase-tag">🎨 Zeichnenrunde</div>
 
       <div id="drawing-mod-hint" class="hidden" style="text-align:center; margin-bottom:10px;">
         <p style="color:var(--gold); font-weight:700; font-size:18px;" id="drawing-term-display"></p>
@@ -406,8 +419,9 @@
         <span><span class="key-dot key-purple"></span> Lila – normale Frage</span>
         <span><span class="key-dot key-blue"></span> Blau – Fremdwort</span>
         <span><span class="key-dot key-green"></span> Grün – Schätzfrage</span>
-        <span><span class="key-dot key-yellow"></span> Gelb – Zeichnen</span>
+        <span><span class="key-dot key-yellow"></span> Gelb – Zeichnenrunde</span>
       </div>
+      <button id="btn-show-results-recap" class="btn btn-secondary" style="margin-top:14px;">📊 Ergebnisse</button>
     </div>
 
     <div class="screen-footer">
@@ -426,6 +440,18 @@
 </div>
 
 <!-- Bestätigungs-Modal für Raum verlassen -->
+<!-- Ergebnisse der letzten Runde noch mal ansehen (aufrufbar über den Button auf dem Spielbrett) -->
+<div id="reveal-recap-overlay" class="overlay hidden">
+  <div class="overlay-box" style="max-width:520px; max-height:82vh; overflow-y:auto;">
+    <h2>📊 Ergebnisse der letzten Runde</h2>
+    <p id="reveal-recap-catchup" class="catchup-banner hidden"></p>
+    <p id="reveal-recap-question" class="question-text small"></p>
+    <p id="reveal-recap-realanswer" class="real-answer-box hidden"></p>
+    <div id="reveal-recap-list" class="reveal-list"></div>
+    <button id="btn-close-reveal-recap" class="btn btn-secondary" style="margin-top:16px;">Schließen</button>
+  </div>
+</div>
+
 <div id="quit-overlay" class="overlay hidden">
   <div class="overlay-box">
     <p class="overlay-question">Spiel wirklich verlassen?</p>
@@ -496,7 +522,7 @@
       <div id="admin-tools-box" class="hidden" style="margin-top:14px; padding-top:14px; border-top:1px solid rgba(255,255,255,0.1);">
         <p class="hint" style="margin:0 0 10px;">🛠 Admin-Werkzeuge (nur für dich sichtbar)</p>
         <button id="btn-admin-skip-round" class="btn btn-secondary" style="margin-bottom:10px;">⏭ Aktuelle Runde überspringen</button>
-        <button id="btn-admin-force-drawing" class="btn btn-secondary" style="margin-bottom:10px;">🎨 Zeichenrunde jetzt starten (Test)</button>
+        <button id="btn-admin-force-drawing" class="btn btn-secondary" style="margin-bottom:10px;">🎨 Zeichnenrunde jetzt starten (Test)</button>
         <button id="btn-admin-force-board" class="btn btn-secondary" style="margin-bottom:10px;">🎲 Zufallszüge + Spielbrett zeigen (Test)</button>
         <div id="admin-player-list"></div>
       </div>
