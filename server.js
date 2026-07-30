@@ -465,9 +465,16 @@ function publicRoomState(room, forPlayerId) {
     // korrekt wiederherstellt, statt das Eingabefeld fälschlich leer zurückzusetzen
     myAnswerSubmitted: room.answers[forPlayerId] !== undefined,
     myAnswerText: room.answers[forPlayerId] !== undefined ? room.answers[forPlayerId] : null,
-    shuffledAnswers: room.phase === 'voting' || room.phase === 'reveal'
-      ? room.shuffledAnswers.map(a => room.phase === 'reveal' ? a : { text: a.text, ownerId: a.ownerId })
-      : [],
+    // WICHTIGER FUND: bisher bekam jede:r Spieler:in während der Abstimmung exakt dieselbe
+    // Liste inkl. der EIGENEN Antwort als anklickbare Option - man konnte also (versehentlich)
+    // für die eigene Antwort abstimmen. Das gab zwar nie Punkte (weder als "richtig geraten"
+    // noch als Bluff-Erfolg, siehe Punkte-Logik unten), war aber trotzdem falsch: die eigene
+    // Antwort gehört gar nicht erst in die eigene Auswahl. Während der Auflösung (reveal)
+    // bleibt die eigene Antwort natürlich weiterhin sichtbar - da geht es ja gerade darum,
+    // zu sehen, wer darauf reingefallen ist.
+    shuffledAnswers: room.phase === 'voting'
+      ? room.shuffledAnswers.filter(a => a.ownerId !== forPlayerId).map(a => ({ text: a.text, ownerId: a.ownerId }))
+      : (room.phase === 'reveal' ? room.shuffledAnswers : []),
     // Moderator:in sieht schon während der Abstimm-Phase, welche Antwort gerade angetippt wurde
     votePreview: (isModerator && room.phase === 'voting')
       ? room.players
