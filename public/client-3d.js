@@ -1279,14 +1279,23 @@ function sync3DBoard(players, fromPositions, animate, onComplete) {
     };
   });
   sendToBoard3D({ type: 'syncPlayers', players: playersPayload });
+  let moverCount = 0;
   if (animate) {
     players.forEach(p => {
       const from = fromPositions[p.id] ?? p.position;
       const steps = p.position - from;
-      if (steps !== 0) sendToBoard3D({ type: 'movePlayer', playerId: p.id, steps });
+      if (steps !== 0) {
+        moverCount++;
+        sendToBoard3D({ type: 'movePlayer', playerId: p.id, steps });
+      }
     });
   }
-  if (onComplete) setTimeout(onComplete, animate ? 3200 : 0);
+  // Mehrere Figuren, die nach einer Runde gleichzeitig Punkte bekommen haben, ziehen im
+  // 3D-Brett nacheinander (Warteschlange) statt gleichzeitig - die Wartezeit bis zum
+  // Gewinner-Check muss deshalb mit der Anzahl der ziehenden Figuren mitwachsen, sonst
+  // würde das Gewinner-Popup erscheinen, bevor alle fertig gezogen sind.
+  const delay = animate ? Math.max(1, moverCount) * 3200 : 0;
+  if (onComplete) setTimeout(onComplete, delay);
 }
 let miniBarShowsLive = true; // Mini-Leiste zeigt neue Positionen erst, sobald das große Spielbrett sie enthüllt
 

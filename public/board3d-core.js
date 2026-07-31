@@ -19,7 +19,9 @@ scene.background = new THREE.Color(0x000000);
 scene.fog = new THREE.FogExp2(0x000000, 0.008);
 
 const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 200);
-camera.position.set(0, 15.4, 5.0);
+// Deutlich näher am Brett und im 45°-Winkel von vorne (statt vorher fast senkrecht von oben
+// und weit entfernt) - so lassen sich die Figuren viel leichter unterscheiden.
+camera.position.set(0, 6.5, 6.5);
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
@@ -693,12 +695,20 @@ renderFigurePicker();
 // ---------- Animation: Zug simulieren (echte Kamera-Bewegung, kein Trick) ----------
 let activeTurn = 1;
 let animating = false;
+// Statt einen Zug einfach zu verwerfen, während schon eine andere Figur zieht (das war der
+// Grund, warum nach einer Runde mit mehreren Punkte-Empfänger:innen nur EINE Figur zu ziehen
+// schien) - jetzt werden weitere Züge in eine Warteschlange gestellt und automatisch
+// nacheinander abgespielt, sobald die aktuell laufende Figur fertig gezogen ist.
+const pendingMoveQueue = [];
 
 function lerp(a, b, t) { return a + (b - a) * t; }
 function easeInOutCubic(t) { return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; }
 
 function animateMove(tokenIdx, steps, onComplete) {
-  if (animating) return;
+  if (animating) {
+    pendingMoveQueue.push({ tokenIdx, steps, onComplete });
+    return;
+  }
   animating = true;
   controls.enabled = false;
 
@@ -866,6 +876,13 @@ function animateMove(tokenIdx, steps, onComplete) {
       animating = false;
       controls.enabled = orbitEnabled;
       if (onComplete) onComplete();
+      // Nächsten wartenden Zug (falls vorhanden) automatisch starten - so ziehen am Ende
+      // einer Runde nacheinander wirklich ALLE Figuren, die Punkte bekommen haben, statt
+      // dass nur die erste zieht und der Rest verworfen wird.
+      if (pendingMoveQueue.length > 0) {
+        const next = pendingMoveQueue.shift();
+        animateMove(next.tokenIdx, next.steps, next.onComplete);
+      }
     }
   }
   requestAnimationFrame(frame);
@@ -1012,11 +1029,18 @@ document.getElementById('btnReset').addEventListener('click', () => {
   tokensData[4].pos = 18;
   tokensData[5].pos = 22;
   placeTokens();
-  camera.position.set(0, 15.4, 5.0);
+  camera.position.set(0, 6.5, 6.5);
   controls.target.set(0, 0.5, 0);
 });
 
-let orbitEnabled = true;
+// Manuelles Drehen per Finger/Maus ist NUR in der Werkstatt-Datei (board-threejs-demo.html)
+// standardmäßig an - dort ist das zum Testen sinnvoll. In der eingebetteten Spielversion
+// (board-threejs-embed.html, per iframe im echten Spiel) bleibt die Kamera von Anfang an
+// fest/statisch, wie gewünscht - der Spieler soll die Kamera nicht selbst justieren müssen.
+// Erkennung: läuft die Datei in einem iframe (window.parent !== window), ist es die
+// eingebettete Version.
+let orbitEnabled = (window.parent === window);
+controls.enabled = orbitEnabled;
 document.getElementById('btnOrbitToggle').addEventListener('click', (e) => {
   orbitEnabled = !orbitEnabled;
   controls.enabled = orbitEnabled;
