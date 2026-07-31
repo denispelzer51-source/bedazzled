@@ -1,93 +1,552 @@
 import * as THREE from 'three';
-import { shinyMat } from './shared.js';
 
-// Maske V9: Augen/Mund sind jetzt KEINE echten Löcher mehr in der Form (das hat offenbar
-// nicht zuverlässig gerendert - die Aussparungen waren praktisch unsichtbar). Stattdessen:
-// solide, dunkle Formen, die direkt VOR das Gesicht gesetzt werden - optisch identisch zum
-// "Ausschnitt"-Look im Referenzbild, aber ohne die Fehleranfälligkeit von Extrude-Löchern.
-export function build(colorHex) {
-  const g = new THREE.Group();
+/**
+ * Erstellt das Bedazzled-Masken-Icon als THREE.Group.
+ *
+ * Verwendung:
+ * const mask = createBedazzledMask();
+ * scene.add(mask);
+ */
+export function createBedazzledMask({
+  scale = 1,
+  blueColor = 0x429cff,
+  yellowColor = 0xffc33d,
+  faceColor = 0x241536,
+  castShadow = true,
+  receiveShadow = true,
+} = {}) {
+  const root = new THREE.Group();
+  root.name = 'BedazzledMask';
 
-  // Grundform: Theatermasken-Schild mit gewelltem Doppel-Buckel oben, runde Spitze unten
-  function outline(shape, s) {
-    shape.moveTo(-0.26 * s, 0.08 * s);
-    shape.bezierCurveTo(-0.28 * s, 0.25 * s, -0.14 * s, 0.33 * s, 0, 0.2 * s);
-    shape.bezierCurveTo(0.14 * s, 0.33 * s, 0.28 * s, 0.25 * s, 0.26 * s, 0.08 * s);
-    shape.bezierCurveTo(0.29 * s, -0.1 * s, 0.2 * s, -0.28 * s, 0, -0.34 * s);
-    shape.bezierCurveTo(-0.2 * s, -0.28 * s, -0.29 * s, -0.1 * s, -0.26 * s, 0.08 * s);
-    shape.closePath();
+  const blueMaterial = createGlossyMaterial(blueColor);
+  const yellowMaterial = createGlossyMaterial(yellowColor);
+
+  const faceMaterial = new THREE.MeshPhysicalMaterial({
+    color: faceColor,
+    roughness: 0.28,
+    metalness: 0.02,
+    clearcoat: 0.45,
+    clearcoatRoughness: 0.25,
+  });
+
+  const blueMask = createMask({
+    type: 'comedy',
+    material: blueMaterial,
+    faceMaterial,
+    width: 1.65,
+    height: 1.9,
+    depth: 0.18,
+  });
+
+  blueMask.position.set(-0.33, 0.12, 0.2);
+  blueMask.rotation.set(
+    THREE.MathUtils.degToRad(-3),
+    THREE.MathUtils.degToRad(10),
+    THREE.MathUtils.degToRad(-16),
+  );
+
+  const yellowMask = createMask({
+    type: 'tragedy',
+    material: yellowMaterial,
+    faceMaterial,
+    width: 1.6,
+    height: 1.86,
+    depth: 0.17,
+  });
+
+  yellowMask.position.set(0.48, -0.13, -0.02);
+  yellowMask.rotation.set(
+    THREE.MathUtils.degToRad(3),
+    THREE.MathUtils.degToRad(-11),
+    THREE.MathUtils.degToRad(15),
+  );
+
+  root.add(yellowMask);
+  root.add(blueMask);
+
+  root.scale.setScalar(scale);
+
+  root.traverse((object) => {
+    if (!object.isMesh) return;
+
+    object.castShadow = castShadow;
+    object.receiveShadow = receiveShadow;
+  });
+
+  return root;
+}
+
+function createGlossyMaterial(color) {
+  return new THREE.MeshPhysicalMaterial({
+    color,
+    roughness: 0.23,
+    metalness: 0.02,
+    clearcoat: 0.85,
+    clearcoatRoughness: 0.18,
+    sheen: 0.18,
+    sheenColor: new THREE.Color(0xffffff),
+    sheenRoughness: 0.4,
+  });
+}
+
+function createMask({
+  type,
+  material,
+  faceMaterial,
+  width,
+  height,
+  depth,
+}) {
+  const group = new THREE.Group();
+
+  const bodyShape = createMaskBodyShape(width, height);
+
+  const bodyGeometry = new THREE.ExtrudeGeometry(bodyShape, {
+    depth,
+    curveSegments: 32,
+    steps: 1,
+    bevelEnabled: true,
+    bevelThickness: 0.075,
+    bevelSize: 0.065,
+    bevelOffset: -0.018,
+    bevelSegments: 7,
+  });
+
+  bodyGeometry.center();
+  bodyGeometry.computeVertexNormals();
+
+  const body = new THREE.Mesh(bodyGeometry, material);
+  body.name = `${type}-mask-body`;
+
+  /*
+   * ExtrudeGeometry erzeugt zunächst eine relativ flache Form.
+   * Die Skalierung der Tiefe und leichte Rotation erzeugen den
+   * Eindruck eines kompakten, gewölbten Emoji-Icons.
+   */
+  body.scale.z = 1.18;
+  group.add(body);
+
+  // WICHTIG: body.scale.z = 1.18 (siehe unten) streckt den Maskenkörper NACH dem
+  // Zentrieren zusätzlich in die Tiefe - die reine "depth * 0.73"-Rechnung hat das nicht
+  // berücksichtigt, wodurch Augen/Mund effektiv HINTER der (gestreckten) Vorderseite der
+  // Maske lagen und verdeckt wurden. Jetzt anhand der tatsächlichen Geometrie berechnet
+  // (halbe Tiefe + Bevel-Dicke, mal Streckfaktor, plus Sicherheitsabstand).
+  const bodyBevelThickness = 0.075;
+  const bodyZStretch = 1.18;
+  const faceZ = (depth / 2 + bodyBevelThickness) * bodyZStretch * 1.8;
+
+  if (type === 'comedy') {
+    addComedyFace(group, faceMaterial, faceZ, width, height);
+  } else {
+    addTragedyFace(group, faceMaterial, faceZ, width, height);
   }
 
-  // Ein "dicker Kreisbogen" ALS EIGENE, GEFÜLLTE FORM (kein Loch) - zwei konzentrische
-  // Bögen (außen vorwärts, innen rückwärts) ergeben eine Sichel-/Bananen-Form.
-  function thickArcShape(cx, cy, radius, thickness, startDeg, endDeg) {
-    const start = (startDeg * Math.PI) / 180;
-    const end = (endDeg * Math.PI) / 180;
-    const rOuter = radius + thickness / 2;
-    const rInner = Math.max(0.001, radius - thickness / 2);
-    const shape = new THREE.Shape();
-    shape.absarc(cx, cy, rOuter, start, end, false);
-    shape.absarc(cx, cy, rInner, end, start, true);
-    shape.closePath();
-    return shape;
-  }
+  addCheekHighlights(group, type, faceZ, width, height);
+  addSideSoftness(group, material, depth, width, height);
 
-  function buildFeature(arcShape, depth, z) {
-    const geo = new THREE.ExtrudeGeometry(arcShape, { depth, bevelEnabled: true, bevelThickness: 0.004, bevelSize: 0.004, bevelSegments: 2, curveSegments: 24 });
-    const mat = new THREE.MeshStandardMaterial({ color: '#1a0f33', roughness: 0.6 });
-    const mesh = new THREE.Mesh(geo, mat);
-    mesh.position.z = z;
-    return mesh;
-  }
+  return group;
+}
 
-  function buildOneMask(faceColorTop, faceColorBottom, smiling) {
-    const group = new THREE.Group();
+function createMaskBodyShape(width, height) {
+  const w = width / 2;
+  const h = height / 2;
 
-    // Solides Gesicht OHNE Löcher - zuverlässig und einfach
-    const shape = new THREE.Shape();
-    outline(shape, 1);
-    const faceGeo = new THREE.ExtrudeGeometry(shape, { depth: 0.045, bevelEnabled: true, bevelThickness: 0.018, bevelSize: 0.02, bevelSegments: 5, curveSegments: 24 });
-    faceGeo.center();
-    const faceMat = shinyMat(faceColorTop, {
-      side: THREE.DoubleSide, metalness: 0.1, roughness: 0.15, clearcoat: 1, clearcoatRoughness: 0.1,
-      emissive: faceColorBottom, emissiveIntensity: 0.12,
-    });
-    const face = new THREE.Mesh(faceGeo, faceMat);
-    face.castShadow = true;
-    group.add(face);
+  const shape = new THREE.Shape();
 
-    // WICHTIG: Bei einem abgeschrägten (bevelEnabled) Extrude kommt die Bevel-Dicke NOCH
-    // OBEN AUF die reine "depth" drauf - die echte Vorderseite liegt also bei
-    // (depth/2 + bevelThickness), nicht nur bei depth/2. Das war der eigentliche Fehler:
-    // die Augen/Mund-Formen lagen dadurch effektiv HINTER der gewölbten Vorderseite des
-    // Gesichts und wurden komplett verdeckt. Jetzt mit deutlichem Sicherheitsabstand davor.
-    const frontZ = 0.045 / 2 + 0.018 + 0.012; // = echte Vorderseite + Sicherheitsabstand
-    if (smiling) {
-      group.add(buildFeature(thickArcShape(-0.095, 0.06, 0.09, 0.03, 200, 340), 0.01, frontZ));
-      group.add(buildFeature(thickArcShape(0.095, 0.06, 0.09, 0.03, 200, 340), 0.01, frontZ));
-      group.add(buildFeature(thickArcShape(0, 0.02, 0.24, 0.11, 25, 155), 0.012, frontZ));
-    } else {
-      group.add(buildFeature(thickArcShape(-0.1, 0.07, 0.11, 0.025, 165, 245), 0.01, frontZ));
-      group.add(buildFeature(thickArcShape(0.1, 0.07, 0.11, 0.025, -65, 15), 0.01, frontZ));
-      group.add(buildFeature(thickArcShape(0, -0.26, 0.22, 0.1, 205, 335), 0.012, frontZ));
+  shape.moveTo(-w * 0.64, h * 0.88);
+
+  shape.bezierCurveTo(
+    -w * 0.9,
+    h * 0.72,
+    -w * 1.02,
+    h * 0.32,
+    -w * 0.91,
+    -h * 0.12,
+  );
+
+  shape.bezierCurveTo(
+    -w * 0.83,
+    -h * 0.5,
+    -w * 0.55,
+    -h * 0.82,
+    -w * 0.2,
+    -h * 0.95,
+  );
+
+  shape.bezierCurveTo(
+    0,
+    -h * 1.04,
+    w * 0.23,
+    -h * 0.97,
+    w * 0.43,
+    -h * 0.77,
+  );
+
+  shape.bezierCurveTo(
+    w * 0.77,
+    -h * 0.45,
+    w * 0.97,
+    -h * 0.05,
+    w * 0.95,
+    h * 0.4,
+  );
+
+  shape.bezierCurveTo(
+    w * 0.93,
+    h * 0.76,
+    w * 0.68,
+    h * 0.95,
+    w * 0.35,
+    h * 1.0,
+  );
+
+  shape.bezierCurveTo(
+    w * 0.03,
+    h * 1.05,
+    -w * 0.34,
+    h * 1.02,
+    -w * 0.64,
+    h * 0.88,
+  );
+
+  shape.closePath();
+  return shape;
+}
+
+function addComedyFace(group, material, z, width, height) {
+  const eyeY = height * 0.17;
+
+  const leftEye = createCurvedFeature({
+    width: width * 0.34,
+    thickness: width * 0.08,
+    curvature: 0.38,
+    material,
+  });
+
+  leftEye.position.set(-width * 0.22, eyeY, z);
+  leftEye.rotation.z = THREE.MathUtils.degToRad(-5);
+
+  const rightEye = leftEye.clone();
+  rightEye.position.x = width * 0.22;
+  rightEye.rotation.z = THREE.MathUtils.degToRad(5);
+
+  const mouth = createSmileMouth({
+    width: width * 0.83,
+    height: height * 0.39,
+    thickness: width * 0.095,
+    material,
+  });
+
+  mouth.position.set(0, -height * 0.19, z + 0.01);
+
+  group.add(leftEye, rightEye, mouth);
+}
+
+function addTragedyFace(group, material, z, width, height) {
+  const eyeY = height * 0.17;
+
+  const leftEye = createSadEye({
+    width: width * 0.35,
+    thickness: width * 0.085,
+    material,
+    mirror: false,
+  });
+
+  leftEye.position.set(-width * 0.22, eyeY, z);
+
+  const rightEye = createSadEye({
+    width: width * 0.35,
+    thickness: width * 0.085,
+    material,
+    mirror: true,
+  });
+
+  rightEye.position.set(width * 0.22, eyeY, z);
+
+  const mouth = createSadMouth({
+    width: width * 0.61,
+    height: height * 0.3,
+    thickness: width * 0.09,
+    material,
+  });
+
+  mouth.position.set(0, -height * 0.31, z + 0.01);
+
+  group.add(leftEye, rightEye, mouth);
+}
+
+function createCurvedFeature({
+  width,
+  thickness,
+  curvature,
+  material,
+}) {
+  const curve = new THREE.QuadraticBezierCurve3(
+    new THREE.Vector3(-width / 2, 0, 0),
+    new THREE.Vector3(0, -curvature * width, 0),
+    new THREE.Vector3(width / 2, 0, 0),
+  );
+
+  const geometry = new THREE.TubeGeometry(
+    curve,
+    28,
+    thickness / 2,
+    12,
+    false,
+  );
+
+  return new THREE.Mesh(geometry, material);
+}
+
+function createSadEye({
+  width,
+  thickness,
+  material,
+  mirror,
+}) {
+  const direction = mirror ? -1 : 1;
+
+  const curve = new THREE.QuadraticBezierCurve3(
+    new THREE.Vector3(-width / 2, -width * 0.06 * direction, 0),
+    new THREE.Vector3(0, width * 0.25, 0),
+    new THREE.Vector3(width / 2, width * 0.06 * direction, 0),
+  );
+
+  const geometry = new THREE.TubeGeometry(
+    curve,
+    24,
+    thickness / 2,
+    12,
+    false,
+  );
+
+  return new THREE.Mesh(geometry, material);
+}
+
+function createSmileMouth({
+  width,
+  height,
+  thickness,
+  material,
+}) {
+  const shape = new THREE.Shape();
+
+  shape.moveTo(-width / 2, height * 0.18);
+
+  shape.bezierCurveTo(
+    -width * 0.31,
+    -height * 0.2,
+    -width * 0.17,
+    -height * 0.43,
+    0,
+    -height * 0.46,
+  );
+
+  shape.bezierCurveTo(
+    width * 0.17,
+    -height * 0.43,
+    width * 0.31,
+    -height * 0.2,
+    width / 2,
+    height * 0.18,
+  );
+
+  shape.bezierCurveTo(
+    width * 0.29,
+    height * 0.02,
+    width * 0.15,
+    -height * 0.08,
+    0,
+    -height * 0.1,
+  );
+
+  shape.bezierCurveTo(
+    -width * 0.15,
+    -height * 0.08,
+    -width * 0.29,
+    height * 0.02,
+    -width / 2,
+    height * 0.18,
+  );
+
+  shape.closePath();
+
+  const geometry = new THREE.ExtrudeGeometry(shape, {
+    depth: thickness,
+    curveSegments: 28,
+    bevelEnabled: true,
+    bevelThickness: thickness * 0.2,
+    bevelSize: thickness * 0.18,
+    bevelSegments: 4,
+  });
+
+  geometry.center();
+  geometry.computeVertexNormals();
+
+  return new THREE.Mesh(geometry, material);
+}
+
+function createSadMouth({
+  width,
+  height,
+  thickness,
+  material,
+}) {
+  const curve = new THREE.QuadraticBezierCurve3(
+    new THREE.Vector3(-width / 2, -height * 0.22, 0),
+    new THREE.Vector3(0, height * 0.5, 0),
+    new THREE.Vector3(width / 2, -height * 0.22, 0),
+  );
+
+  const geometry = new THREE.TubeGeometry(
+    curve,
+    32,
+    thickness / 2,
+    14,
+    false,
+  );
+
+  return new THREE.Mesh(geometry, material);
+}
+
+function addCheekHighlights(group, type, z, width, height) {
+  const highlightMaterial = new THREE.MeshBasicMaterial({
+    color: 0xffffff,
+    transparent: true,
+    opacity: type === 'comedy' ? 0.11 : 0.08,
+    depthWrite: false,
+  });
+
+  const geometry = new THREE.SphereGeometry(
+    width * 0.16,
+    24,
+    16,
+    0,
+    Math.PI * 2,
+    0,
+    Math.PI * 0.52,
+  );
+
+  const highlight = new THREE.Mesh(geometry, highlightMaterial);
+
+  highlight.scale.set(1.35, 0.42, 0.18);
+  highlight.position.set(
+    -width * 0.23,
+    height * 0.37,
+    z + 0.07,
+  );
+
+  highlight.rotation.z = THREE.MathUtils.degToRad(-22);
+  group.add(highlight);
+}
+
+function addSideSoftness(group, material, depth, width, height) {
+  const sideGeometry = new THREE.SphereGeometry(1, 28, 18);
+
+  const side = new THREE.Mesh(sideGeometry, material);
+  side.scale.set(
+    width * 0.49,
+    height * 0.47,
+    depth * 0.68,
+  );
+
+  side.position.z = -depth * 0.2;
+  side.renderOrder = -1;
+
+  group.add(side);
+}
+
+/**
+ * Optionale Beleuchtung, passend zum Icon-Look.
+ */
+export function addBedazzledMaskLighting(scene) {
+  const lighting = new THREE.Group();
+  lighting.name = 'BedazzledMaskLighting';
+
+  const ambient = new THREE.HemisphereLight(
+    0xd6c8ff,
+    0x190d2b,
+    1.65,
+  );
+
+  const key = new THREE.DirectionalLight(0xffffff, 3.2);
+  key.position.set(-3.5, 5, 5);
+
+  const purpleRim = new THREE.PointLight(
+    0xa355ff,
+    5,
+    10,
+    1.8,
+  );
+
+  purpleRim.position.set(3.2, 1.2, -1.5);
+
+  const blueFill = new THREE.PointLight(
+    0x54caff,
+    2.8,
+    8,
+    2,
+  );
+
+  blueFill.position.set(-3, -1.5, 3);
+
+  lighting.add(ambient, key, purpleRim, blueFill);
+  scene.add(lighting);
+
+  return lighting;
+}
+
+/**
+ * Kleine Idle-Animation.
+ *
+ * In der Renderloop:
+ * animateBedazzledMask(mask, clock.getElapsedTime());
+ */
+export function animateBedazzledMask(mask, elapsedTime) {
+  mask.rotation.y =
+    Math.sin(elapsedTime * 0.65) * 0.13;
+
+  mask.rotation.x =
+    Math.sin(elapsedTime * 0.42) * 0.035;
+
+  mask.position.y =
+    Math.sin(elapsedTime * 1.05) * 0.045;
+}
+
+/**
+ * Gibt alle Geometrien und Materialien wieder frei.
+ */
+export function disposeBedazzledMask(mask) {
+  const geometries = new Set();
+  const materials = new Set();
+
+  mask.traverse((object) => {
+    if (!object.isMesh) return;
+
+    if (object.geometry) {
+      geometries.add(object.geometry);
     }
 
-    return group;
-  }
+    if (Array.isArray(object.material)) {
+      object.material.forEach((material) => materials.add(material));
+    } else if (object.material) {
+      materials.add(object.material);
+    }
+  });
 
-  // Blaue lachende Maske hinten-links - kräftiges Blau
-  const happy = buildOneMask('#3FA9F5', '#1565C0', true);
-  happy.scale.setScalar(0.62);
-  happy.position.set(-0.09, 0.02, -0.02);
-  g.add(happy);
+  geometries.forEach((geometry) => geometry.dispose());
+  materials.forEach((material) => material.dispose());
+}
 
-  // Gelbe traurige Maske vorne-rechts - kräftiges Gelb/Orange
-  const sad = buildOneMask('#FFC93C', '#F2932B', false);
-  sad.scale.setScalar(0.56);
-  sad.position.set(0.1, -0.06, 0.03);
-  g.add(sad);
-
-  return g;
+// ---------- Anbindung an unsere Avatar-Registry ----------
+// Die anderen Figuren exportieren eine build(colorHex)-Funktion, die eine fertige
+// THREE.Group zurückgibt (siehe avatars/README.md). Das Maskenicon nutzt bewusst zwei feste
+// Farben (Blau+Gelb, wie im Original-Emoji/Referenzbild) statt der generischen
+// Avatar-Akzentfarbe - genau wie Krone/Stern auch feste Edelstein-Farben statt der
+// Akzentfarbe verwenden. Zusätzlich auf die in diesem Projekt übliche Figurengröße
+// herunterskaliert (das Original ist in deutlich größeren Einheiten gebaut).
+export function build(colorHex) {
+  return createBedazzledMask({ scale: 0.19 });
 }
 
 export default build;
