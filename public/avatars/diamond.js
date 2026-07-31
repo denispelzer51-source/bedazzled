@@ -12,14 +12,14 @@ export function build(colorHex) {
   // aufleuchtende Mitte im Referenzbild
   const tableMat = shinyMat('#EAF7FF', { metalness: 0.05, roughness: 0.08, clearcoat: 1, clearcoatRoughness: 0.05, emissive: '#EAF7FF', emissiveIntensity: 0.25 });
   const table = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.014, 6), tableMat);
-  table.position.y = 0.145;
+  table.position.y = 0.147;
   g.add(table);
 
   // Krone (die schrägen Facetten zwischen Tafel und Gürtelkante) - mittleres, kräftiges
   // Himmelblau, flach schattiert damit jede der 6 Facetten als eigene ebene Fläche sichtbar ist
   const crownMat = shinyMat('#5AA9F2', { flatShading: true, metalness: 0.08, roughness: 0.1, clearcoat: 1, clearcoatRoughness: 0.08, emissive: '#5AA9F2', emissiveIntensity: 0.2 });
   const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.3, 0.14, 6), crownMat);
-  crown.position.y = 0.068;
+  crown.position.y = 0.07;
   crown.castShadow = true;
   g.add(crown);
 
@@ -32,9 +32,15 @@ export function build(colorHex) {
   g.add(girdle);
 
   // Pavillon (der spitz zulaufende untere Teil) - kräftiges, dunkleres Saphirblau, wie die
-  // tiefe Farbe im unteren/linken Bereich des Referenzbilds
+  // tiefe Farbe im unteren/linken Bereich des Referenzbilds.
+  // WICHTIG: ConeGeometry hat die Spitze standardmäßig OBEN und die breite Grundfläche
+  // UNTEN (mit echter Three.js-Geometrie nachgerechnet, nicht geraten) - ohne die Drehung
+  // hier stand der Pavillon auf dem Kopf: die Spitze berührte den Gürtel, die breite Seite
+  // hing unten durch. Mit rotation.x = Math.PI liegt jetzt die breite Seite oben am Gürtel
+  // und die Spitze zeigt nach unten - wie bei einem echten Diamant-Schliff.
   const pavilionMat = shinyMat('#1F5FCC', { flatShading: true, transmission: 0.12, roughness: 0.08, clearcoat: 1, clearcoatRoughness: 0.08, emissive: '#1F5FCC', emissiveIntensity: 0.22 });
   const pavilion = new THREE.Mesh(new THREE.ConeGeometry(0.3, 0.34, 6), pavilionMat);
+  pavilion.rotation.x = Math.PI;
   pavilion.position.y = -0.17;
   pavilion.castShadow = true;
   g.add(pavilion);
