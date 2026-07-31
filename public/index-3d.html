@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Bedazzled (3D-Test)</title>
+<link rel="icon" type="image/png" href="logo.png" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<div id="app">
+
+  <button id="btn-settings" class="btn-back visible" title="Einstellungen">⚙️</button>
+
+  <p id="reconnect-banner" class="reconnect-banner hidden">🔄 Verbinde dich wieder mit deinem Raum …</p>
+  <p id="connection-issue-banner" class="connection-issue-banner hidden"></p>
+
+  <!-- START SCREEN: nur Raum-Code beitreten oder neuen Raum erstellen, sonst nichts -->
+  <section id="screen-start" class="screen active">
+    <div class="screen-scroll">
+      <div class="brand">
+        <img src="logo.png" alt="Bedazzled Logo" class="brand-logo" />
+        <h1>Beda<span class="accent">zzled</span></h1>
+        <p class="tagline">Lüg dich zum Sieg.</p>
+      </div>
+
+      <div class="card" style="padding-bottom: var(--space, 20px);">
+        <div class="actions">
+          <input id="input-code" type="text" maxlength="4" inputmode="numeric" placeholder="Raum-Code" class="input-code-prominent" />
+          <button id="btn-join" class="btn btn-join-prominent">Raum beitreten</button>
+          <div class="divider"><span>oder</span></div>
+          <button id="btn-create" class="btn btn-secondary">Neuen Raum erstellen</button>
+          <button id="btn-multiplayer-toggle" class="btn btn-secondary" style="margin-top:8px;">🎲 Multiplayer (zufällige Lobby)</button>
+          <div id="multiplayer-size-picker" class="hidden" style="display:flex; gap:10px; margin-top:10px;">
+            <button id="btn-mp-size-4" class="btn btn-invite-action" style="flex:1;">4 Spieler</button>
+            <button id="btn-mp-size-6" class="btn btn-invite-action" style="flex:1;">6 Spieler</button>
+          </div>
+          <button id="btn-tutorial-toggle" class="btn btn-tutorial-toggle" style="margin-top:8px;">🎓 Spielablauf &amp; Tutorial</button>
+        </div>
+        <p id="error-msg" class="error"></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- MULTIPLAYER-WARTE-SCREEN: zeigt Warteschlangen-Status, Countdown, Abbrechen -->
+  <section id="screen-matchmaking" class="screen">
+    <div class="screen-scroll">
+      <div class="brand">
+        <img src="logo.png" alt="Bedazzled Logo" class="brand-logo" />
+      </div>
+      <div class="card" style="text-align:center;">
+        <h2 style="margin-top:0;">🎲 Suche Mitspieler …</h2>
+        <p id="mp-waiting-count" style="font-size:18px; font-weight:700; color:var(--primary);">1 / 4</p>
+        <p id="mp-status-text" style="color:var(--ink-dim);">Warte auf weitere Spieler</p>
+        <p id="mp-countdown" class="hidden" style="font-size:32px; font-weight:900; color:var(--gold); margin:10px 0;"></p>
+        <button id="btn-cancel-matchmaking" class="btn btn-secondary" style="margin-top:14px;">Abbrechen</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- SETUP SCREEN: Name + Spielfigur wählen, dann bestätigen - hier passiert der eigentliche
+  <!-- SETUP SCREEN -->
+  <section id="screen-setup" class="screen">
+    <button id="btn-back-to-start" class="btn-back" title="Zurück"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></button>
+    <div class="screen-scroll">
+      <div class="brand">
+        <img src="logo.png" alt="Bedazzled Logo" class="brand-logo" />
+      </div>
+      <div class="card">
+        <label>Dein Name</label>
+        <input id="input-name-setup" type="text" maxlength="16" placeholder="z.B. Sascha" />
+        <div id="avatar-picker-block">
+          <label>Deine Spielfigur</label>
+          <div id="avatar-picker" class="avatar-picker"></div>
+        </div>
+        <button id="btn-confirm-setup" class="btn btn-primary">Los geht's</button>
+        <p id="setup-error-msg" class="error"></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- INTRO SCREEN: 3 Slides -->
+  <section id="screen-intro" class="screen">
+    <button class="btn-back" id="btn-intro-back" title="Zurück"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></button>
+    <div class="screen-scroll intro-screen">
+      <div class="intro-slides">
+        <div class="intro-slide" data-slide="0">
+          <div class="intro-icon">🎭</div>
+          <h2 class="intro-title">Das Prinzip</h2>
+          <p class="intro-body">Eine wechselnde Moderator:in liest eine kuriose Frage vor – alle anderen erfinden eine möglichst <strong>überzeugende Antwort</strong>. Die echte Antwort mischt sich unbemerkt darunter.</p>
+          <div class="intro-example card">
+            <p class="intro-example-q">„Wieso musste sich Napoleon Bonaparte bei einer eigens organisierten Hasenjagd blamieren?"</p>
+            <ul class="intro-example-answers">
+              <li class="intro-ans-fake">Er fiel vom Pferd und landete im Graben <span class="intro-tag bluff">Erfunden</span></li>
+              <li class="intro-ans-fake">Sein Jagdgewehr versagte mehrfach <span class="intro-tag bluff">Erfunden</span></li>
+              <li class="intro-ans-real">Hunderte Kaninchen griffen ihn völlig unkontrolliert an <span class="intro-tag real">Echt</span></li>
+            </ul>
+          </div>
+        </div>
+        <div class="intro-slide hidden" data-slide="1">
+          <div class="intro-icon">🗳️</div>
+          <h2 class="intro-title">Die Abstimmung</h2>
+          <p class="intro-body">Alle Antworten erscheinen durchgemischt. Jede:r – außer dem/der Moderator:in – tippt auf die Antwort, die sie/er für <strong>echt</strong> hält.</p>
+          <div class="card intro-tip">
+            <p>💡 <strong>Tipp:</strong> Formulier deine erfundene Antwort so, dass sie klingt wie ein echtes Faktum. Je überzeugender, desto mehr Punkte.</p>
+          </div>
+        </div>
+        <div class="intro-slide hidden" data-slide="2">
+          <div class="intro-icon">🏆</div>
+          <h2 class="intro-title">Die Punkte</h2>
+          <div class="intro-points-grid">
+            <div class="intro-points-row">
+              <span class="pts-icon">✅</span>
+              <span class="pts-desc">Echte Antwort erraten</span>
+              <span class="pts-val">+3</span>
+            </div>
+            <div class="intro-points-row">
+              <span class="pts-icon">😈</span>
+              <span class="pts-desc">Pro Mitspieler, der auf deine Bluff-Antwort reinfällt</span>
+              <span class="pts-val">+2</span>
+            </div>
+            <div class="intro-points-row">
+              <span class="pts-icon">🏁</span>
+              <span class="pts-desc">Wer zuerst Feld 26 erreicht, gewinnt</span>
+              <span class="pts-val">🎉</span>
+            </div>
+          </div>
+          <p class="intro-body" style="margin-top:18px;">Der/Die Moderator:in rotiert jede Runde – alle kommen dran!</p>
+        </div>
+      </div>
+      <div class="intro-nav">
+        <button id="btn-intro-prev" class="btn btn-secondary intro-nav-btn" disabled>← Zurück</button>
+        <div class="intro-dots">
+          <span class="intro-dot active" data-dot="0"></span>
+          <span class="intro-dot" data-dot="1"></span>
+          <span class="intro-dot" data-dot="2"></span>
+        </div>
+        <button id="btn-intro-next" class="btn btn-primary intro-nav-btn">Weiter →</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- DEMO SCREEN -->
+  <section id="screen-demo" class="screen">
+    <div class="screen-scroll">
+      <div id="demo-content"></div>
+      <button id="btn-demo-next" class="btn btn-primary" style="margin-top:20px;">Weiter →</button>
+      <button id="btn-demo-exit" class="btn btn-secondary" style="margin-top:10px;">Tutorial abbrechen</button>
+    </div>
+  </section>
+
+
+  <!-- PENDING JOIN SCREEN: Spieler ist vorgemerkt und wartet auf Lobby -->
+  <section id="screen-pending" class="screen">
+    <div class="screen-scroll" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:80vh;gap:1.5rem;text-align:center;padding:2rem;">
+      <div class="brand">
+        <img src="logo.png" alt="Bedazzled Logo" class="brand-logo" />
+      </div>
+      <div style="font-size:3rem;animation:pulse 1.5s ease-in-out infinite;">⏳</div>
+      <h2 style="color:var(--color-primary);margin:0;">Du bist vorgemerkt!</h2>
+      <p id="pending-name-display" style="color:var(--color-text-muted);margin:0;font-size:0.95rem;"></p>
+      <p style="color:var(--color-text-muted);font-size:0.9rem;max-width:280px;line-height:1.5;">
+        Sobald die aktuelle Runde endet und alle wieder in der Lobby sind, trittst du <strong>automatisch</strong> bei.
+      </p>
+      <div class="dots-waiting">
+        <span></span><span></span><span></span>
+      </div>
+      <button id="btn-cancel-pending" class="btn btn-secondary" style="margin-top:0.5rem;">Abbrechen</button>
+    </div>
+  </section>
+
+  <!-- LOBBY SCREEN -->
+  <section id="screen-lobby" class="screen">
+    <button id="btn-leave-room" class="btn-back" title="Raum verlassen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></button>
+    <div class="room-header">
+      <span class="room-label">Raum</span>
+      <span id="room-code-display" class="room-code">----</span>
+    </div>
+
+    <div class="screen-scroll">
+      <h2>Wer ist dabei?</h2>
+      <div id="lobby-avatar-picker-block" class="hidden card" style="margin-bottom:16px;">
+        <label style="display:block; font-size:18px; font-weight:700; margin-bottom:14px;">Wähle jetzt deine Spielfigur</label>
+        <div id="lobby-avatar-picker" class="avatar-picker"></div>
+        <button id="btn-confirm-lobby-avatar" class="btn btn-primary" style="margin-top:16px;" disabled>Auswählen</button>
+      </div>
+      <div id="lobby-game-settings-block" class="hidden card" style="margin-bottom:16px;">
+        <h3 style="margin:0 0 12px;">⚙️ Spieleinstellungen</h3>
+        <div class="settings-row" style="flex-direction:column; align-items:stretch; gap:8px;">
+          <span>Zeitlimit fürs Antworten</span>
+          <div style="display:flex; gap:6px;">
+            <button id="btn-lobby-timer-60" class="btn btn-secondary" style="flex:1; padding:8px 4px;">1 Min</button>
+            <button id="btn-lobby-timer-120" class="btn btn-secondary" style="flex:1; padding:8px 4px;">2 Min</button>
+            <button id="btn-lobby-timer-none" class="btn btn-secondary" style="flex:1; padding:8px 4px;">Kein Limit</button>
+          </div>
+          <button id="btn-lobby-timer-confirm" class="btn btn-primary" style="margin-top:2px;">Bestätigen</button>
+        </div>
+      </div>
+      <ul id="player-list" class="player-list"></ul>
+      <p id="min-players-hint" class="hint">Mindestens 3 Spieler nötig.</p>
+      <button id="btn-start-round" class="btn btn-primary">Runde starten</button>
+      <button id="btn-invite" class="btn btn-secondary" style="margin-top:14px;">👥 Spieler einladen</button>
+      <p id="lobby-error-msg" class="error"></p>
+
+      <details id="rules-panel" class="rules-panel">
+        <summary class="rules-summary">📖 Regelwerk anzeigen</summary>
+        <div class="rules-content">
+
+        <div class="rules-section">
+          <h4>Grundprinzip</h4>
+          <p>Jede Runde liest eine wechselnde Moderator:in-Rolle eine ungewöhnliche Frage vor. Alle anderen geben eine möglichst überzeugende Antwort ab (erfunden oder zufällig auch mal die echte). Danach stimmt jede:r ab, welche Antwort die echte ist.</p>
+        </div>
+
+        <div class="rules-section">
+          <h4>Punkte</h4>
+          <ul>
+            <li>Echte Antwort erraten: <strong>+3 Punkte</strong></li>
+            <li>Pro Mitspieler, der auf deine erfundene Antwort reinfällt: <strong>+2 Punkte</strong></li>
+            <li>Moderator:in bekommt in der Runde keine Punkte</li>
+          </ul>
+        </div>
+
+        <div class="rules-section">
+          <h4>Schätzen-Karten 🔢</h4>
+          <p>Türkise Felder (5, 8, 13, 18) lösen statt der normalen Frage eine Schätzen-Karte aus: alle tippen eine Zahl, kein Bluffen, kein Voting. Platz 1 = <strong>3 Punkte</strong>, Platz 2 = <strong>2 Punkte</strong>, Platz 3 = <strong>1 Punkt</strong>, der Rest geht leer aus.</p>
+        </div>
+
+        <div class="rules-section">
+          <h4>Aufholjagd 🚀</h4>
+          <p>Sobald jemand Feld 18 erreicht oder überschreitet, bekommt der/die Letzte einmalig pro Spiel automatisch <strong>+5 Bonusfelder</strong>. Damit bleibt es bis zum Schluss spannend.</p>
+        </div>
+
+        <div class="rules-section">
+          <h4>Spielfeld</h4>
+          <p>Das Brett hat Felder von 0 bis 26. Wer zuerst Feld 26 erreicht oder überschreitet, gewinnt sofort.</p>
+        </div>
+
+        <div class="rules-section">
+          <h4>Ablauf pro Runde</h4>
+          <ol>
+            <li>Frage wird gezeigt, alle außer Moderator:in tippen eine Antwort</li>
+            <li>Abstimmung: welche Antwort ist die echte?</li>
+            <li>Auflösung mit grün/rot-Feedback</li>
+            <li>Animiertes Spielbrett zeigt die neuen Positionen</li>
+            <li>Moderatorrolle wandert weiter, nächste Runde beginnt</li>
+          </ol>
+        </div>
+
+        <div class="rules-section">
+          <h4>Sonstiges</h4>
+          <p>Mindestens 3 Spieler nötig. Jede Spielfigur ist pro Raum nur einmal vergebbar. Antworten, die zu ähnlich zur echten Antwort sind, werden beim Absenden automatisch abgelehnt.</p>
+        </div>
+        </div>
+      </details>
+    </div>
+  </section>
+
+  <!-- FRAGEN-VORSCHAU: nur der/die Moderator:in sieht/wählt die Frage, bevor die Runde
+       für alle beginnt. Bis zu 2x austauschen möglich (3 Kandidaten), frei zwischen
+       bereits gezogenen Kandidaten hin- und herwechselbar. -->
+  <section id="screen-question-preview" class="screen">
+    <div class="screen-scroll">
+      <img src="logo.png" alt="" id="qp-corner-logo" style="width:36px; height:36px; border-radius:8px; margin-bottom:10px;" />
+      <div id="qp-phase-tag" class="phase-tag">Fragen-Vorschau</div>
+
+      <div id="qp-moderator-view">
+        <p id="qp-category" style="color:var(--gold); font-weight:700; font-size:13px; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:6px;"></p>
+        <h2 id="qp-question-text" style="font-family:var(--font-display); font-size:22px; line-height:1.4;"></h2>
+
+        <button id="btn-qp-confirm" class="btn btn-primary" style="margin-top:20px;">✓ Runde mit dieser Frage starten</button>
+        <button id="btn-qp-swap" class="btn btn-secondary" style="margin-top:10px;">🔄 Andere Frage ziehen</button>
+
+        <div id="qp-swap-area" class="hidden" style="margin-top:16px;">
+          <p class="qp-counter"><span id="qp-current-num">1</span> / <span id="qp-total-num">1</span></p>
+          <div class="qp-nav" style="display:flex; gap:10px; margin:10px 0;">
+            <button id="btn-qp-prev" class="btn btn-secondary" style="flex:1;">◀ Vorherige</button>
+            <button id="btn-qp-next-candidate" class="btn btn-secondary" style="flex:1;">Nächste ▶</button>
+          </div>
+          <p id="qp-swap-hint" class="hint" style="text-align:center;"></p>
+        </div>
+      </div>
+
+      <div id="qp-waiting-view" class="hidden" style="text-align:center; padding-top:40px;">
+        <p style="font-size:40px;">🎴</p>
+        <h2 id="qp-waiting-heading">Der/die Moderator:in wählt gerade die Frage aus …</h2>
+        <p class="hint">Gleich geht's los!</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ANSWERING SCREEN (Frage + Antwort-Eingabe in einer Phase) -->
+  <section id="screen-answering" class="screen">
+    <div class="phase-tag" id="answering-phase-tag">Antwort-Phase</div>
+    <p id="question-text-2" class="question-text small"></p>
+    <p id="moderator-name-hint" class="moderator-hint-badge"></p>
+    <p id="real-answer-box" class="real-answer-box hidden"></p>
+
+    <div class="screen-scroll">
+      <div id="answer-input-box">
+        <label id="answer-input-label">Denk dir eine überzeugende Antwort aus:</label>
+        <textarea id="input-answer" maxlength="140" placeholder="Deine erfundene Antwort …"></textarea>
+        <div class="estimate-input-wrap">
+          <input id="input-answer-number" type="number" step="any" inputmode="decimal" class="hidden" placeholder="Deine Schätzung …" />
+        </div>
+        <button id="btn-submit-answer" class="btn btn-primary">Antwort abschicken</button>
+        <p id="answer-reject-msg" class="error hidden"></p>
+      </div>
+      <div id="duplicate-conflict-box" class="duplicate-conflict-box hidden"></div>
+      <div id="moderator-answers-preview" class="reveal-list hidden"></div>
+
+      <p class="progress-text"><span id="answered-count">0</span>/<span id="answering-total">0</span> haben geantwortet</p>
+      <p id="answer-timer-display" class="progress-text hidden" style="font-weight:700;"></p>
+      <button id="btn-to-voting" class="btn btn-primary mod-only">Weiter zur Abstimmung</button>
+      <button id="btn-reveal-estimate" class="btn btn-primary mod-only hidden">Auswerten</button>
+      <button id="btn-show-scoreboard" class="btn btn-secondary" style="margin-top:22px;">📊 Punkteliste</button>
+      <button class="btn-leave-game" style="margin-top:14px;">Spiel verlassen</button>
+    </div>
+  </section>
+
+  <!-- VOTING SCREEN -->
+  <section id="screen-voting" class="screen">
+    <div class="phase-tag">Abstimm-Phase</div>
+    <p class="question-text small" id="question-text-3"></p>
+
+    <div class="screen-scroll">
+      <p class="hint hidden" id="vote-question-hint"></p>
+      <div id="vote-options" class="vote-options"></div>
+      <button id="btn-submit-vote" class="btn btn-primary" disabled>Auswahl abschicken</button>
+      <p id="vote-submitted-msg" class="waiting-msg hidden">Deine Stimme wurde abgeschickt ✓</p>
+      <p id="moderator-vote-wait" class="waiting-msg hidden">Du bist Moderator:in – du stimmst diese Runde nicht ab.</p>
+      <div id="moderator-answer-options" class="reveal-list hidden"></div>
+      <p class="hint mod-only" style="margin-top:14px;">Live-Übersicht, wer worauf tippt:</p>
+      <div id="moderator-vote-preview" class="reveal-list hidden"></div>
+
+      <p class="progress-text"><span id="voted-count">0</span>/<span id="voting-total">0</span> haben abgestimmt</p>
+      <button id="btn-to-reveal" class="btn btn-primary mod-only">Auflösen</button>
+      <button class="btn-leave-game">Spiel verlassen</button>
+    </div>
+  </section>
+
+  <!-- ZEICHENRUNDE (gelbe Felder): Moderator zeichnet, andere raten mit -->
+  <!-- ZEICHNENRUNDE: Anwesenheits-Check, bevor es wirklich losgeht -->
+  <section id="screen-drawing-presence" class="screen">
+    <div class="screen-scroll" style="text-align:center;">
+      <div class="phase-tag">🎨 Zeichnenrunde gleich</div>
+      <h2 style="margin-top:20px;">Bist du bereit?</h2>
+      <p class="hint" id="drawing-presence-hint-mod" style="margin-top:10px;">Warte, bis alle Mitspieler:innen ihre Anwesenheit bestätigt haben - erst dann kannst du loszeichnen.</p>
+      <p class="hint" id="drawing-presence-hint-guesser" style="margin-top:10px;">Gleich beginnt die Zeichnenrunde - bestätige kurz, dass du bereit bist mitzuraten.</p>
+      <button id="btn-confirm-drawing-presence" class="btn btn-primary" style="margin-top:16px;">✅ Ich bin da</button>
+      <p id="drawing-presence-status" class="hint" style="margin-top:16px;"></p>
+      <button class="btn-leave-game" style="margin-top:20px;">Spiel verlassen</button>
+    </div>
+  </section>
+
+  <section id="screen-drawing" class="screen">
+    <div class="screen-scroll">
+      <div class="phase-tag">🎨 Zeichnenrunde</div>
+
+      <div id="drawing-mod-hint" class="hidden" style="text-align:center; margin-bottom:10px;">
+        <p style="color:var(--gold); font-weight:700; font-size:18px;" id="drawing-term-display"></p>
+        <p class="hint" style="margin:2px 0 0;">Nur du siehst diesen Begriff – zeichne ihn für die anderen!</p>
+      </div>
+      <div id="drawing-guess-hint" class="hidden" style="text-align:center; margin-bottom:10px;">
+        <p class="hint" style="margin:0;">Rate mit, was gerade gezeichnet wird!</p>
+      </div>
+
+      <canvas id="drawing-canvas" width="600" height="420" style="width:100%; aspect-ratio:600/420; background:#fff; border-radius:14px; touch-action:none; display:block;"></canvas>
+
+      <div id="drawing-mod-tools" class="hidden" style="display:flex; gap:10px; margin-top:14px;">
+        <button id="btn-drawing-clear" class="btn btn-secondary" style="flex:1;">🧹 Löschen</button>
+        <button id="btn-drawing-end" class="btn btn-primary" style="flex:1;">✓ Runde beenden</button>
+      </div>
+      <p id="drawing-mod-guessers" class="hint" style="margin-top:10px;"></p>
+
+      <div id="drawing-guess-form" class="hidden" style="margin-top:14px;">
+        <div style="display:flex; gap:10px;">
+          <input id="input-drawing-guess" type="text" maxlength="60" placeholder="Was ist das? …" style="flex:1;" />
+          <button id="btn-drawing-guess-submit" class="btn btn-primary" style="width:auto; padding:0 20px;">Raten</button>
+        </div>
+        <p id="drawing-guess-feedback" class="hint" style="min-height:20px;"></p>
+      </div>
+      <p id="drawing-guess-correct-msg" class="hidden" style="text-align:center; color:var(--teal); font-weight:700; margin-top:10px;">✓ Richtig geraten! Warte auf die anderen …</p>
+
+      <button class="btn-leave-game" style="margin-top:20px;">Spiel verlassen</button>
+    </div>
+  </section>
+
+  <!-- REVEAL SCREEN -->
+  <section id="screen-reveal" class="screen">
+    <div class="phase-tag">Auflösung</div>
+    <p id="catchup-banner" class="catchup-banner hidden"></p>
+    <p class="question-text small" id="question-text-4"></p>
+
+    <div class="screen-scroll">
+      <p id="estimate-real-answer" class="real-answer-box hidden"></p>
+      <div id="reveal-list" class="reveal-list"></div>
+
+      <div class="screen-footer screen-footer--inline">
+        <button id="btn-to-board" class="btn btn-primary mod-only">Weiter zum Spielbrett</button>
+        <p class="waiting-msg mod-hide">Warte auf den Moderator …</p>
+        <button class="btn-leave-game">Spiel verlassen</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- BOARD SCREEN (full-size, animated, rectangular track) -->
+  <section id="screen-board" class="screen">
+    <div class="phase-tag">Spielbrett</div>
+
+    <div class="screen-scroll">
+      <h2>Wer zieht wie weit?</h2>
+      <div id="board-rect-3d" style="width:100%; aspect-ratio:1/1; max-width:520px; margin:0 auto; border-radius:16px; overflow:hidden; background:#04000A;">
+        <iframe id="board-3d-frame" src="board-threejs-demo.html" style="width:100%; height:100%; border:0;" title="3D-Spielbrett"></iframe>
+      </div>
+      <div id="board-legend" class="board-legend"></div>
+      <div class="field-color-key">
+        <span><span class="key-dot key-purple"></span> Lila – normale Frage</span>
+        <span><span class="key-dot key-blue"></span> Blau – Fremdwort</span>
+        <span><span class="key-dot key-green"></span> Grün – Schätzfrage</span>
+        <span><span class="key-dot key-yellow"></span> Gelb – Zeichnenrunde</span>
+      </div>
+      <button id="btn-show-results-recap" class="btn btn-secondary" style="margin-top:14px;">📊 Ergebnisse</button>
+    </div>
+
+    <div class="screen-footer">
+      <button id="btn-next-round" class="btn btn-primary mod-only">Nächste Runde</button>
+      <button id="btn-new-game" class="btn btn-primary hidden">🔄 Neue Runde (gleiche Lobby)</button>
+      <p id="board-waiting-msg" class="waiting-msg mod-hide">Warte auf den Moderator …</p>
+      <button class="btn-leave-game">Spiel verlassen</button>
+    </div>
+  </section>
+
+  <!-- BOARD (always visible bottom bar once in a room) -->
+  <div id="board-bar" class="board-bar hidden">
+    <div id="board-track" class="board-track"></div>
+  </div>
+
+</div>
+
+<!-- Bestätigungs-Modal für Raum verlassen -->
+<!-- Ergebnisse der letzten Runde noch mal ansehen (aufrufbar über den Button auf dem Spielbrett) -->
+<div id="reveal-recap-overlay" class="overlay hidden">
+  <div class="overlay-card" style="max-width:520px; max-height:82vh; overflow-y:auto;">
+    <h2>📊 Ergebnisse der letzten Runde</h2>
+    <p id="reveal-recap-catchup" class="catchup-banner hidden"></p>
+    <p id="reveal-recap-question" class="question-text small"></p>
+    <p id="reveal-recap-realanswer" class="real-answer-box hidden"></p>
+    <div id="reveal-recap-list" class="reveal-list"></div>
+    <button id="btn-close-reveal-recap" class="btn btn-primary" style="margin-top:16px;">Schließen</button>
+  </div>
+</div>
+
+<div id="quit-overlay" class="overlay hidden">
+  <div class="overlay-box">
+    <p class="overlay-question">Spiel wirklich verlassen?</p>
+    <p class="overlay-sub">Du verlässt den Raum und landest auf dem Startbildschirm.</p>
+    <div class="overlay-actions">
+      <button id="btn-quit-confirm" class="btn btn-primary">Ja, verlassen</button>
+      <button id="btn-quit-cancel" class="btn btn-secondary">Nein, weiterspielen</button>
+    </div>
+  </div>
+</div>
+<!-- Tutorial-Menü-Overlay -->
+<div id="tutorial-overlay" class="overlay hidden">
+  <div class="overlay-card" style="text-align:center;max-width:320px;width:92%;">
+    <h2 style="margin:0 0 8px;">🎓 Spielablauf &amp; Tutorial</h2>
+    <p style="font-size:14px;color:rgba(255,255,255,0.5);margin:0 0 22px;">Was möchtest du tun?</p>
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <button id="btn-go-intro" class="btn btn-primary">📖 Spielablauf (3 Slides)</button>
+      <button id="btn-go-demo" class="btn btn-primary">🕹️ Tutorial mit Demo-Runde</button>
+      <button id="btn-tutorial-close" class="btn btn-secondary">Schließen</button>
+    </div>
+  </div>
+</div>
+
+<!-- Invite-Popup -->
+<div id="invite-overlay" class="overlay hidden">
+  <div class="overlay-card invite-card">
+    <h2>👥 Spieler einladen</h2>
+    <div class="share-buttons">
+      <button id="btn-copy-link" class="btn btn-invite-action btn-share">🔗 Link kopieren</button>
+      <button id="btn-share-whatsapp" class="btn btn-invite-action btn-share">💬 WhatsApp einladen</button>
+    </div>
+    <p id="copy-link-msg" class="copy-link-msg hidden">Link kopiert ✓</p>
+    <button id="btn-invite-close" class="btn btn-secondary" style="margin-top:4px;">Schließen</button>
+  </div>
+</div>
+
+<!-- Settings-Overlay (jederzeit erreichbar) -->
+<div id="settings-overlay" class="overlay hidden">
+  <div class="overlay-card settings-card">
+    <h2>⚙️ Einstellungen</h2>
+    <div id="settings-content" class="settings-content">
+      <div id="settings-room-row" class="settings-row settings-room-row hidden">
+        <span>Raum-Code</span>
+        <span id="settings-room-code" class="settings-code">----</span>
+      </div>
+      <div id="settings-unlimited-swaps-row" class="settings-row hidden">
+        <span>🔁 Unbegrenzt Fragen durchskippen</span>
+        <button id="btn-toggle-unlimited-swaps" class="btn btn-secondary btn-theme-toggle">Aus</button>
+      </div>
+      <div class="settings-row">
+        <span>Hell / Dunkel</span>
+        <button id="theme-toggle" class="btn btn-secondary btn-theme-toggle">🌙 Dunkel</button>
+      </div>
+      <div class="settings-row">
+        <span>Soundeffekte</span>
+        <button id="btn-toggle-sound" class="btn btn-secondary btn-theme-toggle">🔊 An</button>
+      </div>
+
+      <div id="admin-unlock-row" class="settings-row" style="flex-direction:column; align-items:stretch; gap:8px;">
+        <span>🛠 Admin-Modus</span>
+        <div style="display:flex; gap:8px;">
+          <input id="input-admin-code" type="password" placeholder="Admin-Code …" style="flex:1;" />
+          <button id="btn-admin-unlock" class="btn btn-secondary" style="width:auto; padding:0 16px;">Freischalten</button>
+        </div>
+        <p id="admin-unlock-msg" class="hint" style="margin:0;"></p>
+      </div>
+
+      <div id="admin-tools-box" class="hidden" style="margin-top:14px; padding-top:14px; border-top:1px solid rgba(255,255,255,0.1);">
+        <p class="hint" style="margin:0 0 10px;">🛠 Admin-Werkzeuge (nur für dich sichtbar)</p>
+        <button id="btn-admin-skip-round" class="btn btn-secondary" style="margin-bottom:10px;">⏭ Aktuelle Runde überspringen</button>
+        <button id="btn-admin-force-drawing" class="btn btn-secondary" style="margin-bottom:10px;">🎨 Zeichnenrunde jetzt starten (Test)</button>
+        <button id="btn-admin-force-board" class="btn btn-secondary" style="margin-bottom:10px;">🎲 Zufallszüge + Spielbrett zeigen (Test)</button>
+        <div id="admin-player-list"></div>
+      </div>
+    </div>
+    <button id="btn-close-settings" class="btn btn-primary">Schließen</button>
+  </div>
+</div>
+
+<div id="scoreboard-overlay" class="overlay hidden">
+  <div class="overlay-card" style="max-width:360px; width:92%;">
+    <h2 style="margin-top:0;">📊 Punkteliste</h2>
+    <p id="scoreboard-win-hint" class="hint" style="margin-bottom:16px;"></p>
+    <div id="scoreboard-list" style="display:flex; flex-direction:column; gap:8px; margin-bottom:20px;"></div>
+    <button id="btn-close-scoreboard" class="btn btn-primary">Schließen</button>
+  </div>
+</div>
+
+<div id="winner-overlay" class="overlay hidden">
+  <div class="overlay-card winner-card">
+    <span class="brand-mask big">🏆</span>
+    <h2 id="winner-text"></h2>
+    <div id="awards-list" class="awards-list"></div>
+    <button id="btn-close-winner" class="btn btn-primary">Schließen</button>
+  </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="client-3d.js"></script>
+</body>
+</html>

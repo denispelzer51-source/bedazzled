@@ -80,6 +80,7 @@
       </div>
       <label>Frage</label>
       <textarea id="new-question" placeholder="z.B. Warum tragen Schweizer Kühe große Glocken?"></textarea>
+      <p id="duplicate-warning" class="hint hidden" style="color:#F5C842; border:1px solid rgba(245,200,66,0.4); border-radius:8px; padding:8px 10px; margin-top:-4px;"></p>
       <label id="new-answer-label">Echte Antwort</label>
       <textarea id="new-answer" placeholder="Die tatsächliche, ungewöhnliche Antwort"></textarea>
       <input id="new-answer-number" type="number" step="any" class="hidden" placeholder="Die echte Zahl" />
@@ -382,6 +383,59 @@
     row.querySelector('.btn-cancel').addEventListener('click', renderQuestions);
   }
 
+  // ---------- Doppelte/ähnliche Frage erkennen (rein clientseitig, keine externe KI nötig) ----------
+  // Normalisiert Text (Kleinschreibung, Akzente/Satzzeichen weg) für einen robusten Vergleich.
+  function normalizeQuestionText(s) {
+    return (s || '')
+      .toLowerCase()
+      .normalize('NFKD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+  function wordSet(s) {
+    return new Set(normalizeQuestionText(s).split(' ').filter(w => w.length > 2));
+  }
+  // Jaccard-Ähnlichkeit (Wort-Überschneidung) - einfach, schnell, braucht keine externe API,
+  // erkennt sowohl exakte Duplikate als auch stark ähnliche Umformulierungen.
+  function jaccardSimilarity(setA, setB) {
+    if (setA.size === 0 || setB.size === 0) return 0;
+    let inter = 0;
+    setA.forEach(w => { if (setB.has(w)) inter++; });
+    return inter / (setA.size + setB.size - inter);
+  }
+  function findSimilarQuestion(newText) {
+    const norm = normalizeQuestionText(newText);
+    if (!norm) return null;
+    const newSet = wordSet(newText);
+    let best = null, bestScore = 0;
+    questions.forEach(q => {
+      if (!q.question) return;
+      const qNorm = normalizeQuestionText(q.question);
+      const score = qNorm === norm ? 1 : jaccardSimilarity(newSet, wordSet(q.question));
+      if (score > bestScore) { bestScore = score; best = q; }
+    });
+    return (best && bestScore >= 0.6) ? { match: best, score: bestScore } : null;
+  }
+  function checkForDuplicateQuestion() {
+    const text = document.getElementById('new-question').value;
+    const warningEl = document.getElementById('duplicate-warning');
+    const result = findSimilarQuestion(text);
+    if (!result) {
+      warningEl.classList.add('hidden');
+      return;
+    }
+    const isExact = result.score >= 0.999;
+    const label = isExact ? '⚠️ Diese Frage scheint schon im Fragenpool zu sein:' : '⚠️ Eine sehr ähnliche Frage ist schon im Fragenpool:';
+    warningEl.innerHTML = `${label}<br><strong>${escapeHtml(result.match.question)}</strong> <span style="opacity:0.7;">(${escapeHtml(result.match.category || '')}${result.match.topic ? ' · ' + escapeHtml(result.match.topic) : ''})</span><br><span style="opacity:0.8;">Das verhindert nichts - nur ein Hinweis, falls dir das nicht aufgefallen ist.</span>`;
+    warningEl.classList.remove('hidden');
+  }
+  let duplicateCheckDebounce = null;
+  document.getElementById('new-question').addEventListener('input', () => {
+    clearTimeout(duplicateCheckDebounce);
+    duplicateCheckDebounce = setTimeout(checkForDuplicateQuestion, 300);
+  });
+
   function updateNewAnswerFieldForCategory() {
     const cat = document.getElementById('new-category').value.trim();
     const isEstimate = cat === ESTIMATE_CATEGORY;
@@ -420,6 +474,7 @@
       body: JSON.stringify({ question, answer, category: cat, topic }),
     });
     document.getElementById('new-question').value = '';
+    document.getElementById('duplicate-warning').classList.add('hidden');
     document.getElementById('new-answer').value = '';
     document.getElementById('new-answer-number').value = '';
     openTopics.add(topic);

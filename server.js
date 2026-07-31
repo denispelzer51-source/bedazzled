@@ -91,7 +91,13 @@ function stripId(doc) {
   return rest;
 }
 
-const BOARD_LENGTH = 26; // Zielfeld
+const BOARD_LENGTH = 26; // Standard-Länge - UNVERÄNDERT für das normale/laufende Spiel
+// Für die 3D-Testversion kann ein Raum stattdessen mit 28 Feldern erstellt werden (passend
+// zum bestehenden 3D-Brett-Prototyp, der nicht angepasst werden sollte). Bestehende/normale
+// Räume sind von alldem komplett unberührt - board28 ist bei ihnen nie gesetzt (= 26 wie eh und je).
+function scaleTriggerFields(fields, boardLength) {
+  return fields.map(f => Math.round((f * boardLength) / BOARD_LENGTH));
+}
 const POINTS_CORRECT_GUESS = 3;
 const POINTS_PER_FOOLED_PLAYER = 2;
 const DISCONNECT_GRACE_MS = 3 * 60 * 1000; // 3 Minuten, bevor ein getrennter Spieler endgültig entfernt wird
@@ -408,9 +414,10 @@ function publicRoomState(room, forPlayerId) {
     adminForcedFromPositions: (room.phase === 'board' && room.adminForcedFromPositions) ? room.adminForcedFromPositions : null,
     roundType: room.roundType || 'question',
     pendingRoundType: room.pendingRoundType || 'question',
-    estimateTriggerFields: ESTIMATE_TRIGGER_FIELDS,
-    foreignwordTriggerFields: FOREIGNWORD_TRIGGER_FIELDS,
-    drawingTriggerFields: DRAWING_TRIGGER_FIELDS,
+    boardLength: room.boardLength || BOARD_LENGTH,
+    estimateTriggerFields: room.estimateTriggerFields || ESTIMATE_TRIGGER_FIELDS,
+    foreignwordTriggerFields: room.foreignwordTriggerFields || FOREIGNWORD_TRIGGER_FIELDS,
+    drawingTriggerFields: room.drawingTriggerFields || DRAWING_TRIGGER_FIELDS,
     pointsCorrectGuess: POINTS_CORRECT_GUESS,
     pointsPerFooled: POINTS_PER_FOOLED_PLAYER,
     players: room.players.map(p => ({ id: p.id, name: p.name, avatar: p.avatar, position: p.position, connected: !!p.socketId })),
@@ -621,9 +628,12 @@ function applyCatchUpBonus(room) {
 
 function applyRoundTypeTriggerCheck(room, prevPositions) {
   const movedOnto = (fields) => room.players.some(p => fields.includes(p.position) && p.position !== prevPositions[p.id]);
-  if (movedOnto(ESTIMATE_TRIGGER_FIELDS)) room.pendingRoundType = 'estimate';
-  else if (movedOnto(DRAWING_TRIGGER_FIELDS)) room.pendingRoundType = 'drawing';
-  else if (movedOnto(FOREIGNWORD_TRIGGER_FIELDS)) room.pendingRoundType = 'foreignword';
+  const estimateFields = room.estimateTriggerFields || ESTIMATE_TRIGGER_FIELDS;
+  const drawingFields = room.drawingTriggerFields || DRAWING_TRIGGER_FIELDS;
+  const foreignwordFields = room.foreignwordTriggerFields || FOREIGNWORD_TRIGGER_FIELDS;
+  if (movedOnto(estimateFields)) room.pendingRoundType = 'estimate';
+  else if (movedOnto(drawingFields)) room.pendingRoundType = 'drawing';
+  else if (movedOnto(foreignwordFields)) room.pendingRoundType = 'foreignword';
   else room.pendingRoundType = 'question';
 }
 
@@ -668,7 +678,7 @@ function computeAwards(room) {
 }
 
 function checkForWinner(code, room) {
-  const finishers = room.players.filter(p => p.position >= BOARD_LENGTH);
+  const finishers = room.players.filter(p => p.position >= (room.boardLength || BOARD_LENGTH));
   if (finishers.length === 0) return;
   // Bei mehreren Spielern, die in derselben Runde ins Ziel laufen, gewinnt wer am
   // weitesten gekommen ist (mehr Felder gemacht hat), nicht wer zufällig zuerst geprüft wurde.
@@ -758,6 +768,10 @@ function createRoomFromMatchmaking(entries) {
     answerDeadline: null,
     answerTimerId: null,
     answerTimeExpired: false,
+    boardLength: BOARD_LENGTH,
+    estimateTriggerFields: scaleTriggerFields(ESTIMATE_TRIGGER_FIELDS, BOARD_LENGTH),
+    drawingTriggerFields: scaleTriggerFields(DRAWING_TRIGGER_FIELDS, BOARD_LENGTH),
+    foreignwordTriggerFields: scaleTriggerFields(FOREIGNWORD_TRIGGER_FIELDS, BOARD_LENGTH),
     isMultiplayerMatch: true,
   };
   entries.forEach(e => {
@@ -833,12 +847,13 @@ function removeFromAllMatchmakingQueues(socketId) {
 }
 
 io.on('connection', (socket) => {
-  socket.on('createRoom', ({ name, avatar, token }) => {
+  socket.on('createRoom', ({ name, avatar, token, board28 }) => {
     const code = genRoomCode();
     const playerId = token || crypto.randomUUID();
     socket.data.token = playerId;
     socket.data.roomCode = code;
     const player = { id: playerId, name: name || 'Spieler', avatar: avatar || '💎', position: 0, socketId: socket.id, pushToken: null };
+    const boardLength = board28 ? 28 : BOARD_LENGTH;
     rooms[code] = {
       code,
       hostId: playerId,
@@ -870,6 +885,10 @@ io.on('connection', (socket) => {
       answerDeadline: null,
       answerTimerId: null,
       answerTimeExpired: false,
+      boardLength,
+      estimateTriggerFields: scaleTriggerFields(ESTIMATE_TRIGGER_FIELDS, boardLength),
+      drawingTriggerFields: scaleTriggerFields(DRAWING_TRIGGER_FIELDS, boardLength),
+      foreignwordTriggerFields: scaleTriggerFields(FOREIGNWORD_TRIGGER_FIELDS, boardLength),
     };
     console.log(`[Raum erstellt] Code=${code} von Spieler "${name}". Aktive Räume: ${Object.keys(rooms).join(', ')}`);
     socket.join(code);
@@ -1370,7 +1389,7 @@ io.on('connection', (socket) => {
       const place = room.correctGuessers.length; // 0 = erste:r, 1 = zweite:r
       room.correctGuessers.push(myId);
       const player = room.players.find(p => p.id === myId);
-      if (player) player.position = Math.min(BOARD_LENGTH, player.position + DRAWING_GUESS_POINTS[place]);
+      if (player) player.position = Math.min(room.boardLength || BOARD_LENGTH, player.position + DRAWING_GUESS_POINTS[place]);
       broadcastState(code);
 
       // Sobald die/der Erste richtig geraten hat, bekommen alle anderen (noch ratenden)
@@ -1599,12 +1618,12 @@ io.on('connection', (socket) => {
       if (isCorrectAnswer(chosenOwnerId)) {
         // Richtige Antwort gewählt -> Wähler bekommt Punkte
         const player = room.players.find(p => p.id === voterId);
-        if (player) player.position = Math.min(BOARD_LENGTH, player.position + POINTS_CORRECT_GUESS);
+        if (player) player.position = Math.min(room.boardLength || BOARD_LENGTH, player.position + POINTS_CORRECT_GUESS);
       } else {
         // Erfundene Antwort gewählt -> Antworter bekommt Bluff-Punkte
         const fooledOwner = room.players.find(p => p.id === chosenOwnerId);
         if (fooledOwner && fooledOwner.id !== voterId) {
-          fooledOwner.position = Math.min(BOARD_LENGTH, fooledOwner.position + POINTS_PER_FOOLED_PLAYER);
+          fooledOwner.position = Math.min(room.boardLength || BOARD_LENGTH, fooledOwner.position + POINTS_PER_FOOLED_PLAYER);
           ensureStats(room, fooledOwner.id).fooled += 1;
           ensureStats(room, voterId).timesFooled += 1;
         }
@@ -1657,7 +1676,7 @@ io.on('connection', (socket) => {
       const points = ESTIMATE_POINTS[i] || 0;
       if (points > 0) {
         const player = room.players.find(p => p.id === entry.playerId);
-        if (player) player.position = Math.min(BOARD_LENGTH, player.position + points);
+        if (player) player.position = Math.min(room.boardLength || BOARD_LENGTH, player.position + points);
         if (i === 0) ensureStats(room, entry.playerId).estimateBest += 1;
       }
     });
@@ -1792,7 +1811,7 @@ io.on('connection', (socket) => {
     if (!room) return;
     const target = room.players.find(p => p.id === targetPlayerId);
     if (!target) return;
-    target.position = Math.max(0, BOARD_LENGTH - 1);
+    target.position = Math.max(0, (room.boardLength || BOARD_LENGTH) - 1);
     console.log(`[ADMIN-TOOL] "${target.name}" in Raum ${code} auf Feld ${target.position} gesetzt (kurz vorm Ziel).`);
     broadcastState(code);
   });
@@ -1864,7 +1883,7 @@ io.on('connection', (socket) => {
     room.players.forEach(p => { prevPositions[p.id] = p.position; });
     room.players.forEach(p => {
       const steps = Math.floor(Math.random() * 7); // 0-6 Felder, wie eine plausible echte Runde
-      p.position = Math.min(BOARD_LENGTH, p.position + steps);
+      p.position = Math.min(room.boardLength || BOARD_LENGTH, p.position + steps);
     });
     room.adminForcedFromPositions = prevPositions;
     room.answers = {};

@@ -800,6 +800,42 @@ function placeTokens() {
 }
 placeTokens();
 
+// ---------- Live-Integration: echte Spieler-Daten von einer einbettenden Seite empfangen
+// (postMessage), z.B. von client-3d.js. Ohne eine solche einbettende Seite passiert hier
+// einfach nichts - die eigenständige Demo-Nutzung dieser Datei bleibt unverändert. ----------
+function syncPlayersFromExternal(players) {
+  tokenMeshes.forEach(m => scene.remove(m));
+  tokenMeshes.length = 0;
+  tokensData.length = 0;
+  (players || []).slice(0, 6).forEach(p => {
+    const set = avatarSetByKey(p.avatarKey);
+    tokensData.push({ ...set, pos: p.position || 0, playerId: p.id, name: p.name });
+    const mesh = createToken(set.key, set.color);
+    scene.add(mesh);
+    tokenMeshes.push(mesh);
+  });
+  placeTokens();
+  if (typeof renderFigurePicker === 'function') renderFigurePicker();
+}
+function movePlayerByIdExternal(playerId, steps) {
+  const idx = tokensData.findIndex(t => t.playerId === playerId);
+  if (idx === -1 || !steps) return;
+  animateMove(idx, steps);
+}
+window.addEventListener('message', (event) => {
+  const data = event.data;
+  if (!data || typeof data !== 'object') return;
+  if (data.type === 'syncPlayers') {
+    syncPlayersFromExternal(data.players);
+  } else if (data.type === 'movePlayer') {
+    movePlayerByIdExternal(data.playerId, data.steps);
+  }
+});
+// Der einbettenden Seite mitteilen, dass die 3D-Szene bereit ist, Daten zu empfangen
+if (window.parent && window.parent !== window) {
+  window.parent.postMessage({ type: 'board3dReady' }, '*');
+}
+
 // ---------- Figuren-Auswahl: jede Test-Figur kann live gegen jede der 6 echten
 // Spielfiguren getauscht werden, um zu prüfen, wie alle im Brett aussehen ----------
 function rebuildTokenMesh(idx, avatarKey) {
