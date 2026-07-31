@@ -28,12 +28,10 @@ export function build(colorHex) {
   crown.castShadow = true;
   g.add(crown);
 
-  // Gürtelkante (Girdle) - dünner, GLATTER Ring (nicht mehr facettiert/verdreht), liest sich
-  // als feine Trennlinie statt als eigenes schräges Sechseck
-  const girdleMat = shinyMat('#9AD1FF', { metalness: 0.05, roughness: 0.1, emissive: '#9AD1FF', emissiveIntensity: 0.2 });
-  const girdle = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.01, 8, 48), girdleMat);
-  girdle.rotation.x = Math.PI / 2;
-  g.add(girdle);
+  // Kein separater Gürtel-Ring mehr - der sah (auch glatt/rund) wie ein unpassender Kreis
+  // um den Diamanten aus. Der Übergang zwischen Krone und Pavillon ergibt sich jetzt einfach
+  // aus den direkt aneinanderstoßenden Facetten (wie im Referenzbild - dort ist auch kein
+  // eigener Ring zu sehen, nur die Facetten-Kanten).
 
   // Pavillon (spitz zulaufender unterer Teil) - deutlich heller/klarer als vorher (war zu
   // dunkelblau), mit spürbar mehr Transparenz für einen echten, glasigen Diamant-Look.

@@ -44,6 +44,9 @@ export function build(colorHex) {
   halo.rotation.x = Math.PI / 2;
   g.add(halo);
 
+  // Insgesamt minimal verkleinert, damit die Größe besser zu den anderen Figuren passt
+  g.scale.setScalar(0.85);
+
   return g;
 }
 

@@ -58,6 +58,11 @@ export function build(colorHex) {
     g.add(tinyStar);
   }
 
+  // Insgesamt etwas kleiner als vorher - eine volle Kugel wirkt bei gleichem Radius optisch
+  // "größer"/wuchtiger als flache Formen wie Stern/Krone, deshalb hier gezielt verkleinert,
+  // damit sich alle Spielfiguren in der Größe besser aneinander angleichen.
+  g.scale.setScalar(0.78);
+
   return g;
 }
 

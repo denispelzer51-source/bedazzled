@@ -41,6 +41,8 @@ export function build(colorHex) {
   brim.rotation.x = Math.PI / 2;
   brim.position.y = -0.08;
   g.add(brim);
+  // Insgesamt minimal verkleinert, damit die Größe besser zu den anderen Figuren passt
+  g.scale.setScalar(0.9);
   return g;
 }
 
