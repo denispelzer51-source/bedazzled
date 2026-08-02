@@ -516,15 +516,13 @@ function publicRoomState(room, forPlayerId) {
     // korrekt wiederherstellt, statt das Eingabefeld fälschlich leer zurückzusetzen
     myAnswerSubmitted: room.answers[forPlayerId] !== undefined,
     myAnswerText: room.answers[forPlayerId] !== undefined ? room.answers[forPlayerId] : null,
-    // WICHTIGER FUND: bisher bekam jede:r Spieler:in während der Abstimmung exakt dieselbe
-    // Liste inkl. der EIGENEN Antwort als anklickbare Option - man konnte also (versehentlich)
-    // für die eigene Antwort abstimmen. Das gab zwar nie Punkte (weder als "richtig geraten"
-    // noch als Bluff-Erfolg, siehe Punkte-Logik unten), war aber trotzdem falsch: die eigene
-    // Antwort gehört gar nicht erst in die eigene Auswahl. Während der Auflösung (reveal)
-    // bleibt die eigene Antwort natürlich weiterhin sichtbar - da geht es ja gerade darum,
-    // zu sehen, wer darauf reingefallen ist.
+    // Die eigene Antwort war bisher während der Abstimmung komplett aus der Liste
+    // rausgefiltert (man konnte ja eh nicht sinnvoll für sich selbst stimmen). Jetzt wird
+    // sie stattdessen WEITERHIN mit angezeigt (isMine:true), aber im Client nicht anklickbar
+    // gemacht - man soll seine eigene Antwort zwischen den anderen wiederfinden können,
+    // ohne sie aus Versehen anwählen zu können.
     shuffledAnswers: room.phase === 'voting'
-      ? room.shuffledAnswers.filter(a => a.ownerId !== forPlayerId).map(a => ({ text: a.text, ownerId: a.ownerId }))
+      ? room.shuffledAnswers.map(a => ({ text: a.text, ownerId: a.ownerId, isMine: a.ownerId === forPlayerId }))
       : (room.phase === 'reveal' ? room.shuffledAnswers : []),
     // Moderator:in sieht schon während der Abstimm-Phase, welche Antwort gerade angetippt wurde
     votePreview: (isModerator && room.phase === 'voting')
@@ -1511,6 +1509,7 @@ io.on('connection', (socket) => {
     };
     applyRoundTypeTriggerCheck(room, prevPositions);
     room.phase = 'reveal';
+    room.revealStartedAt = Date.now();
     broadcastState(code);
     checkForWinner(code, room);
   }
@@ -1660,6 +1659,7 @@ io.on('connection', (socket) => {
     const myId = socket.data.token;
     const moderatorId = room.players[room.moderatorIndex].id;
     if (myId === moderatorId) return; // Moderator stimmt nicht ab
+    if (chosenOwnerId === myId) return; // die eigene Antwort ist zwar sichtbar, aber nicht wählbar
 
     const totalVoters = room.players.filter(p => p.id !== moderatorId).length;
     const alreadyVoted = room.votes[myId] !== undefined;
@@ -1739,6 +1739,7 @@ io.on('connection', (socket) => {
     applyCatchUpBonus(room);
     applyRoundTypeTriggerCheck(room, prevPositions);
     room.phase = 'reveal';
+    room.revealStartedAt = Date.now();
     broadcastState(code);
     room.catchUpAnnouncement = null; // nur einmalig in der Ansage anzeigen
     checkForWinner(code, room);
@@ -1795,6 +1796,7 @@ io.on('connection', (socket) => {
     applyCatchUpBonus(room);
     applyRoundTypeTriggerCheck(room, prevPositions);
     room.phase = 'reveal';
+    room.revealStartedAt = Date.now();
     broadcastState(code);
     room.catchUpAnnouncement = null; // nur einmalig in der Ansage anzeigen
     checkForWinner(code, room);
@@ -1803,6 +1805,10 @@ io.on('connection', (socket) => {
   socket.on('showBoard', ({ code }) => {
     const room = rooms[code];
     if (!room || !isModerator(room, socket)) return;
+    // Serverseitig absichern (nicht nur der ausgegraute Button auf dem Client): der
+    // Auflösungs-Screen muss mindestens 10 Sekunden sichtbar gewesen sein, damit alle
+    // Mitspieler:innen wenigstens kurz lesen können, was gerade passiert ist.
+    if (room.revealStartedAt && Date.now() - room.revealStartedAt < 10000 && !socket.data.isSuperAdmin) return;
     room.phase = 'board';
     broadcastState(code);
   });

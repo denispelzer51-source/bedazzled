@@ -395,12 +395,14 @@
 <!-- Bestätigungs-Modal für Raum verlassen -->
 <!-- Ergebnisse der letzten Runde noch mal ansehen (aufrufbar über den Button auf dem Spielbrett) -->
 <div id="reveal-recap-overlay" class="overlay hidden">
-  <div class="overlay-card" style="max-width:520px; max-height:82vh; overflow-y:auto;">
+  <div class="overlay-card" style="max-width:520px; width:92%;">
     <h2>📊 Ergebnisse der letzten Runde</h2>
-    <p id="reveal-recap-catchup" class="catchup-banner hidden"></p>
-    <p id="reveal-recap-question" class="question-text small"></p>
-    <p id="reveal-recap-realanswer" class="real-answer-box hidden"></p>
-    <div id="reveal-recap-list" class="reveal-list"></div>
+    <div class="overlay-scroll-body">
+      <p id="reveal-recap-catchup" class="catchup-banner hidden"></p>
+      <p id="reveal-recap-question" class="question-text small"></p>
+      <p id="reveal-recap-realanswer" class="real-answer-box hidden"></p>
+      <div id="reveal-recap-list" class="reveal-list"></div>
+    </div>
     <button id="btn-close-reveal-recap" class="btn btn-primary" style="margin-top:16px;">Schließen</button>
   </div>
 </div>

@@ -238,6 +238,29 @@ h2 { font-family: var(--font-display); font-weight: 700; font-size: 24px; text-a
 }
 .vote-option:hover { border-color: var(--gold); }
 .vote-option.selected { border-color: var(--gold); background: rgba(172,88,249,0.12); }
+/* Die eigene Antwort taucht in der Abstimm-Liste mit auf (man soll sie wiederfinden
+   können), ist aber bewusst nicht anklickbar - dezent ausgegraut mit einem kleinen
+   Hinweis-Tag, statt wie die anderen Optionen aktiv/klickbar zu wirken. */
+.vote-option-mine {
+  background: transparent;
+  border: 1.5px dashed rgba(255,255,255,0.18);
+  border-radius: 12px;
+  padding: 14px 16px;
+  font-size: 15px;
+  color: var(--ink-dim);
+  cursor: default;
+}
+.vote-option-mine-tag {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--gold);
+  background: rgba(245,200,66,0.12);
+  padding: 2px 8px;
+  border-radius: 20px;
+  margin-left: 6px;
+  vertical-align: middle;
+}
 
 .reveal-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 18px; }
 .reveal-item { border-radius: 12px; padding: 16px; font-size: 17px; font-weight: 600; line-height: 1.4; background: var(--night-2); border-left: 4px solid transparent; border: 1px solid transparent; border-left-width: 4px; }
@@ -407,6 +430,7 @@ h2 { font-family: var(--font-display); font-weight: 700; font-size: 24px; text-a
   display: flex; align-items: center; justify-content: center;
   padding: 20px;
   z-index: 50;
+  overscroll-behavior: contain;
 }
 /* Popups duerfen nie oben/unten aus dem sichtbaren Bildschirm herauslaufen: die Karte
    bekommt eine maximale Hoehe (unter Beruecksichtigung von Notch/Home-Indicator via
@@ -435,6 +459,7 @@ h2 { font-family: var(--font-display); font-weight: 700; font-size: 24px; text-a
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   min-height: 0;
+  overscroll-behavior: contain;
   scrollbar-width: none; /* Firefox */
   -ms-overflow-style: none; /* alte Edge/IE */
 }

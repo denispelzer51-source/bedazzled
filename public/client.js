@@ -23,7 +23,41 @@ window.addEventListener('error', (e) => {
   showError('Etwas ist schiefgelaufen (' + (e.message || 'unbekannter Fehler') + '). Bitte Seite neu laden und nochmal versuchen.');
 });
 
-// ---------- SOUNDEFFEKTE (dezent, per Web Audio erzeugt, keine externen Dateien nötig) ----------
+// ---------- HINTERGRUND-SCROLL SPERREN, SOLANGE EIN POPUP OFFEN IST ----------
+// Popups (.overlay) werden an ganz verschiedenen Stellen im Code ein-/ausgeblendet (per
+// classList.toggle('hidden')). Statt jede einzelne Stelle einzeln anzupassen, wird hier
+// zentral per MutationObserver beobachtet, ob IRGENDEIN Popup gerade sichtbar ist - sobald
+// das der Fall ist, wird die Seite dahinter "eingefroren" (kein Weiterscrollen im
+// Hintergrund mehr möglich, auch nicht am oberen/unteren Rand des Popup-Inhalts), und beim
+// Schließen des letzten offenen Popups wird exakt an die vorherige Scroll-Position
+// zurückgesprungen.
+let overlayScrollLockActive = false;
+let overlayScrollLockY = 0;
+function refreshOverlayScrollLock() {
+  const anyOpen = Array.from(document.querySelectorAll('.overlay')).some(el => !el.classList.contains('hidden'));
+  if (anyOpen && !overlayScrollLockActive) {
+    overlayScrollLockActive = true;
+    overlayScrollLockY = window.scrollY;
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${overlayScrollLockY}px`;
+    document.body.style.left = '0';
+    document.body.style.right = '0';
+    document.body.style.width = '100%';
+  } else if (!anyOpen && overlayScrollLockActive) {
+    overlayScrollLockActive = false;
+    document.body.style.position = '';
+    document.body.style.top = '';
+    document.body.style.left = '';
+    document.body.style.right = '';
+    document.body.style.width = '';
+    window.scrollTo(0, overlayScrollLockY);
+  }
+}
+document.querySelectorAll('.overlay').forEach(el => {
+  new MutationObserver(refreshOverlayScrollLock).observe(el, { attributes: true, attributeFilter: ['class'] });
+});
+
+
 let audioCtx = null;
 let soundMuted = localStorage.getItem('bedazzled_muted') === 'true';
 
@@ -1004,6 +1038,14 @@ function renderVoteOptions(shuffledAnswers) {
   box.innerHTML = '';
   shuffledAnswers.forEach((a, i) => {
     const div = document.createElement('div');
+    if (a.isMine) {
+      // Die eigene Antwort wird zwischen den anderen mit angezeigt (man soll sie
+      // wiederfinden können), ist aber bewusst NICHT anklickbar/wählbar.
+      div.className = 'vote-option vote-option-mine';
+      div.innerHTML = `${escapeHtml(a.text)} <span class="vote-option-mine-tag">Deine Antwort</span>`;
+      box.appendChild(div);
+      return;
+    }
     div.className = 'vote-option';
     div.textContent = a.text;
     div.dataset.ownerId = a.ownerId;
@@ -1180,7 +1222,36 @@ socket.on('someoneGuessedCorrectly', ({ name }) => {
 });
 
 // ---------- REVEAL ----------
+// Der Auflösungs-Screen (wer hat welche Antwort abgegeben, wer ist reingefallen, etc.) darf
+// frühestens 10 Sekunden nach Rundenbeginn übersprungen werden - sonst schafft es kaum
+// jemand, in der Kürze der Zeit überhaupt zu lesen, was gerade passiert ist.
+const REVEAL_BOARD_MIN_WAIT_MS = 10000;
+let revealBoardUnlockAt = 0;
+let revealBoardCountdownTimer = null;
+
+function startRevealBoardCountdown() {
+  clearInterval(revealBoardCountdownTimer);
+  revealBoardUnlockAt = Date.now() + REVEAL_BOARD_MIN_WAIT_MS;
+  updateRevealBoardButton();
+  revealBoardCountdownTimer = setInterval(updateRevealBoardButton, 250);
+}
+
+function updateRevealBoardButton() {
+  const btn = document.getElementById('btn-to-board');
+  if (!btn) return;
+  const msLeft = revealBoardUnlockAt - Date.now();
+  if (msLeft > 0) {
+    btn.disabled = true;
+    btn.textContent = `Weiter zum Spielbrett (${Math.ceil(msLeft / 1000)}s)`;
+  } else {
+    btn.disabled = false;
+    btn.textContent = 'Weiter zum Spielbrett';
+    clearInterval(revealBoardCountdownTimer);
+  }
+}
+
 document.getElementById('btn-to-board').addEventListener('click', () => {
+  if (Date.now() < revealBoardUnlockAt) return; // sollte durch disabled schon verhindert sein, sicherheitshalber nochmal geprüft
   socket.emit('showBoard', { code: currentCode });
 });
 
@@ -1677,7 +1748,10 @@ socket.on('state', (state) => {
   const enteringAnswering = state.phase === 'answering' && ((!lastState || lastState.phase !== 'answering') || justReconnected);
   const enteringBoard = state.phase === 'board' && (!lastState || lastState.phase !== 'board');
   const enteringReveal = state.phase === 'reveal' && (!lastState || lastState.phase !== 'reveal');
-  if (enteringReveal) playRevealSound();
+  if (enteringReveal) {
+    playRevealSound();
+    startRevealBoardCountdown();
+  }
   if (enteringAnswering) {
     miniBarShowsLive = false;
     roundStartPositions = {};
