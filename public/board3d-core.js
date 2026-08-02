@@ -403,10 +403,12 @@ for (let i = 0; i < DECK_CARD_COUNT; i++) {
     const frontPlaneMat = new THREE.MeshBasicMaterial({ map: makeCardFrontTexture(DEMO_QUESTION_TEXT), side: THREE.DoubleSide });
     topCardFrontPlaneMat = frontPlaneMat; // für dynamisches Aktualisieren des Fragetexts (Live-Spiel)
     const frontPlane = new THREE.Mesh(frontPlaneGeo, frontPlaneMat);
-    // Rotation numerisch verifiziert (drei.js-Quaternionen exakt nachgerechnet) für die
-    // 180°-Drehung um die Kamera-Achse (rechts klappt nach links, Karte bleibt flach liegen):
-    // die Frage steht danach exakt aufrecht UND nach oben zeigend da.
-    frontPlane.rotation.set(Math.PI / 2, 0, Math.PI);
+    // WICHTIG: Diese Rotation ist an die Endausrichtung der Karte gekoppelt (siehe
+    // drawCardAnimation weiter unten, kamera-abhängiges "lookAt"-System). Mit reinem
+    // rotation.x = +PI/2 (kein zusätzlicher Roll) steht die Frage am Ende exakt aufrecht
+    // UND zur Kamera gedreht (mit drei.js-Quaternionen exakt nachgerechnet: beide Werte
+    // ergeben Dot-Produkt +1,0 - unabhängig von der aktuellen Kamera-Position/dem -winkel).
+    frontPlane.rotation.x = Math.PI / 2;
     frontPlane.position.y = -DECK_CARD_H / 2 - 0.0006;
     card.add(frontPlane);
   }
@@ -599,6 +601,25 @@ function updateTokenLayout(excludeIdx = -1) {
       // KEIN mesh.scale.setScalar(scale) mehr hier - nur das Ziel setzen, der eigentliche
       // Übergang läuft weich in der tick()-Schleife, statt schlagartig zu "springen".
     });
+  });
+}
+
+// Lässt Figuren, die schon auf dem ZIELFELD eines Zuges stehen, direkt beim Start des Zuges
+// beginnen, sanft Platz zu machen - statt erst im Moment der tatsächlichen Ankunft abrupt
+// zusammenzurücken. Die ankommende Figur selbst bekommt ihren Platz erst bei der Ankunft
+// (siehe updateTokenLayout() am Zug-Ende) - hier geht es nur um die schon wartenden Figuren.
+function preRegroupDestinationField(movingIdx, destPos) {
+  const occupantIdx = tokensData
+    .map((t, idx) => idx)
+    .filter(idx => idx !== movingIdx && tokensData[idx].pos === destPos);
+  if (occupantIdx.length === 0) return; // Zielfeld ist noch frei - nichts zu tun
+  const n = occupantIdx.length + 1; // +1 für die ankommende Figur, die gleich dazustößt
+  const scale = n === 1 ? 1 : n === 2 ? 0.8 : n === 3 ? 0.72 : 0.65;
+  const offsets = formationOffsets(n, 0.16);
+  occupantIdx.forEach((tokenIdx, i) => {
+    const mesh = tokenMeshes[tokenIdx];
+    mesh.userData.slotOffset = offsets[i];
+    mesh.userData.slotScale = scale;
   });
 }
 function setTokenWorldPos(tokenIdx, wx, wz) {
@@ -883,6 +904,7 @@ function animateMove(tokenIdx, steps, onComplete) {
   tokenMeshes[tokenIdx].scale.setScalar(1);
   tokenMeshes[tokenIdx].userData.isMoving = true;
   updateTokenLayout(tokenIdx);
+  preRegroupDestinationField(tokenIdx, endPos);
 
   const zoomInMs = 700, trackMs = 900 + steps * 90, zoomOutMs = 700;
   const totalMs = zoomInMs + trackMs + zoomOutMs;
@@ -1018,12 +1040,25 @@ function drawCardAnimation(questionText) {
   const endScale = (visibleHeightAtEnd / CARD_D) * fillFactor;
   const startTime  = performance.now();
 
-  // GENAU die Bewegung, die beschrieben wurde: die Karte bleibt flach liegen (keine
-  // "Aufrichten zur Kamera"-Drehung mehr!) und dreht sich um die Achse, die zur Kamera zeigt
-  // (Welt-Z) um 180° - die rechte Seite klappt nach links, dabei zeigt danach die
-  // Vorderseite (Frage) nach oben, an derselben Stelle, an der vorher die Rückseite war.
-  const flipAxis = new THREE.Vector3(0, 0, 1);
-  const qFlipFull = new THREE.Quaternion().setFromAxisAngle(flipAxis, Math.PI);
+  // Kamera-UNABHÄNGIGE Ausrichtung: statt einer festen Dreh-Achse (die nur bei einer exakt
+  // senkrecht von oben stehenden Kamera "flach nach oben" richtig aussieht) wird hier live
+  // berechnet, wie die Karte gedreht werden muss, um am Ende exakt aufrecht UND direkt zur
+  // AKTUELLEN Kamera-Position zu zeigen - bleibt also auch korrekt, falls die Kamera-Position
+  // später nochmal angepasst wird (rechnerisch mit drei.js-Quaternionen exakt nachgerechnet:
+  // Dot-Produkt +1,0 für "aufrecht" UND "zur Kamera zeigend", unabhängig vom Kamera-Winkel).
+  const lookDummy = new THREE.Object3D();
+  lookDummy.position.copy(endPos);
+  lookDummy.up.set(0, 1, 0);
+  lookDummy.lookAt(camera.position);
+  const qLookAt = lookDummy.quaternion.clone();
+  const axisFixMatrix = new THREE.Matrix4().makeBasis(
+    new THREE.Vector3(-1, 0, 0),
+    new THREE.Vector3(0, 0, 1),
+    new THREE.Vector3(0, 1, 0)
+  );
+  const qAxisFix = new THREE.Quaternion().setFromRotationMatrix(axisFixMatrix);
+  const qFix180 = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI);
+  const qOrientFull = qLookAt.clone().multiply(qFix180).multiply(qAxisFix);
 
   let overlayShown = false;
 
@@ -1039,11 +1074,11 @@ function drawCardAnimation(questionText) {
 
     } else {
       // P2: EIN durchgehender Bewegungsablauf - Position bewegt sich die GANZE Zeit über
-      // Richtung Bildschirm, während sich die Karte in EINER einzigen, glatten 180°-Drehung
-      // (rechts nach links) öffnet und dabei flach liegen bleibt.
+      // Richtung Bildschirm, während sich die Karte in EINER einzigen, glatten Drehung
+      // aufrichtet und dabei direkt zur Kamera dreht.
       const p = easeInOutCubic((el - liftMs) / openMs);
       topCardMesh.position.lerpVectors(liftTarget, endPos, p);
-      topCardMesh.quaternion.identity().slerp(qFlipFull, p);
+      topCardMesh.quaternion.identity().slerp(qOrientFull, p);
       topCardMesh.scale.setScalar(lerp(1, endScale, p));
 
       // 2D-Frage-Overlay schon knapp VOR dem völligen Abschluss der Animation einblenden
