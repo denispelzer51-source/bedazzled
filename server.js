@@ -119,6 +119,27 @@ async function initDatabase() {
       await questionsCol.deleteMany({});
       await questionsCol.insertMany(questionsList.map(stripId));
     }
+
+    // EINMALIGER Reset (nur beim allerersten Start nach diesem Update): ALLE Fragen -
+    // Bluff wie Schätzen, unabhängig davon, ob ihre Kategorie durch die obige Migration
+    // überhaupt verändert wurde - werden auf "ungeprüft" zurückgesetzt. Grund: die
+    // Kategorien-Zuordnung war insgesamt durcheinander, nicht nur bei den offensichtlich
+    // umbenannten Kategorien, daher müssen wirklich alle Fragen nochmal manuell in
+    // /admin.html durchgesehen werden. Ein Marker-Dokument sorgt dafür, dass das nur EINMAL
+    // passiert und nicht bei jedem künftigen Deploy die inzwischen schon wieder geprüften
+    // Fragen erneut zurücksetzt.
+    const metaCol = mongoDb.collection('meta');
+    const resetMarker = await metaCol.findOne({ _id: 'reviewedResetV1' });
+    if (!resetMarker) {
+      console.log('[DB] Einmaliger Reset: alle Fragen werden wegen der Kategorie-Neusortierung auf "ungeprüft" gesetzt …');
+      questionsList.forEach(q => { q.reviewed = false; });
+      estimateQuestionsList.forEach(q => { q.reviewed = false; });
+      await questionsCol.deleteMany({});
+      await questionsCol.insertMany(questionsList.map(stripId));
+      await estimateCol.deleteMany({});
+      await estimateCol.insertMany(estimateQuestionsList.map(stripId));
+      await metaCol.insertOne({ _id: 'reviewedResetV1', appliedAt: new Date() });
+    }
   } catch (err) {
     console.error('[DB] Verbindung zu MongoDB fehlgeschlagen, falle auf lokale Dateien zurück:', err.message);
     mongoDb = null;
