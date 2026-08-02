@@ -1253,6 +1253,7 @@ const AVATAR_KEY_COLORS = { diamond: '#D5A1FB', mask: '#C577FB', crystalball: '#
 let board3dReady = false;
 let board3dPendingMessages = [];
 let onCardDrawComplete = null; // wird von playCardDrawThenReveal gesetzt, für präzises Timing
+let onIntroPlacementComplete = null; // wird von playIntroPlacementThenGate gesetzt
 window.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'board3dReady') {
     board3dReady = true;
@@ -1260,6 +1261,8 @@ window.addEventListener('message', (event) => {
     board3dPendingMessages = [];
   } else if (event.data && event.data.type === 'cardDrawComplete') {
     if (onCardDrawComplete) { onCardDrawComplete(); onCardDrawComplete = null; }
+  } else if (event.data && event.data.type === 'introPlacementComplete') {
+    if (onIntroPlacementComplete) { onIntroPlacementComplete(); onIntroPlacementComplete = null; }
   }
 });
 function sendToBoard3D(msg) {
@@ -1303,6 +1306,7 @@ function sync3DBoard(players, fromPositions, animate, onComplete) {
 
 // ---------- Karte ziehen: Spielbrett-Zwischenschritt vor der Fragen-Vorschau ----------
 let cardDrawAnimationPlaying = false;
+let cardDrawAnimationPlayedThisRound = false;
 // Dauer der 3D-Karten-Animation (muss zur Timing-Summe in board3d-core.js passen:
 // liftMs 600 + openMs 2300 = 2900ms), plus etwas Puffer für Netzwerk-Latenz.
 const CARD_DRAW_ANIMATION_MS = 3100;
@@ -1405,6 +1409,48 @@ function renderQuestionPreviewScreen(state) {
     document.getElementById('qp-waiting-heading').textContent = `${moderatorName} wählt gerade die Frage aus …`;
   }
   showScreen('questionPreview');
+}
+
+// ---------- Einführungs-Animation: einmalig ganz zu Beginn eines neuen Spiels ----------
+// Kamera zoomt zum Startfeld, die gewählten Spielfiguren "poppen" dort auf, dann zoomt die
+// Kamera zurück zur gewohnten Übersicht - erst DANACH geht's normal mit "Karte ziehen" weiter.
+let introPlacementPlaying = false;
+function playIntroPlacementThenGate(state) {
+  introPlacementPlaying = true;
+  document.getElementById('board-screen-heading').textContent = '✨ Auf geht’s!';
+  setCardDrawGateVisible(false);
+  showScreen('board');
+  const playersPayload = state.players.map(p => {
+    const key = AVATAR_EMOJI_TO_KEY[p.avatar] || 'diamond';
+    return { id: p.id, name: p.name, avatarKey: key, color: AVATAR_KEY_COLORS[key] || '#D5A1FB', position: p.position };
+  });
+  let finished = false;
+  function finish() {
+    if (finished) return;
+    finished = true;
+    introPlacementPlaying = false;
+    onIntroPlacementComplete = null;
+    renderPreviewQuestionFlow(lastState || state);
+  }
+  onIntroPlacementComplete = finish;
+  sendToBoard3D({ type: 'introPlacement', players: playersPayload });
+  // Sicherheitsnetz (Zoom rein 1100 + Halten 1500 + Zoom raus 1100 = 3700ms + Puffer)
+  setTimeout(finish, 4300);
+}
+
+// Bündelt die Logik "was zeigen wir gerade in der Fragen-Vorschau-Phase" - wiederverwendbar,
+// damit sowohl der normale Ablauf als auch das Ende der Einführungs-Animation dieselbe
+// Entscheidung treffen (Karte-ziehen-Gate vs. Karten-Animation vs. fertige Vorschau).
+function renderPreviewQuestionFlow(state) {
+  if (!state || state.phase !== 'previewQuestion') return;
+  if (!state.cardDrawn) {
+    showCardDrawGate(state);
+  } else if (!cardDrawAnimationPlayedThisRound && !cardDrawAnimationPlaying) {
+    cardDrawAnimationPlayedThisRound = true;
+    playCardDrawThenReveal(state);
+  } else if (!cardDrawAnimationPlaying) {
+    renderQuestionPreviewScreen(state);
+  }
 }
 
 document.getElementById('btn-draw-card-trigger').addEventListener('click', () => {
@@ -1849,21 +1895,20 @@ socket.on('state', (state) => {
     if (enteringQuestionPreview) {
       qpSwapAreaRevealed = false;
       document.getElementById('qp-swap-area').classList.add('hidden');
+      // Pro NEUER Runde zurücksetzen, damit die Karten-Animation garantiert wieder abgespielt
+      // wird - unabhängig von der genauen Reihenfolge/dem Timing der State-Updates (das war
+      // die Ursache dafür, dass die Animation manchmal übersprungen wurde).
+      cardDrawAnimationPlayedThisRound = false;
     }
 
-    if (!state.cardDrawn) {
-      // NEU: Vor der eigentlichen Fragen-Vorschau erst das Spielbrett zeigen - der/die
-      // Moderator:in zieht sichtbar für alle die Karte, erst danach wird die Frage enthüllt.
-      showCardDrawGate(state);
-    } else {
-      const justDrawn = lastState && lastState.phase === 'previewQuestion' && !lastState.cardDrawn;
-      if (justDrawn) {
-        playCardDrawThenReveal(state);
-      } else if (!cardDrawAnimationPlaying) {
-        // Bereits gezogen (z.B. Reconnect/Reload) - keine Animation mehr nachholen,
-        // direkt die normale Fragen-Vorschau zeigen.
-        renderQuestionPreviewScreen(state);
-      }
+    // NEU: ganz am Anfang des Spiels (Lobby -> allererste Runde) zuerst die verspielte
+    // Einführungs-Animation zeigen (Kamera zoomt zum Startfeld, Figuren poppen dort auf),
+    // bevor es mit dem gewohnten "Karte ziehen"-Ablauf weitergeht.
+    const enteringFirstRoundEver = lastState && lastState.phase === 'lobby' && state.phase === 'previewQuestion';
+    if (enteringFirstRoundEver && !introPlacementPlaying) {
+      playIntroPlacementThenGate(state);
+    } else if (!introPlacementPlaying) {
+      renderPreviewQuestionFlow(state);
     }
   }
 

@@ -644,6 +644,55 @@ function movePlayerByIdExternal(playerId, steps) {
   if (idx === -1 || !steps) return;
   animateMove(idx, steps);
 }
+
+// ---------- Einführungs-Animation: einmalig ganz zu Beginn eines neuen Spiels ----------
+// Kamera zoomt zum Startfeld, die Spielfiguren "poppen" dort sanft/verspielt auf (nutzt die
+// bereits vorhandene weiche Skalierungs-Angleichung aus tick() - Start bei winziger Größe,
+// die dann von selbst zur Normalgröße hochwächst), danach zoomt die Kamera wieder zurück
+// zur gewohnten Übersicht.
+function playIntroPlacement(players) {
+  syncPlayersFromExternal(players);
+  tokenMeshes.forEach(mesh => { mesh.scale.setScalar(0.001); });
+
+  const startWorld = fieldPosition(0);
+  const dir = dirForEdge(classifyEdge(startWorld));
+  const camPos = insideCamPos(startWorld, dir, INSIDE_RADIUS);
+  const camTarget = new THREE.Vector3(startWorld.x, 0.3, startWorld.z);
+  const overviewCamPos = camera.position.clone();
+  const overviewCamTarget = controls.target.clone();
+
+  controls.enabled = false;
+  const zoomInMs = 1100, holdMs = 1500, zoomOutMs = 1100;
+  const totalMs = zoomInMs + holdMs + zoomOutMs;
+  const start = performance.now();
+  function frame(now) {
+    const el = now - start;
+    if (el < zoomInMs) {
+      const p = easeInOutCubic(el / zoomInMs);
+      camera.position.lerpVectors(overviewCamPos, camPos, p);
+      controls.target.lerpVectors(overviewCamTarget, camTarget, p);
+    } else if (el < zoomInMs + holdMs) {
+      camera.position.copy(camPos);
+      controls.target.copy(camTarget);
+    } else if (el < totalMs) {
+      const p = easeInOutCubic((el - zoomInMs - holdMs) / zoomOutMs);
+      camera.position.lerpVectors(camPos, overviewCamPos, p);
+      controls.target.lerpVectors(camTarget, overviewCamTarget, p);
+    } else {
+      camera.position.copy(overviewCamPos);
+      controls.target.copy(overviewCamTarget);
+    }
+    if (el < totalMs) {
+      requestAnimationFrame(frame);
+    } else {
+      controls.enabled = orbitEnabled;
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage({ type: 'introPlacementComplete' }, '*');
+      }
+    }
+  }
+  requestAnimationFrame(frame);
+}
 window.addEventListener('message', (event) => {
   const data = event.data;
   if (!data || typeof data !== 'object') return;
@@ -654,6 +703,8 @@ window.addEventListener('message', (event) => {
   } else if (data.type === 'drawCard') {
     resetCardPosition();
     drawCardAnimation(data.questionText || '❓');
+  } else if (data.type === 'introPlacement') {
+    playIntroPlacement(data.players);
   }
 });
 // Der einbettenden Seite mitteilen, dass die 3D-Szene bereit ist, Daten zu empfangen
@@ -714,6 +765,44 @@ const pendingMoveQueue = [];
 function lerp(a, b, t) { return a + (b - a) * t; }
 function easeInOutCubic(t) { return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; }
 
+// Kamera-Hilfsfunktionen (auf Modul-Ebene, damit sowohl animateMove als auch die
+// Einführungs-Animation beim allerersten Rundenstart sie nutzen können):
+// Feste Regel: die Kamera agiert IMMER von vorne aufs Brett - auch bei der hinteren
+// Reihe wird von vorne rübergeschaut, nie von hinten. Bei der linken Reihe kommt die
+// Kamera von vorne-rechts, bei der rechten Reihe von vorne-links - nie eine reine
+// Seiten- oder Rückansicht.
+// WICHTIG: muss spürbar NÄHER sein als die Übersichts-Kamera (Distanz ~9.2), sonst ist der
+// Zoom-Effekt beim Ranfahren an eine ziehende Figur nicht wahrnehmbar.
+const INSIDE_HEIGHT = 2.3;
+const INSIDE_RADIUS = 3.6;
+const halfW = RING_W / 2, halfH = RING_H / 2;
+function classifyEdge(world) {
+  const distFront = Math.abs(world.z - halfH);
+  const distBack = Math.abs(world.z + halfH);
+  const distRight = Math.abs(world.x - halfW);
+  const distLeft = Math.abs(world.x + halfW);
+  const minDist = Math.min(distFront, distBack, distRight, distLeft);
+  if (minDist === distLeft) return 'left';
+  if (minDist === distRight) return 'right';
+  if (minDist === distBack) return 'back'; // eigener Wert (statt wie bisher unter "front" mitzulaufen), damit wir speziell für die hintere Reihe geringer heranzoomen können
+  return 'front';
+}
+function dirForEdge(edge) {
+  let dirX = 0, dirZ = 1; // Standard: immer von vorne (gilt auch für die hintere Reihe)
+  if (edge === 'left') { dirX = 0.75; dirZ = 0.66; }        // linke Reihe -> von vorne-rechts
+  else if (edge === 'right') { dirX = -0.75; dirZ = 0.66; } // rechte Reihe -> von vorne-links
+  // 'back' bleibt bewusst bei dirX=0, dirZ=1 - weiterhin IMMER von vorne gefilmt, nie von hinten
+  const len = Math.hypot(dirX, dirZ);
+  return { x: dirX / len, z: dirZ / len };
+}
+function insideCamPos(world, dir, radius) {
+  return new THREE.Vector3(
+    world.x * 0.15 + dir.x * radius,
+    INSIDE_HEIGHT,
+    dir.z * radius
+  );
+}
+
 function animateMove(tokenIdx, steps, onComplete) {
   if (animating) {
     pendingMoveQueue.push({ tokenIdx, steps, onComplete });
@@ -729,45 +818,6 @@ function animateMove(tokenIdx, steps, onComplete) {
 
   const overviewCamPos = camera.position.clone();
   const overviewCamTarget = controls.target.clone();
-
-  // Feste Regel: die Kamera agiert IMMER von vorne aufs Brett - auch bei der hinteren
-  // Reihe wird von vorne rübergeschaut, nie von hinten. Bei der linken Reihe kommt die
-  // Kamera von vorne-rechts, bei der rechten Reihe von vorne-links - nie eine reine
-  // Seiten- oder Rückansicht.
-  // WICHTIG: muss spürbar NÄHER sein als die Übersichts-Kamera (jetzt Distanz ~9.2), sonst
-  // ist der Zoom-Effekt beim Ranfahren an eine ziehende Figur nicht mehr wahrnehmbar - genau
-  // das ist beim letzten Kamera-Update passiert (Übersicht wurde näher geholt, diese Werte
-  // hier aber nicht mit angepasst, wodurch beide Distanzen fast gleich groß waren).
-  const INSIDE_HEIGHT = 2.3;
-  const INSIDE_RADIUS = 3.6;
-  const halfW = RING_W / 2, halfH = RING_H / 2;
-  function classifyEdge(world) {
-    const distFront = Math.abs(world.z - halfH);
-    const distBack = Math.abs(world.z + halfH);
-    const distRight = Math.abs(world.x - halfW);
-    const distLeft = Math.abs(world.x + halfW);
-    const minDist = Math.min(distFront, distBack, distRight, distLeft);
-    if (minDist === distLeft) return 'left';
-    if (minDist === distRight) return 'right';
-    if (minDist === distBack) return 'back'; // eigener Wert (statt wie bisher unter "front" mitzulaufen), damit wir speziell für die hintere Reihe geringer heranzoomen können
-    return 'front';
-  }
-  function dirForEdge(edge) {
-    let dirX = 0, dirZ = 1; // Standard: immer von vorne (gilt auch für die hintere Reihe)
-    if (edge === 'left') { dirX = 0.75; dirZ = 0.66; }        // linke Reihe -> von vorne-rechts
-    else if (edge === 'right') { dirX = -0.75; dirZ = 0.66; } // rechte Reihe -> von vorne-links
-    // 'back' bleibt bewusst bei dirX=0, dirZ=1 - weiterhin IMMER von vorne gefilmt, nie von hinten
-    const len = Math.hypot(dirX, dirZ);
-    return { x: dirX / len, z: dirZ / len };
-  }
-
-  function insideCamPos(world, dir, radius) {
-    return new THREE.Vector3(
-      world.x * 0.15 + dir.x * radius,
-      INSIDE_HEIGHT,
-      dir.z * radius
-    );
-  }
 
   // Kompletter Feld-für-Feld-Weg dieses Zuges (statt nur Start-/Zielfeld), damit die Figur
   // bei einem Zug über eine Brettecke hinweg (z.B. rechte Reihe -> vordere Reihe) wirklich
