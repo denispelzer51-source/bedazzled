@@ -1252,11 +1252,14 @@ const AVATAR_EMOJI_TO_KEY = { '💎': 'diamond', '🎭': 'mask', '🔮': 'crysta
 const AVATAR_KEY_COLORS = { diamond: '#D5A1FB', mask: '#C577FB', crystalball: '#8C39F7', joker: '#AC58F9', crown: '#F2B705', star: '#FFE066' };
 let board3dReady = false;
 let board3dPendingMessages = [];
+let onCardDrawComplete = null; // wird von playCardDrawThenReveal gesetzt, für präzises Timing
 window.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'board3dReady') {
     board3dReady = true;
     board3dPendingMessages.forEach(msg => sendToBoard3D(msg));
     board3dPendingMessages = [];
+  } else if (event.data && event.data.type === 'cardDrawComplete') {
+    if (onCardDrawComplete) { onCardDrawComplete(); onCardDrawComplete = null; }
   }
 });
 function sendToBoard3D(msg) {
@@ -1297,6 +1300,118 @@ function sync3DBoard(players, fromPositions, animate, onComplete) {
   const delay = animate ? Math.max(1, moverCount) * 3200 : 0;
   if (onComplete) setTimeout(onComplete, delay);
 }
+
+// ---------- Karte ziehen: Spielbrett-Zwischenschritt vor der Fragen-Vorschau ----------
+let cardDrawAnimationPlaying = false;
+// Dauer der 3D-Karten-Animation (muss zur Timing-Summe in board3d-core.js passen:
+// liftMs 600 + openMs 2300 = 2900ms), plus etwas Puffer für Netzwerk-Latenz.
+const CARD_DRAW_ANIMATION_MS = 3100;
+
+function setCardDrawGateVisible(visible) {
+  document.getElementById('btn-draw-card-trigger').classList.toggle('hidden', !visible);
+  document.getElementById('card-draw-waiting-msg').classList.toggle('hidden', !visible);
+  // Die "normalen" Brett-Buttons (die für den ECHTEN Rundenabschluss gedacht sind) müssen
+  // während dieses Zwischenschritts verschwinden, sonst stehen "Nächste Runde"/"Ergebnisse"
+  // verwirrend neben "Karte ziehen".
+  document.getElementById('btn-next-round').classList.toggle('hidden', visible);
+  document.getElementById('btn-new-game').classList.toggle('hidden', true); // bleibt sowieso meist versteckt
+  document.getElementById('board-waiting-msg').classList.toggle('hidden', visible);
+  document.getElementById('btn-show-results-recap').classList.toggle('hidden', visible);
+}
+
+// Phase 1: Brett zeigen, Moderator:in bekommt den "Karte ziehen"-Button, andere warten
+function showCardDrawGate(state) {
+  document.getElementById('board-screen-heading').textContent = 'Die nächste Frage wartet …';
+  setCardDrawGateVisible(true);
+  const btn = document.getElementById('btn-draw-card-trigger');
+  btn.disabled = false;
+  btn.textContent = '🃏 Karte ziehen';
+  const moderatorPlayer = state.players.find(p => p.id === state.moderatorId);
+  document.getElementById('card-draw-waiting-msg').textContent =
+    `Warte, bis ${moderatorPlayer ? moderatorPlayer.name : 'der/die Moderator:in'} die Karte zieht …`;
+  // Spielbrett im iframe auf dem aktuellen Stand zeigen (ohne Zug-Animation, nur Positionen)
+  sync3DBoard(state.players, {}, false, null);
+  showScreen('board');
+}
+
+// Phase 2: Karte wird gezogen (für alle sichtbar, synchron ausgelöst), danach automatisch
+// die normale Fragen-Vorschau enthüllen
+function playCardDrawThenReveal(state) {
+  cardDrawAnimationPlaying = true;
+  setCardDrawGateVisible(true);
+  document.getElementById('btn-draw-card-trigger').disabled = true;
+  document.getElementById('btn-draw-card-trigger').textContent = '🃏 Karte wird gezogen …';
+  document.getElementById('card-draw-waiting-msg').textContent = 'Die Karte wird gezogen …';
+  // WICHTIG: nur der/die Moderator:in bekommt den echten Fragetext auf der Karte zu sehen -
+  // alle anderen sehen dieselbe Animation, aber mit einem Platzhalter statt der Frage.
+  const qp = state.questionPreview;
+  const amModeratorNow = state.moderatorId === myId;
+  const questionText = (amModeratorNow && qp && qp.candidates[qp.currentIndex])
+    ? qp.candidates[qp.currentIndex].question
+    : '❓ Der/die Moderator:in wählt die Frage aus …';
+  sendToBoard3D({ type: 'drawCard', questionText });
+  let revealed = false;
+  function reveal() {
+    if (revealed) return;
+    revealed = true;
+    cardDrawAnimationPlaying = false;
+    onCardDrawComplete = null;
+    if (lastState && lastState.phase === 'previewQuestion' && lastState.cardDrawn) {
+      renderQuestionPreviewScreen(lastState);
+    }
+  }
+  onCardDrawComplete = reveal;
+  // Sicherheitsnetz: falls das "fertig"-Signal aus dem iframe aus irgendeinem Grund nicht
+  // ankommt (z.B. iframe noch am Laden), trotzdem nach der bekannten Animationsdauer enthüllen.
+  setTimeout(reveal, CARD_DRAW_ANIMATION_MS);
+}
+
+// Phase 3: die eigentliche, bereits bestehende Fragen-Vorschau (Frage lesen, austauschen,
+// bestätigen bzw. Warte-Hinweis für Mitspieler:innen)
+function renderQuestionPreviewScreen(state) {
+  setCardDrawGateVisible(false);
+  const qp = state.questionPreview;
+  document.getElementById('qp-phase-tag').classList.toggle('hidden', !qp);
+  document.getElementById('board-screen-heading').textContent = 'Wer zieht wie weit?';
+  if (qp) {
+    qpCurrentIndex = qp.currentIndex;
+    document.getElementById('qp-moderator-view').classList.remove('hidden');
+    document.getElementById('qp-waiting-view').classList.add('hidden');
+    if (qpSwapAreaRevealed) document.getElementById('qp-swap-area').classList.remove('hidden');
+
+    document.getElementById('qp-current-num').textContent = qp.currentIndex + 1;
+    document.getElementById('qp-total-num').textContent = qp.candidates.length;
+    const current = qp.candidates[qp.currentIndex];
+    if (current) {
+      const fieldInfo = fieldColorInfo(qp.roundType);
+      document.getElementById('qp-category').innerHTML =
+        `<span class="key-dot ${fieldInfo.dotClass}" style="margin-right:6px; vertical-align:middle;"></span>${fieldInfo.label}` +
+        (current.topic ? ' · ' + escapeHtml(current.topic) : '');
+      document.getElementById('qp-question-text').textContent = current.question;
+    }
+    document.getElementById('btn-qp-prev').disabled = qp.currentIndex <= 0;
+    document.getElementById('btn-qp-next-candidate').disabled = qp.currentIndex >= qp.candidates.length - 1;
+    document.getElementById('btn-qp-swap').disabled = !qp.canSwapMore;
+    document.getElementById('qp-swap-hint').textContent = state.unlimitedQuestionSwaps
+      ? 'Unbegrenzt viele Wechsel möglich.'
+      : (qp.canSwapMore
+        ? `Du kannst noch ${3 - qp.candidates.length}x wechseln.`
+        : 'Kein Wechsel mehr übrig – das war die letzte Möglichkeit.');
+  } else {
+    document.getElementById('qp-moderator-view').classList.add('hidden');
+    document.getElementById('qp-waiting-view').classList.remove('hidden');
+    const moderatorPlayer = state.players.find(p => p.id === state.moderatorId);
+    const moderatorName = moderatorPlayer ? moderatorPlayer.name : 'Der/die Moderator:in';
+    document.getElementById('qp-waiting-heading').textContent = `${moderatorName} wählt gerade die Frage aus …`;
+  }
+  showScreen('questionPreview');
+}
+
+document.getElementById('btn-draw-card-trigger').addEventListener('click', () => {
+  if (!currentCode) return;
+  socket.emit('triggerCardDraw', { code: currentCode });
+});
+
 let miniBarShowsLive = true; // Mini-Leiste zeigt neue Positionen erst, sobald das große Spielbrett sie enthüllt
 
 // Verteilt Feld i gleichmäßig entlang des Umfangs eines Rechtecks (Seitenverhältnis 2:1),
@@ -1735,43 +1850,21 @@ socket.on('state', (state) => {
       qpSwapAreaRevealed = false;
       document.getElementById('qp-swap-area').classList.add('hidden');
     }
-    const qp = state.questionPreview;
-    document.getElementById('qp-phase-tag').classList.toggle('hidden', !qp);
-    if (qp) {
-      // Ich bin Moderator:in - Vorschau anzeigen
-      qpCurrentIndex = qp.currentIndex;
-      document.getElementById('qp-moderator-view').classList.remove('hidden');
-      document.getElementById('qp-waiting-view').classList.add('hidden');
-      if (qpSwapAreaRevealed) document.getElementById('qp-swap-area').classList.remove('hidden');
 
-      document.getElementById('qp-current-num').textContent = qp.currentIndex + 1;
-      document.getElementById('qp-total-num').textContent = qp.candidates.length;
-      const current = qp.candidates[qp.currentIndex];
-      if (current) {
-        const fieldInfo = fieldColorInfo(qp.roundType);
-        document.getElementById('qp-category').innerHTML =
-          `<span class="key-dot ${fieldInfo.dotClass}" style="margin-right:6px; vertical-align:middle;"></span>${fieldInfo.label}` +
-          (current.topic ? ' · ' + escapeHtml(current.topic) : '');
-        document.getElementById('qp-question-text').textContent = current.question;
-      }
-      document.getElementById('btn-qp-prev').disabled = qp.currentIndex <= 0;
-      document.getElementById('btn-qp-next-candidate').disabled = qp.currentIndex >= qp.candidates.length - 1;
-      document.getElementById('btn-qp-swap').disabled = !qp.canSwapMore;
-      document.getElementById('qp-swap-hint').textContent = state.unlimitedQuestionSwaps
-        ? 'Unbegrenzt viele Wechsel möglich.'
-        : (qp.canSwapMore
-          ? `Du kannst noch ${3 - qp.candidates.length}x wechseln.`
-          : 'Kein Wechsel mehr übrig – das war die letzte Möglichkeit.');
+    if (!state.cardDrawn) {
+      // NEU: Vor der eigentlichen Fragen-Vorschau erst das Spielbrett zeigen - der/die
+      // Moderator:in zieht sichtbar für alle die Karte, erst danach wird die Frage enthüllt.
+      showCardDrawGate(state);
     } else {
-      // Ich bin nicht Moderator:in - einfacher Warte-Screen, aber mit echtem Namen statt
-      // der generischen "Der/die Moderator:in"-Formulierung, damit klar ist, wer gerade dran ist
-      document.getElementById('qp-moderator-view').classList.add('hidden');
-      document.getElementById('qp-waiting-view').classList.remove('hidden');
-      const moderatorPlayer = state.players.find(p => p.id === state.moderatorId);
-      const moderatorName = moderatorPlayer ? moderatorPlayer.name : 'Der/die Moderator:in';
-      document.getElementById('qp-waiting-heading').textContent = `${moderatorName} wählt gerade die Frage aus …`;
+      const justDrawn = lastState && lastState.phase === 'previewQuestion' && !lastState.cardDrawn;
+      if (justDrawn) {
+        playCardDrawThenReveal(state);
+      } else if (!cardDrawAnimationPlaying) {
+        // Bereits gezogen (z.B. Reconnect/Reload) - keine Animation mehr nachholen,
+        // direkt die normale Fragen-Vorschau zeigen.
+        renderQuestionPreviewScreen(state);
+      }
     }
-    showScreen('questionPreview');
   }
 
   if (state.phase === 'answering') {
@@ -2146,6 +2239,8 @@ socket.on('state', (state) => {
   }
 
   if (state.phase === 'board') {
+    setCardDrawGateVisible(false);
+    document.getElementById('board-screen-heading').textContent = 'Wer zieht wie weit?';
     if (enteringBoard) {
       sync3DBoard(state.players, state.adminForcedFromPositions || roundStartPositions, true, () => {
         if (state.gameOver && winnerOverlayShownFor !== state.code + state.gameOver.winnerName) {

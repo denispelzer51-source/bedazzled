@@ -414,6 +414,7 @@ function publicRoomState(room, forPlayerId) {
     adminForcedFromPositions: (room.phase === 'board' && room.adminForcedFromPositions) ? room.adminForcedFromPositions : null,
     roundType: room.roundType || 'question',
     pendingRoundType: room.pendingRoundType || 'question',
+    cardDrawn: !!room.cardDrawn,
     boardLength: room.boardLength || BOARD_LENGTH,
     estimateTriggerFields: room.estimateTriggerFields || ESTIMATE_TRIGGER_FIELDS,
     foreignwordTriggerFields: room.foreignwordTriggerFields || FOREIGNWORD_TRIGGER_FIELDS,
@@ -1080,6 +1081,7 @@ io.on('connection', (socket) => {
     room.gameStarted = true; // Spieleinstellungen (z.B. Antwort-Zeitlimit) sind ab jetzt fix
     room.pendingRoundType = 'question';
     room.phase = 'previewQuestion';
+    room.cardDrawn = false; // erst wenn der/die Moderator:in die Karte zieht, wird die Fragen-Vorschau enthüllt
     room.answers = {};
     room.votes = {};
     room.liveTyping = {};
@@ -1151,6 +1153,16 @@ io.on('connection', (socket) => {
     if (!room || !isModerator(room, socket) || room.phase !== 'previewQuestion') return;
     if (!room.questionCandidates || index < 0 || index >= room.questionCandidates.length) return;
     room.previewIndex = index;
+    broadcastState(code);
+  });
+
+  // Moderator:in zieht sichtbar für ALLE die Karte vom Stapel (3D-Animation) - erst danach
+  // wird die eigentliche Fragen-Vorschau (Frage lesen, ggf. austauschen) enthüllt.
+  socket.on('triggerCardDraw', ({ code }) => {
+    const room = rooms[code];
+    if (!room || room.phase !== 'previewQuestion' || room.cardDrawn) return;
+    if (!isModerator(room, socket)) return;
+    room.cardDrawn = true;
     broadcastState(code);
   });
 

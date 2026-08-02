@@ -360,6 +360,7 @@ const deckBackMat = new THREE.MeshStandardMaterial({ color: COLORS.royal, roughn
 
 let topCardMesh = null;
 let topCardOriginalY = 0;
+let topCardFrontPlaneMat = null;
 const DECK_CARD_COUNT = 50; // echter, dicker Stapel statt nur 16 dünner Karten - Layout je Karte unverändert
 // Echte Spielkarten-Proportion (Dicke ca. 1.3% der Kartenbreite) statt der bisherigen ~3.2%,
 // die wie "ein halbes Buch pro Karte" wirkten. Auch der Abstand zwischen den Karten im
@@ -400,6 +401,7 @@ for (let i = 0; i < DECK_CARD_COUNT; i++) {
     // weggedreht (dot=-1) an - mit +PI/2 stimmt beides exakt (dot=+1, aufrecht & zur Kamera).
     const frontPlaneGeo = createRoundedPlaneGeometry(CARD_W * 0.995, CARD_D * 0.995, CARD_RADIUS * 0.995);
     const frontPlaneMat = new THREE.MeshBasicMaterial({ map: makeCardFrontTexture(DEMO_QUESTION_TEXT), side: THREE.DoubleSide });
+    topCardFrontPlaneMat = frontPlaneMat; // für dynamisches Aktualisieren des Fragetexts (Live-Spiel)
     const frontPlane = new THREE.Mesh(frontPlaneGeo, frontPlaneMat);
     // Rotation numerisch verifiziert (drei.js-Quaternionen exakt nachgerechnet) für die
     // 180°-Drehung um die Kamera-Achse (rechts klappt nach links, Karte bleibt flach liegen):
@@ -649,6 +651,9 @@ window.addEventListener('message', (event) => {
     syncPlayersFromExternal(data.players);
   } else if (data.type === 'movePlayer') {
     movePlayerByIdExternal(data.playerId, data.steps);
+  } else if (data.type === 'drawCard') {
+    resetCardPosition();
+    drawCardAnimation(data.questionText || '❓');
   }
 });
 // Der einbettenden Seite mitteilen, dass die 3D-Szene bereit ist, Daten zu empfangen
@@ -923,10 +928,17 @@ document.getElementById('btnMoveAll').addEventListener('click', () => {
 
 // ---------- Karte ziehen: hebt vom Stapel ab, dreht sich, fliegt zur Kamera, zeigt Frage ----------
 let cardDrawing = false;
-function drawCardAnimation() {
+function drawCardAnimation(questionText) {
   if (cardDrawing || !topCardMesh) return;
   cardDrawing = true;
   controls.enabled = false;
+
+  // Echten Fragetext auf die Karten-Vorderseite setzen (Live-Spiel) - ohne Angabe bleibt
+  // der bisherige Demo-Text erhalten (Werkstatt-Button "Karte ziehen").
+  if (questionText && topCardFrontPlaneMat) {
+    topCardFrontPlaneMat.map = makeCardFrontTexture(questionText);
+    topCardFrontPlaneMat.needsUpdate = true;
+  }
 
   // Karte aus dem Stapel lösen, in Welt-Raum hängen (Position/Rotation bleibt erhalten)
   scene.attach(topCardMesh);
@@ -999,6 +1011,9 @@ function drawCardAnimation() {
       if (!overlayShown) document.getElementById('question-overlay').classList.remove('hidden');
       topCardMesh.visible = false; // 2D-Overlay übernimmt jetzt die Anzeige der echten Frage
       cardDrawing = false;
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage({ type: 'cardDrawComplete' }, '*');
+      }
     }
   }
   requestAnimationFrame(frame);
@@ -1015,7 +1030,7 @@ function resetCardPosition() {
   controls.enabled = orbitEnabled;
 }
 
-document.getElementById('btnDrawCard').addEventListener('click', drawCardAnimation);
+document.getElementById('btnDrawCard').addEventListener('click', () => drawCardAnimation());
 document.getElementById('btnSubmitDemo').addEventListener('click', () => {
   document.getElementById('question-overlay').classList.add('hidden');
   resetCardPosition();
