@@ -465,6 +465,21 @@ h2 { font-family: var(--font-display); font-weight: 700; font-size: 24px; text-a
   .board-token-rect { width: 26px; height: 26px; margin: -13px 0 0 -13px; font-size: 19px; }
 }
 
+/* Zeichenrunde: das Canvas (+ die kurzen Hinweise darüber) bleibt beim Fokussieren des
+   Rate-Eingabefelds sichtbar "oben kleben", statt wie der Rest der Seite vom Browser aus
+   dem sichtbaren Bereich herausgescrollt zu werden, sobald die Bildschirmtastatur
+   aufklappt. Der Browser scrollt die Seite normalerweise so, dass das fokussierte
+   Eingabefeld über der Tastatur sichtbar wird - durch position:sticky bleibt das Canvas
+   dabei automatisch im sichtbaren Bereich, weil es sich beim Scrollen "oben" festhält,
+   statt aus dem Bildschirm zu wandern.  */
+#drawing-sticky-top {
+  position: sticky;
+  top: calc(6px + env(safe-area-inset-top));
+  z-index: 5;
+  background: var(--night);
+  padding-bottom: 6px;
+}
+
 .rules-panel {
   margin-top: 28px;
   padding-top: 20px;

@@ -306,17 +306,19 @@
 
   <section id="screen-drawing" class="screen">
     <div class="screen-scroll">
-      <div class="phase-tag">🎨 Zeichnenrunde</div>
+      <div id="drawing-sticky-top">
+        <div class="phase-tag">🎨 Zeichnenrunde</div>
 
-      <div id="drawing-mod-hint" class="hidden" style="text-align:center; margin-bottom:10px;">
-        <p style="color:var(--gold); font-weight:700; font-size:18px;" id="drawing-term-display"></p>
-        <p class="hint" style="margin:2px 0 0;">Nur du siehst diesen Begriff – zeichne ihn für die anderen!</p>
-      </div>
-      <div id="drawing-guess-hint" class="hidden" style="text-align:center; margin-bottom:10px;">
-        <p class="hint" style="margin:0;">Rate mit, was gerade gezeichnet wird!</p>
-      </div>
+        <div id="drawing-mod-hint" class="hidden" style="text-align:center; margin-bottom:10px;">
+          <p style="color:var(--gold); font-weight:700; font-size:18px;" id="drawing-term-display"></p>
+          <p class="hint" style="margin:2px 0 0;">Nur du siehst diesen Begriff – zeichne ihn für die anderen!</p>
+        </div>
+        <div id="drawing-guess-hint" class="hidden" style="text-align:center; margin-bottom:10px;">
+          <p class="hint" style="margin:0;">Rate mit, was gerade gezeichnet wird!</p>
+        </div>
 
-      <canvas id="drawing-canvas" width="600" height="420" style="width:100%; aspect-ratio:600/420; background:#fff; border-radius:14px; touch-action:none; display:block;"></canvas>
+        <canvas id="drawing-canvas" width="600" height="420" style="width:100%; max-height:40vh; aspect-ratio:600/420; background:#fff; border-radius:14px; touch-action:none; display:block; margin:0 auto;"></canvas>
+      </div>
 
       <div id="drawing-mod-tools" class="hidden" style="display:flex; gap:10px; margin-top:14px;">
         <button id="btn-drawing-clear" class="btn btn-secondary" style="flex:1;">🧹 Löschen</button>

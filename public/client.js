@@ -1922,7 +1922,13 @@ socket.on('state', (state) => {
         document.getElementById('input-answer').disabled = false;
         document.getElementById('input-answer-number').disabled = false;
         document.getElementById('btn-submit-answer').disabled = false;
-        document.getElementById('btn-submit-answer').textContent = 'Antwort abschicken';
+        // WICHTIG: hier nicht blind auf "Antwort abschicken" zurücksetzen - sonst wird der
+        // Button nach dem Abschicken bei der naechsten State-Aktualisierung sofort wieder
+        // in den Ursprungszustand versetzt, obwohl die eigene Antwort laengst gespeichert
+        // ist. Stattdessen anhand von myAnswerSubmitted den passenden Text zeigen.
+        document.getElementById('btn-submit-answer').textContent = state.myAnswerSubmitted
+          ? (state.roundType === 'estimate' ? 'Schätzung abgeschickt ✓ (Änderung möglich)' : 'Antwort abgeschickt ✓ (Änderung möglich)')
+          : 'Antwort abschicken';
       }
     }
     showScreen('answering');
