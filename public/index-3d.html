@@ -128,6 +128,17 @@
           </div>
           <p class="intro-body" style="margin-top:18px;">Der/Die Moderator:in rotiert jede Runde – alle kommen dran!</p>
         </div>
+        <div class="intro-slide hidden" data-slide="3">
+          <div class="intro-icon">🎨</div>
+          <h2 class="intro-title">Das Spielbrett</h2>
+          <p class="intro-body">Die Farbe eines Feldes verrät, was dich dort erwartet:</p>
+          <div class="field-color-key" style="flex-direction:column; align-items:flex-start; gap:10px; margin-top:14px;">
+            <span><span class="key-dot key-purple"></span> Lila – normale Frage</span>
+            <span><span class="key-dot key-blue"></span> Blau – Fremdwort</span>
+            <span><span class="key-dot key-green"></span> Grün – Schätzfrage</span>
+            <span><span class="key-dot key-yellow"></span> Gelb – Zeichnenrunde</span>
+          </div>
+        </div>
       </div>
       <div class="intro-nav">
         <button id="btn-intro-prev" class="btn btn-secondary intro-nav-btn" disabled>← Zurück</button>
@@ -135,6 +146,7 @@
           <span class="intro-dot active" data-dot="0"></span>
           <span class="intro-dot" data-dot="1"></span>
           <span class="intro-dot" data-dot="2"></span>
+          <span class="intro-dot" data-dot="3"></span>
         </div>
         <button id="btn-intro-next" class="btn btn-primary intro-nav-btn">Weiter →</button>
       </div>
@@ -414,19 +426,13 @@
         <iframe id="board-3d-frame" src="board-threejs-embed.html" style="width:100%; height:100%; border:0;" title="3D-Spielbrett"></iframe>
       </div>
       <div id="board-legend" class="board-legend"></div>
-      <div class="field-color-key">
-        <span><span class="key-dot key-purple"></span> Lila – normale Frage</span>
-        <span><span class="key-dot key-blue"></span> Blau – Fremdwort</span>
-        <span><span class="key-dot key-green"></span> Grün – Schätzfrage</span>
-        <span><span class="key-dot key-yellow"></span> Gelb – Zeichnenrunde</span>
-      </div>
-      <button id="btn-show-results-recap" class="btn btn-secondary" style="margin-top:14px;">📊 Ergebnisse</button>
     </div>
 
     <div class="screen-footer">
       <button id="btn-next-round" class="btn btn-primary mod-only">Nächste Runde</button>
       <button id="btn-new-game" class="btn btn-primary hidden">🔄 Neue Runde (gleiche Lobby)</button>
       <p id="board-waiting-msg" class="waiting-msg mod-hide">Warte auf den Moderator …</p>
+      <button id="btn-show-results-recap" class="btn btn-secondary">📊 Ergebnisse</button>
       <button class="btn-leave-game">Spiel verlassen</button>
     </div>
   </section>

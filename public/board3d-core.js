@@ -1077,8 +1077,8 @@ function tick() {
       const targetOffset = mesh.userData.slotOffset || { x: 0, z: 0 };
       if (!mesh.userData.currentOffset) mesh.userData.currentOffset = { x: targetOffset.x, z: targetOffset.z };
       const cur = mesh.userData.currentOffset;
-      cur.x += (targetOffset.x - cur.x) * 0.1;
-      cur.z += (targetOffset.z - cur.z) * 0.1;
+      cur.x += (targetOffset.x - cur.x) * 0.045;
+      cur.z += (targetOffset.z - cur.z) * 0.045;
       mesh.position.x = fieldPos.x + cur.x;
       mesh.position.z = fieldPos.z + cur.z;
     }
@@ -1089,7 +1089,7 @@ function tick() {
     // dieses Ziels angenähert, statt sofort dorthin zu springen.
     const targetScale = mesh.userData.slotScale !== undefined ? mesh.userData.slotScale : 1;
     if (Math.abs(mesh.scale.x - targetScale) > 0.002) {
-      mesh.scale.setScalar(mesh.scale.x + (targetScale - mesh.scale.x) * 0.1);
+      mesh.scale.setScalar(mesh.scale.x + (targetScale - mesh.scale.x) * 0.045);
     }
     if (mesh.userData.gem) {
       // Rein kosmetische, langsame Eigendrehung des Edelstein-Körpers - unabhängig von

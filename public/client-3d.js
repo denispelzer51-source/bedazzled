@@ -2269,7 +2269,7 @@ document.getElementById('btn-tutorial-close').addEventListener('click', () => {
 
 // ---- SPIELABLAUF: 3-Slide Intro ----
 let introSlide = 0;
-const INTRO_TOTAL = 3;
+const INTRO_TOTAL = 4;
 
 function showIntroSlide(n) {
   document.querySelectorAll('.intro-slide').forEach((el, i) => el.classList.toggle('hidden', i !== n));
