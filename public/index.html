@@ -203,56 +203,7 @@
       <button id="btn-invite" class="btn btn-secondary" style="margin-top:14px;">👥 Spieler einladen</button>
       <p id="lobby-error-msg" class="error"></p>
 
-      <details id="rules-panel" class="rules-panel">
-        <summary class="rules-summary">📖 Regelwerk anzeigen</summary>
-        <div class="rules-content">
-
-        <div class="rules-section">
-          <h4>Grundprinzip</h4>
-          <p>Jede Runde liest eine wechselnde Moderator:in-Rolle eine ungewöhnliche Frage vor. Alle anderen geben eine möglichst überzeugende Antwort ab (erfunden oder zufällig auch mal die echte). Danach stimmt jede:r ab, welche Antwort die echte ist.</p>
-        </div>
-
-        <div class="rules-section">
-          <h4>Punkte</h4>
-          <ul>
-            <li>Echte Antwort erraten: <strong>+3 Punkte</strong></li>
-            <li>Pro Mitspieler, der auf deine erfundene Antwort reinfällt: <strong>+2 Punkte</strong></li>
-            <li>Moderator:in bekommt in der Runde keine Punkte</li>
-          </ul>
-        </div>
-
-        <div class="rules-section">
-          <h4>Schätzen-Karten 🔢</h4>
-          <p>Türkise Felder (5, 8, 13, 18) lösen statt der normalen Frage eine Schätzen-Karte aus: alle tippen eine Zahl, kein Bluffen, kein Voting. Platz 1 = <strong>3 Punkte</strong>, Platz 2 = <strong>2 Punkte</strong>, Platz 3 = <strong>1 Punkt</strong>, der Rest geht leer aus.</p>
-        </div>
-
-        <div class="rules-section">
-          <h4>Aufholjagd 🚀</h4>
-          <p>Sobald jemand Feld 18 erreicht oder überschreitet, bekommt der/die Letzte einmalig pro Spiel automatisch <strong>+5 Bonusfelder</strong>. Damit bleibt es bis zum Schluss spannend.</p>
-        </div>
-
-        <div class="rules-section">
-          <h4>Spielfeld</h4>
-          <p>Das Brett hat Felder von 0 bis 26. Wer zuerst Feld 26 erreicht oder überschreitet, gewinnt sofort.</p>
-        </div>
-
-        <div class="rules-section">
-          <h4>Ablauf pro Runde</h4>
-          <ol>
-            <li>Frage wird gezeigt, alle außer Moderator:in tippen eine Antwort</li>
-            <li>Abstimmung: welche Antwort ist die echte?</li>
-            <li>Auflösung mit grün/rot-Feedback</li>
-            <li>Animiertes Spielbrett zeigt die neuen Positionen</li>
-            <li>Moderatorrolle wandert weiter, nächste Runde beginnt</li>
-          </ol>
-        </div>
-
-        <div class="rules-section">
-          <h4>Sonstiges</h4>
-          <p>Mindestens 3 Spieler nötig. Jede Spielfigur ist pro Raum nur einmal vergebbar. Antworten, die zu ähnlich zur echten Antwort sind, werden beim Absenden automatisch abgelehnt.</p>
-        </div>
-        </div>
-      </details>
+      <button id="btn-open-rules" type="button" class="btn btn-secondary" style="margin-top:14px;">📖 Regelwerk anzeigen</button>
     </div>
   </section>
 
@@ -492,7 +443,7 @@
 <div id="settings-overlay" class="overlay hidden">
   <div class="overlay-card settings-card">
     <h2>⚙️ Einstellungen</h2>
-    <div id="settings-content" class="settings-content">
+    <div id="settings-content" class="settings-content overlay-scroll-body">
       <div id="settings-room-row" class="settings-row settings-room-row hidden">
         <span>Raum-Code</span>
         <span id="settings-room-code" class="settings-code">----</span>
@@ -531,20 +482,77 @@
   </div>
 </div>
 
+<!-- Regelwerk-Overlay (aus der Lobby heraus aufrufbar) -->
+<div id="rules-overlay" class="overlay hidden">
+  <div class="overlay-card settings-card">
+    <h2>📖 Regelwerk</h2>
+    <div id="rules-overlay-content" class="settings-content overlay-scroll-body">
+
+      <div class="rules-section">
+        <h4>Grundprinzip</h4>
+        <p>Jede Runde liest eine wechselnde Moderator:in-Rolle eine ungewöhnliche Frage vor. Alle anderen geben eine möglichst überzeugende Antwort ab (erfunden oder zufällig auch mal die echte). Danach stimmt jede:r ab, welche Antwort die echte ist.</p>
+      </div>
+
+      <div class="rules-section">
+        <h4>Punkte</h4>
+        <ul>
+          <li>Echte Antwort erraten: <strong>+3 Punkte</strong></li>
+          <li>Pro Mitspieler, der auf deine erfundene Antwort reinfällt: <strong>+2 Punkte</strong></li>
+          <li>Moderator:in bekommt in der Runde keine Punkte</li>
+        </ul>
+      </div>
+
+      <div class="rules-section">
+        <h4>Schätzen-Karten 🔢</h4>
+        <p>Türkise Felder (5, 8, 13, 18) lösen statt der normalen Frage eine Schätzen-Karte aus: alle tippen eine Zahl, kein Bluffen, kein Voting. Platz 1 = <strong>3 Punkte</strong>, Platz 2 = <strong>2 Punkte</strong>, Platz 3 = <strong>1 Punkt</strong>, der Rest geht leer aus.</p>
+      </div>
+
+      <div class="rules-section">
+        <h4>Aufholjagd 🚀</h4>
+        <p>Sobald jemand Feld 18 erreicht oder überschreitet, bekommt der/die Letzte einmalig pro Spiel automatisch <strong>+5 Bonusfelder</strong>. Damit bleibt es bis zum Schluss spannend.</p>
+      </div>
+
+      <div class="rules-section">
+        <h4>Spielfeld</h4>
+        <p>Das Brett hat Felder von 0 bis 26. Wer zuerst Feld 26 erreicht oder überschreitet, gewinnt sofort.</p>
+      </div>
+
+      <div class="rules-section">
+        <h4>Ablauf pro Runde</h4>
+        <ol>
+          <li>Frage wird gezeigt, alle außer Moderator:in tippen eine Antwort</li>
+          <li>Abstimmung: welche Antwort ist die echte?</li>
+          <li>Auflösung mit grün/rot-Feedback</li>
+          <li>Animiertes Spielbrett zeigt die neuen Positionen</li>
+          <li>Moderatorrolle wandert weiter, nächste Runde beginnt</li>
+        </ol>
+      </div>
+
+      <div class="rules-section">
+        <h4>Sonstiges</h4>
+        <p>Mindestens 3 Spieler nötig. Jede Spielfigur ist pro Raum nur einmal vergebbar. Antworten, die zu ähnlich zur echten Antwort sind, werden beim Absenden automatisch abgelehnt.</p>
+      </div>
+    </div>
+    <button id="btn-close-rules" class="btn btn-primary">Schließen</button>
+  </div>
+</div>
+
 <div id="scoreboard-overlay" class="overlay hidden">
   <div class="overlay-card" style="max-width:360px; width:92%;">
     <h2 style="margin-top:0;">📊 Punkteliste</h2>
-    <p id="scoreboard-win-hint" class="hint" style="margin-bottom:16px;"></p>
-    <div id="scoreboard-list" style="display:flex; flex-direction:column; gap:8px; margin-bottom:20px;"></div>
+    <div class="overlay-scroll-body">
+      <p id="scoreboard-win-hint" class="hint" style="margin-bottom:16px;"></p>
+      <div id="scoreboard-list" style="display:flex; flex-direction:column; gap:8px; margin-bottom:8px;"></div>
+    </div>
     <button id="btn-close-scoreboard" class="btn btn-primary">Schließen</button>
   </div>
 </div>
 
 <div id="winner-overlay" class="overlay hidden">
   <div class="overlay-card winner-card">
-    <span class="brand-mask big">🏆</span>
+    <span class="brand-mask big" style="flex-shrink:0;">🏆</span>
     <h2 id="winner-text"></h2>
-    <div id="awards-list" class="awards-list"></div>
+    <div id="awards-list" class="awards-list overlay-scroll-body"></div>
     <button id="btn-close-winner" class="btn btn-primary">Schließen</button>
   </div>
 </div>

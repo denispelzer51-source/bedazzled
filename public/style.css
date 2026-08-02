@@ -408,9 +408,39 @@ h2 { font-family: var(--font-display); font-weight: 700; font-size: 24px; text-a
   padding: 20px;
   z-index: 50;
 }
-.overlay-card { background: var(--night-2); border-radius: var(--radius); padding: 32px; text-align: center; max-width: 340px; }
+/* Popups duerfen nie oben/unten aus dem sichtbaren Bildschirm herauslaufen: die Karte
+   bekommt eine maximale Hoehe (unter Beruecksichtigung von Notch/Home-Indicator via
+   safe-area) und wird selbst zur Flex-Spalte, damit der Inhalt scrollt, waehrend der
+   Schliessen-Button (falls als letztes Kind vorhanden) immer sichtbar am unteren Rand
+   der Karte bleibt statt mit hochzuscrollen. */
+.overlay-card {
+  background: var(--night-2);
+  border-radius: var(--radius);
+  padding: 28px 32px;
+  text-align: center;
+  max-width: 340px;
+  max-height: calc(100vh - 40px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
 .overlay-card.winner-card { max-width: 420px; width: 92%; }
-.overlay-card h2 { margin: 10px 0 20px; }
+.overlay-card h2 { margin: 10px 0 20px; flex-shrink: 0; }
+/* Direktes Kind, das den langen/variablen Inhalt traegt (z.B. #settings-content,
+   #rules-overlay-content) - das ist der Teil, der tatsaechlich scrollt. */
+.overlay-card > .overlay-scroll-body {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  min-height: 0;
+}
+/* Der Schliessen-Button (und ggf. weitere Aktions-Buttons danach) bleibt fix am Fuss der
+   Karte stehen und wird nie durch Scrollen verdeckt. */
+.overlay-card > .btn {
+  flex-shrink: 0;
+}
+.overlay-card > .btn:last-child {
+  margin-top: 16px;
+}
 
 /* Einstellungen-Zahnrad: nur auf dem Startbildschirm sichtbar, oben links (wo sonst der
    Zurück-Pfeil sitzt - auf dem Startbildschirm gibt's den ja nicht) */

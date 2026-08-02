@@ -970,6 +970,33 @@ io.on('connection', (socket) => {
     broadcastState(code);
   });
 
+  // Erlaubt es einem Spieler, seinen Namen zu korrigieren, falls er sich beim ersten Mal
+  // vertippt hat - aber NUR solange das Spiel noch nicht gestartet wurde (also vor Runde 1).
+  // Danach bleibt der Name fix, da er dann schon in Punkteliste/Statistiken auftauchen kann.
+  socket.on('renamePlayer', ({ code, newName }) => {
+    const room = rooms[code];
+    if (!room) return;
+    if (room.phase !== 'lobby' || room.gameStarted) {
+      socket.emit('errorMsg', 'Der Name kann nur vor dem Start der ersten Runde geändert werden.');
+      return;
+    }
+    const playerId = socket.data.token;
+    const player = room.players.find(p => p.id === playerId);
+    if (!player) return;
+    const trimmed = (newName || '').trim().slice(0, 16);
+    if (!trimmed) return;
+    if (trimmed.trim().toLowerCase() === player.name.trim().toLowerCase()) return; // keine Änderung
+    const nameNorm = trimmed.toLowerCase();
+    const nameTaken = room.players.some(p => p.id !== playerId && p.name.trim().toLowerCase() === nameNorm);
+    if (nameTaken) {
+      socket.emit('errorMsg', `Der Name "${trimmed}" ist schon vergeben.`);
+      return;
+    }
+    console.log(`[Umbenennen] "${player.name}" -> "${trimmed}" in Raum ${code}`);
+    player.name = trimmed;
+    broadcastState(code);
+  });
+
   socket.on('checkTakenAvatars', ({ code }) => {
     const room = rooms[code];
     const activeTaken = room ? getTakenAvatars(room) : [];

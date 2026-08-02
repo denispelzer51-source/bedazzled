@@ -169,6 +169,14 @@ document.getElementById('btn-close-settings').addEventListener('click', () => {
   document.getElementById('settings-overlay').classList.add('hidden');
 });
 
+// ---------- REGELWERK-POPUP (Lobby) ----------
+document.getElementById('btn-open-rules').addEventListener('click', () => {
+  document.getElementById('rules-overlay').classList.remove('hidden');
+});
+document.getElementById('btn-close-rules').addEventListener('click', () => {
+  document.getElementById('rules-overlay').classList.add('hidden');
+});
+
 // ---------- PUNKTELISTE-POPUP ----------
 document.getElementById('btn-show-scoreboard').addEventListener('click', () => {
   renderScoreboard();
@@ -1373,6 +1381,7 @@ function renderBoardLarge(players, fromPositions, animate, onComplete) {
 
 // ---------- LOBBY PLAYER LIST (mit Host-Kick-Funktion) ----------
 let pendingKickId = null;
+let editingOwnName = false;
 let lastLobbyState = null;
 
 // ---------- LOBBY: "Spieleinstellungen" (nur Host, nur vor Rundenstart 1) ----------
@@ -1456,12 +1465,57 @@ function renderLobbyPlayerList(state) {
       return;
     }
 
+    // Vor Rundenstart 1 (gameStarted noch false) darf man den eigenen Namen noch
+    // korrigieren, falls man sich beim Beitreten vertippt hat.
+    const canEditOwnName = p.id === myId && !state.gameStarted;
+
+    if (canEditOwnName && editingOwnName) {
+      li.innerHTML = `
+        <span class="rename-edit-wrap" style="display:flex; gap:6px; align-items:center; flex:1;">
+          <span class="player-avatar">${avatarFor(p)}</span>
+          <input id="input-rename-own" type="text" maxlength="16" value="${escapeHtml(p.name)}" style="flex:1; min-width:0;" />
+        </span>
+        <span class="kick-confirm-actions" style="display:flex; gap:6px;">
+          <button class="btn-rename-confirm">Speichern</button>
+          <button class="btn-rename-cancel">Abbrechen</button>
+        </span>
+      `;
+      const input = li.querySelector('#input-rename-own');
+      const submitRename = () => {
+        const newName = input.value.trim();
+        if (newName && newName !== p.name) {
+          socket.emit('renamePlayer', { code: currentCode, newName });
+        }
+        editingOwnName = false;
+        renderLobbyPlayerList(lastLobbyState);
+      };
+      li.querySelector('.btn-rename-confirm').addEventListener('click', submitRename);
+      li.querySelector('.btn-rename-cancel').addEventListener('click', () => {
+        editingOwnName = false;
+        renderLobbyPlayerList(lastLobbyState);
+      });
+      input.addEventListener('keydown', (e) => { if (e.key === 'Enter') submitRename(); });
+      list.appendChild(li);
+      return;
+    }
+
     li.innerHTML = `<span><span class="player-avatar">${avatarFor(p)}</span><span class="player-name">${escapeHtml(p.name)}${p.id === myId ? ' (du)' : ''}</span>${p.connected === false ? '<span class="tag-offline">getrennt</span>' : ''}</span>`;
     if (isMod) {
       const tag = document.createElement('span');
       tag.className = 'tag';
       tag.textContent = 'Moderator';
       li.appendChild(tag);
+    }
+    if (canEditOwnName) {
+      const editBtn = document.createElement('button');
+      editBtn.className = 'btn-kick';
+      editBtn.title = 'Namen bearbeiten';
+      editBtn.textContent = '✏️';
+      editBtn.addEventListener('click', () => {
+        editingOwnName = true;
+        renderLobbyPlayerList(lastLobbyState);
+      });
+      li.appendChild(editBtn);
     }
     if (isHost && p.id !== myId) {
       const kickBtn = document.createElement('button');
