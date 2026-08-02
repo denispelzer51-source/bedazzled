@@ -41,6 +41,37 @@ function migrateReviewedFlag(list) {
 if (migrateReviewedFlag(questionsList)) fs.writeFileSync(QUESTIONS_PATH, JSON.stringify(questionsList, null, 2), 'utf8');
 if (migrateReviewedFlag(estimateQuestionsList)) fs.writeFileSync(ESTIMATE_QUESTIONS_PATH, JSON.stringify(estimateQuestionsList, null, 2), 'utf8');
 
+// Migration: die Fragenverwaltung kennt ab sofort nur noch genau VIER Kategorien fuer
+// Bluff-Fragen: "Normale Fragen", "Fremdwörter", "Zeichnen" (Schätzfragen leben weiterhin
+// in einer eigenen Liste/Collection, siehe estimateQuestionsList). Aeltere Kategorien wie
+// "Kuriositäten" oder "Historischer Kontext" werden hier automatisch nach "Normale Fragen"
+// zusammengefuehrt. Da diese Umsortierung fehleranfaellig sein kann (die Zuordnung war
+// vorher durcheinander), werden umsortierte Fragen bewusst wieder als "ungeprüft"
+// markiert, damit sie in /admin.html manuell nochmal kontrolliert werden, BEVOR sie
+// weiter im Spiel auftauchen wuerden - sie bleiben aber sofort im Spiel nutzbar, da schon
+// vorher vorhandene Fragen laut Migration oben ohnehin als reviewed=true gelten; das
+// "erneut pruefen"-Signal ist hier also nur die reviewed=false-Markierung, kein Rauswurf.
+const VALID_BLUFF_CATEGORIES = new Set(['Normale Fragen', 'Fremdwörter', 'Zeichnen']);
+const LEGACY_CATEGORY_MAP = {
+  'Kuriositäten': 'Normale Fragen',
+  'Historischer Kontext': 'Normale Fragen',
+  'Sonstige': 'Normale Fragen',
+};
+function migrateCategoriesToFour(list) {
+  let changed = false;
+  list.forEach(q => {
+    const original = q.category;
+    if (!VALID_BLUFF_CATEGORIES.has(original)) {
+      const mapped = LEGACY_CATEGORY_MAP[original] || 'Normale Fragen';
+      q.category = mapped;
+      q.reviewed = false; // muss nach der Umsortierung nochmal manuell geprüft werden
+      changed = true;
+    }
+  });
+  return changed;
+}
+if (migrateCategoriesToFour(questionsList)) fs.writeFileSync(QUESTIONS_PATH, JSON.stringify(questionsList, null, 2), 'utf8');
+
 async function initDatabase() {
   if (!useMongo) {
     console.log('[DB] Keine MONGODB_URI gesetzt - Fragen laufen über lokale JSON-Dateien.');
@@ -80,6 +111,14 @@ async function initDatabase() {
       await estimateCol.deleteMany({});
       await estimateCol.insertMany(estimateQuestionsList.map(stripId));
     }
+
+    // Kategorien-Migration (siehe migrateCategoriesToFour oben) muss auch auf die aus
+    // MongoDB geladenen Fragen angewendet werden, da das eigentliche Live-Spiel auf Render
+    // über MONGODB_URI läuft und NICHT über die lokalen JSON-Dateien.
+    if (migrateCategoriesToFour(questionsList)) {
+      await questionsCol.deleteMany({});
+      await questionsCol.insertMany(questionsList.map(stripId));
+    }
   } catch (err) {
     console.error('[DB] Verbindung zu MongoDB fehlgeschlagen, falle auf lokale Dateien zurück:', err.message);
     mongoDb = null;
@@ -104,7 +143,11 @@ const DISCONNECT_GRACE_MS = 3 * 60 * 1000; // 3 Minuten, bevor ein getrennter Sp
 
 // Felder, die eine Schätzen-Karte statt der normalen Bluff-Frage auslösen (bewusst unregelmäßig verteilt)
 const ESTIMATE_TRIGGER_FIELDS = [5, 8, 13, 18];
-const ESTIMATE_POINTS = [3, 2, 1]; // Platz 1, 2, 3 – Rest geht leer aus
+// Schätzen-Punkte: Platz 1 UND Platz 2 bekommen jeweils 2 Punkte (nicht mehr 3/2), Platz 3
+// bekommt 1 Punkt. Damit ist automatisch sichergestellt, dass zwei Spieler:innen, die
+// zufällig exakt denselben Wert (und damit dieselbe Abweichung) abgeben, auch garantiert
+// dieselbe Punktzahl bekommen (siehe Tie-Handling in der revealEstimate-Auswertung unten).
+const ESTIMATE_POINTS = [2, 2, 1]; // Platz 1, 2, 3 – Rest geht leer aus
 
 // Blaue Felder: Fremdwörter-Fragen (etwas seltener als die lila Standardfelder)
 const FOREIGNWORD_TRIGGER_FIELDS = [2, 10, 16, 22];
@@ -563,34 +606,40 @@ function broadcastState(roomCode) {
 function pickNextQuestion(room, roundType, excludeIndices = []) {
   let pool, usedKey;
   if (roundType === 'estimate') {
-    pool = estimateQuestionsList.filter(q => q.reviewed === true);
-    usedKey = 'usedEstimateQuestions';
+    // Schätzfragen leben in einer eigenen Liste/Collection - trotzdem zusätzlich defensiv
+    // auf die Kategorie prüfen, falls dort doch mal ein falsch einsortierter Eintrag landet.
+    pool = estimateQuestionsList.filter(q => q.category === 'Schätzfragen' && q.reviewed === true);
   } else if (roundType === 'foreignword') {
     // Blaue Felder: nur Fremdwörter-Fragen
     pool = questionsList.filter(q => q.category === 'Fremdwörter' && q.reviewed === true);
-    usedKey = 'usedForeignwordQuestions';
   } else if (roundType === 'drawing') {
     // Gelbe Felder: Begriffe aus der Kategorie "Zeichnen" (übers Fragen-Verwaltung-Panel
     // gepflegt wie alle anderen Fragen auch - "Frage"-Feld enthält den Begriff)
     pool = questionsList.filter(q => q.category === 'Zeichnen' && q.reviewed === true);
-    usedKey = 'usedDrawTerms';
   } else {
-    // Lila Standardfelder: alles außer Fremdwörter/Zeichnen (Kuriositäten, Historischer Kontext, etc.)
-    pool = questionsList.filter(q => q.category !== 'Fremdwörter' && q.category !== 'Zeichnen' && q.reviewed === true);
-    usedKey = 'usedQuestions';
+    // Lila Standardfelder: NUR die Kategorie "Normale Fragen" - bewusst als expliziter
+    // Einschluss (statt "alles außer Fremdwörter/Zeichnen") formuliert, damit hier niemals
+    // versehentlich eine falsch/gar nicht kategorisierte Frage (z.B. durch einen Import-
+    // oder Migrations-Fehler) landet, die eigentlich in keine der vier echten Kategorien
+    // gehört.
+    pool = questionsList.filter(q => q.category === 'Normale Fragen' && q.reviewed === true);
   }
+  usedKey = roundType === 'estimate' ? 'usedEstimateQuestions'
+    : roundType === 'foreignword' ? 'usedForeignwordQuestions'
+    : roundType === 'drawing' ? 'usedDrawTerms'
+    : 'usedQuestions';
   if (pool.length === 0) {
     // Notfall: NIE in eine andere Kategorie ausweichen (eine Zeichnenrunde darf niemals
     // eine Fremdwort-/Bluff-Frage zeigen und umgekehrt) - höchstens das reviewed-Flag
     // ignorieren, falls in der richtigen Kategorie nur ungeprüfte Einträge existieren.
     if (roundType === 'estimate') {
-      pool = estimateQuestionsList;
+      pool = estimateQuestionsList.filter(q => q.category === 'Schätzfragen');
     } else if (roundType === 'foreignword') {
       pool = questionsList.filter(q => q.category === 'Fremdwörter');
     } else if (roundType === 'drawing') {
       pool = questionsList.filter(q => q.category === 'Zeichnen');
     } else {
-      pool = questionsList.filter(q => q.category !== 'Fremdwörter' && q.category !== 'Zeichnen');
+      pool = questionsList.filter(q => q.category === 'Normale Fragen');
     }
   }
   if (pool.length === 0) return null; // Kategorie ist wirklich komplett leer - Aufrufer muss das behandeln
@@ -1092,7 +1141,7 @@ io.on('connection', (socket) => {
       socket.emit('errorMsg', 'Es sind keine geprüften Schätzen-Fragen hinterlegt. Bitte über /admin.html hinzufügen bzw. prüfen.');
       return;
     }
-    if (roundType === 'question' && questionsList.filter(q => q.category !== 'Fremdwörter' && q.category !== 'Zeichnen' && q.reviewed === true).length === 0) {
+    if (roundType === 'question' && questionsList.filter(q => q.category === 'Normale Fragen' && q.reviewed === true).length === 0) {
       socket.emit('errorMsg', 'Es sind keine geprüften Fragen hinterlegt. Bitte über /admin.html Fragen hinzufügen bzw. prüfen.');
       return;
     }
@@ -1711,12 +1760,23 @@ io.on('connection', (socket) => {
       .map(([playerId, value]) => ({ playerId, value: Number(value), diff: Math.abs(Number(value) - realValue) }))
       .sort((a, b) => a.diff - b.diff);
 
+    // Punkte je Rang vergeben - bei exakt gleicher Abweichung (typischerweise: zwei
+    // Spieler:innen haben denselben Wert getippt) bekommt der/die Zweite denselben Rang-
+    // Index wie der/die Erste, damit garantiert dieselbe Punktzahl herauskommt, statt durch
+    // Zufall bei der Sortierung 2 statt 1 Punkte weniger zu bekommen ("erste zwei = gleich
+    // gut geschätzt = gleich viele Punkte").
+    let lastDiff = null;
+    let lastPointsIndex = -1;
     ranked.forEach((entry, i) => {
-      const points = ESTIMATE_POINTS[i] || 0;
+      const pointsIndex = (lastDiff !== null && entry.diff === lastDiff) ? lastPointsIndex : i;
+      lastDiff = entry.diff;
+      lastPointsIndex = pointsIndex;
+      entry.pointsIndex = pointsIndex;
+      const points = ESTIMATE_POINTS[pointsIndex] || 0;
       if (points > 0) {
         const player = room.players.find(p => p.id === entry.playerId);
         if (player) player.position = Math.min(room.boardLength || BOARD_LENGTH, player.position + points);
-        if (i === 0) ensureStats(room, entry.playerId).estimateBest += 1;
+        if (pointsIndex === 0) ensureStats(room, entry.playerId).estimateBest += 1;
       }
     });
 
@@ -1728,7 +1788,7 @@ io.on('connection', (socket) => {
         name: player ? player.name : '???',
         value: entry.value,
         diff: entry.diff,
-        points: ESTIMATE_POINTS[i] || 0,
+        points: ESTIMATE_POINTS[entry.pointsIndex] || 0,
       };
     });
 

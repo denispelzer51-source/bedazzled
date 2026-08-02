@@ -130,10 +130,12 @@
   const DEFAULT_TOPIC = 'Sonstiges';
   const ESTIMATE_CATEGORY = 'Schätzfragen';
 
-  // Feste Grund-Kategorien (die vier Haupt-Kategorien des Spiels + Schätzfragen, die früher
-  // über einen eigenen Reiter oben getrennt verwaltet wurden und jetzt einfach eine ganz
-  // normale, fünfte Kategorie in dieser Liste sind)
-  const BASE_CATEGORIES = ['Kuriositäten', 'Fremdwörter', 'Historischer Kontext', 'Zeichnen', 'Schätzfragen'];
+  // Feste Grund-Kategorien - GENAU DIESE VIER (+ Schätzfragen als fünfte, historisch aus
+  // einem eigenen Reiter kommende Kategorie) sind ab sofort die einzig gültigen. Ältere
+  // Kategorien wie "Kuriositäten" oder "Historischer Kontext" werden serverseitig beim
+  // Start automatisch nach "Normale Fragen" migriert (siehe server.js) - hier tauchen sie
+  // also gar nicht mehr als Auswahl auf.
+  const BASE_CATEGORIES = ['Normale Fragen', 'Fremdwörter', 'Zeichnen', 'Schätzfragen'];
 
   // Feste, erweiterte Themenliste - steht immer komplett zur Auswahl, auch wenn noch keine
   // Frage mit diesem Thema existiert (für künftige Fragen-Batches gedacht)

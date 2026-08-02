@@ -427,11 +427,19 @@ h2 { font-family: var(--font-display); font-weight: 700; font-size: 24px; text-a
 .overlay-card.winner-card { max-width: 420px; width: 92%; }
 .overlay-card h2 { margin: 10px 0 20px; flex-shrink: 0; }
 /* Direktes Kind, das den langen/variablen Inhalt traegt (z.B. #settings-content,
-   #rules-overlay-content) - das ist der Teil, der tatsaechlich scrollt. */
+   #rules-overlay-content) - das ist der Teil, der tatsaechlich scrollt. Die Scrollleiste
+   selbst wird ausgeblendet (Scrollen per Wischen/Touch bzw. Mausrad bleibt erhalten) und
+   der dadurch frei werdende Platz rechts wird direkt als zusaetzliches Innenpolster fuer
+   den Text genutzt, statt als leere Luecke zu verschwinden. */
 .overlay-card > .overlay-scroll-body {
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   min-height: 0;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* alte Edge/IE */
+}
+.overlay-card > .overlay-scroll-body::-webkit-scrollbar {
+  display: none; /* Chrome/Safari/neues Edge */
 }
 /* Der Schliessen-Button (und ggf. weitere Aktions-Buttons danach) bleibt fix am Fuss der
    Karte stehen und wird nie durch Scrollen verdeckt. */

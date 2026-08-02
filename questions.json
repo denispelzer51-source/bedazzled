@@ -1,467 +1,541 @@
 [
   {
-    "category": "Kuriositäten",
+    "category": "Normale Fragen",
     "question": "Wie nennt man in Bayern traditionell den ersten Schluck Bier, den man vor dem eigentlichen Trinken über den Tisch schüttet?",
     "answer": "Antrunk",
-    "topic": "Essen & Trinken"
+    "topic": "Essen & Trinken",
+    "reviewed": false
   },
   {
-    "category": "Kuriositäten",
+    "category": "Normale Fragen",
     "question": "Wofür wurde früher in ländlichen Regionen Deutschlands ein Kuckucksruf am frühen Morgen als Aberglaube gedeutet?",
     "answer": "Er sagt die verbleibenden Lebensjahre voraus",
-    "topic": "Aberglaube & Bräuche"
+    "topic": "Aberglaube & Bräuche",
+    "reviewed": false
   },
   {
-    "category": "Kuriositäten",
+    "category": "Normale Fragen",
     "question": "Wie heißt die Angst davor, dass Knöpfe an der Kleidung eines anderen Menschen zu nah an einem selbst sind?",
     "answer": "Koumpounophobie",
-    "topic": "Psychologie & Phobien"
+    "topic": "Psychologie & Phobien",
+    "reviewed": false
   },
   {
-    "category": "Kuriositäten",
+    "category": "Normale Fragen",
     "question": "Was ist die ursprüngliche Bedeutung des Wortes Roboter, bevor es für Maschinen verwendet wurde?",
     "answer": "Kommt von robota, tschechisch für Zwangsarbeit",
-    "topic": "Sprache & Wortschatz"
+    "topic": "Sprache & Wortschatz",
+    "reviewed": false
   },
   {
-    "category": "Kuriositäten",
+    "category": "Normale Fragen",
     "question": "Warum tragen Schweizer Kühe im Sommer oft besonders große Glocken um den Hals?",
     "answer": "Damit man sie auch im Nebel hört",
-    "topic": "Tiere & Natur"
+    "topic": "Tiere & Natur",
+    "reviewed": false
   },
   {
-    "category": "Kuriositäten",
+    "category": "Normale Fragen",
     "question": "Wie lautete der Spitzname, den Astronauten für den ersten Kaffee-Automaten auf der ISS gaben?",
     "answer": "ISSpresso",
-    "topic": "Wissenschaft & Forschung"
+    "topic": "Wissenschaft & Forschung",
+    "reviewed": false
   },
   {
-    "category": "Kuriositäten",
+    "category": "Normale Fragen",
     "question": "Warum haben Feuerwehrautos in den USA historisch fast immer die Farbe Rot?",
     "answer": "Rot war einfach am billigsten",
-    "topic": "Alltag & Technik"
+    "topic": "Alltag & Technik",
+    "reviewed": false
   },
   {
-    "category": "Kuriositäten",
+    "category": "Normale Fragen",
     "question": "Warum klopfen manche Menschen vor dem Trinken eines Schnapses mit dem Glas auf den Tisch?",
     "answer": "Alter Aberglaube gegen böse Geister",
-    "topic": "Aberglaube & Bräuche"
+    "topic": "Aberglaube & Bräuche",
+    "reviewed": false
   },
   {
-    "category": "Kuriositäten",
+    "category": "Normale Fragen",
     "question": "Warum sind Bienenwaben sechseckig geformt?",
     "answer": "Das spart am meisten Wachs",
-    "topic": "Tiere & Natur"
+    "topic": "Tiere & Natur",
+    "reviewed": false
   },
   {
-    "category": "Kuriositäten",
+    "category": "Normale Fragen",
     "question": "Warum tragen Schachfiguren in westlichen Sets meist Schwarz und Weiß statt anderer Farben?",
     "answer": "Elfenbein und Ebenholz waren am günstigsten",
-    "topic": "Spiele & Freizeit"
+    "topic": "Spiele & Freizeit",
+    "reviewed": false
   },
   {
-    "category": "Kuriositäten",
+    "category": "Normale Fragen",
     "question": "Warum stößt man beim Prost mit Gläsern an?",
     "answer": "Damit auch das Ohr etwas vom Trinken hat",
-    "topic": "Essen & Trinken"
+    "topic": "Essen & Trinken",
+    "reviewed": false
   },
   {
-    "category": "Kuriositäten",
+    "category": "Normale Fragen",
     "question": "Warum haben manche alte Landkarten am Rand Seeungeheuer eingezeichnet?",
     "answer": "So markierten Kartografen gefährliche Gewässer",
-    "topic": "Schifffahrt & Entdeckung"
+    "topic": "Schifffahrt & Entdeckung",
+    "reviewed": false
   },
   {
-    "category": "Kuriositäten",
+    "category": "Normale Fragen",
     "question": "Warum haben Zebras Streifen?",
     "answer": "Sie verwirren mit den Streifen stechende Insekten",
-    "topic": "Tiere & Natur"
+    "topic": "Tiere & Natur",
+    "reviewed": false
   },
   {
-    "category": "Kuriositäten",
+    "category": "Normale Fragen",
     "question": "Warum wurde in vielen alten Kulturen ein zerbrochener Spiegel mit Unglück verbunden?",
     "answer": "Man dachte, das verletzt die Seele",
-    "topic": "Aberglaube & Bräuche"
+    "topic": "Aberglaube & Bräuche",
+    "reviewed": false
   },
   {
     "category": "Fremdwörter",
     "question": "Was bedeutet das Wort Usurpator?",
     "answer": "Jemand, der sich Macht unrechtmäßig aneignet",
-    "topic": "Sprache & Wortschatz"
+    "topic": "Sprache & Wortschatz",
+    "reviewed": true
   },
   {
     "category": "Fremdwörter",
     "question": "Was bedeutet das Wort Anachronismus?",
     "answer": "Ein zeitlicher Fehler, passt nicht in die Epoche",
-    "topic": "Sprache & Wortschatz"
+    "topic": "Sprache & Wortschatz",
+    "reviewed": true
   },
   {
     "category": "Fremdwörter",
     "question": "Was bedeutet das Wort Kontemplation?",
     "answer": "Versunkene, nachdenkliche Betrachtung",
-    "topic": "Sprache & Wortschatz"
+    "topic": "Sprache & Wortschatz",
+    "reviewed": true
   },
   {
     "category": "Fremdwörter",
     "question": "Was bedeutet das Wort Idiosynkrasie?",
     "answer": "Eine besondere persönliche Eigenart",
-    "topic": "Sprache & Wortschatz"
+    "topic": "Sprache & Wortschatz",
+    "reviewed": true
   },
   {
     "category": "Fremdwörter",
     "question": "Was bedeutet das Wort Dogma?",
     "answer": "Eine nicht hinterfragte Lehrmeinung",
-    "topic": "Sprache & Wortschatz"
+    "topic": "Sprache & Wortschatz",
+    "reviewed": true
   },
   {
     "category": "Fremdwörter",
     "question": "Was bedeutet das Wort Kompendium?",
     "answer": "Eine kurze Zusammenfassung",
-    "topic": "Sprache & Wortschatz"
+    "topic": "Sprache & Wortschatz",
+    "reviewed": true
   },
   {
     "category": "Fremdwörter",
     "question": "Was bedeutet das Wort kapriziös?",
     "answer": "Launisch und unberechenbar",
-    "topic": "Sprache & Wortschatz"
+    "topic": "Sprache & Wortschatz",
+    "reviewed": true
   },
   {
     "category": "Fremdwörter",
     "question": "Was bedeutet das Wort divergent?",
     "answer": "Auseinanderstrebend",
-    "topic": "Sprache & Wortschatz"
+    "topic": "Sprache & Wortschatz",
+    "reviewed": true
   },
   {
-    "category": "Historischer Kontext",
+    "category": "Normale Fragen",
     "question": "Wieso musste sich Napoleon Bonaparte bei einer eigens organisierten Hasenjagd plötzlich zurückziehen?",
     "answer": "Hunderte Kaninchen griffen ihn völlig unerwartet an",
-    "topic": "Militär & Kriegsführung"
+    "topic": "Militär & Kriegsführung",
+    "reviewed": false
   },
   {
-    "category": "Historischer Kontext",
+    "category": "Normale Fragen",
     "question": "Was tat sich der Physiker Isaac Newton für seine Forschung tatsächlich selbst an?",
     "answer": "Er stach sich eine Nadel zwischen Auge und Knochen",
-    "topic": "Wissenschaft & Forschung"
+    "topic": "Wissenschaft & Forschung",
+    "reviewed": false
   },
   {
-    "category": "Historischer Kontext",
+    "category": "Normale Fragen",
     "question": "Wie überzeugte Christoph Kolumbus verzweifelte Ureinwohner, ihm dringend benötigte Vorräte zu geben?",
     "answer": "Er drohte, den Mond verschwinden zu lassen",
-    "topic": "Schifffahrt & Entdeckung"
+    "topic": "Schifffahrt & Entdeckung",
+    "reviewed": false
   },
   {
-    "category": "Historischer Kontext",
+    "category": "Normale Fragen",
     "question": "Welchen kuriosen, aber hoch angesehenen Posten gab es tatsächlich am Hof von Heinrich dem Achten?",
     "answer": "Einen Diener, der ihm nur den Hintern abwischte",
-    "topic": "Herrscher & Politik"
+    "topic": "Herrscher & Politik",
+    "reviewed": false
   },
   {
-    "category": "Historischer Kontext",
+    "category": "Normale Fragen",
     "question": "Welche Speise führte sich der Naturforscher Charles Darwin tatsächlich regelmäßig zu?",
     "answer": "Die exotischen Tiere, die er entdeckte und untersuchen sollte",
-    "topic": "Wissenschaft & Forschung"
+    "topic": "Wissenschaft & Forschung",
+    "reviewed": false
   },
   {
-    "category": "Historischer Kontext",
+    "category": "Normale Fragen",
     "question": "Warum müssen die Original-Notizbücher von Marie Curie bis heute in bleiverkleideten Kisten aufbewahrt werden?",
     "answer": "Sie sind noch immer radioaktiv",
-    "topic": "Wissenschaft & Forschung"
+    "topic": "Wissenschaft & Forschung",
+    "reviewed": false
   },
   {
-    "category": "Historischer Kontext",
+    "category": "Normale Fragen",
     "question": "Wie schrieb Leonardo da Vinci viele seiner privaten Notizen, sodass man sie nur erschwert lesen konnte?",
     "answer": "Spiegelverkehrt, von rechts nach links",
-    "topic": "Kunst & Kultur"
+    "topic": "Kunst & Kultur",
+    "reviewed": false
   },
   {
-    "category": "Historischer Kontext",
+    "category": "Normale Fragen",
     "question": "Was verkaufte der findige Kaufmann Marco Polo den staunenden Europäern als exotische Neuheit aus China?",
     "answer": "Nudeln und Eiscreme",
-    "topic": "Schifffahrt & Entdeckung"
+    "topic": "Schifffahrt & Entdeckung",
+    "reviewed": false
   },
   {
-    "category": "Historischer Kontext",
+    "category": "Normale Fragen",
     "question": "Was machte Nikola Tesla, nachdem ihn ein Hotel wegen unbezahlter Rechnungen hinausgeworfen hatte?",
     "answer": "Er bezahlte mit einer Kiste voll einer angeblich revolutionären Erfindung. Sie war leer",
-    "topic": "Wissenschaft & Forschung"
+    "topic": "Wissenschaft & Forschung",
+    "reviewed": false
   },
   {
-    "category": "Historischer Kontext",
+    "category": "Normale Fragen",
     "question": "Welchen ungewöhnlichen Trick nutzte Victor Hugo, als er unbedingt seinen Roman fertig schreiben wollte?",
     "answer": "Er ließ fast seine gesamte Kleidung wegschließen, damit er das Haus nicht verlassen konnte",
-    "topic": "Kunst & Kultur"
+    "topic": "Kunst & Kultur",
+    "reviewed": false
   },
   {
-    "category": "Historischer Kontext",
+    "category": "Normale Fragen",
     "question": "Was machte Salvador Dalí, wenn ihm besonders gute Ideen im Halbschlaf einfielen?",
     "answer": "Er hielt einen Löffel in der Hand, fiel er herunter, wachte er sofort auf",
-    "topic": "Kunst & Kultur"
+    "topic": "Kunst & Kultur",
+    "reviewed": false
   },
   {
-    "category": "Historischer Kontext",
+    "category": "Normale Fragen",
     "question": "Was tat der griechische Redner Demosthenes beim Üben seiner Reden?",
     "answer": "Er steckte sich Kieselsteine in den Mund und sprach gegen das Meeresrauschen",
-    "topic": "Kunst & Kultur"
+    "topic": "Kunst & Kultur",
+    "reviewed": false
   },
   {
-    "category": "Historischer Kontext",
+    "category": "Normale Fragen",
     "question": "Welches Tier diente dem polnischen Militär im Zweiten Weltkrieg offiziell als Soldat?",
     "answer": "Ein Braunbär namens Wojtek",
-    "topic": "Militär & Kriegsführung"
+    "topic": "Militär & Kriegsführung",
+    "reviewed": false
   },
   {
-    "category": "Historischer Kontext",
+    "category": "Normale Fragen",
     "question": "Was glaubte der Schriftsteller Charles Dickens über die Ausrichtung seines Bettes?",
     "answer": "Mit dem Kopf nach Norden würde er besser schlafen",
-    "topic": "Kunst & Kultur"
+    "topic": "Kunst & Kultur",
+    "reviewed": false
   },
   {
-    "category": "Historischer Kontext",
+    "category": "Normale Fragen",
     "question": "Was tat der römische Kaiser Augustus angeblich jedes Mal, wenn ein Gewitter aufzog?",
     "answer": "Er versteckte sich unter seinem Bett",
-    "topic": "Herrscher & Politik"
+    "topic": "Herrscher & Politik",
+    "reviewed": false
   },
   {
     "category": "Zeichnen",
     "topic": "Tiere",
     "question": "Dinosaurier",
-    "answer": "Dinosaurier"
+    "answer": "Dinosaurier",
+    "reviewed": true
   },
   {
     "category": "Zeichnen",
     "topic": "Alltag",
     "question": "Regenschirm",
-    "answer": "Regenschirm"
+    "answer": "Regenschirm",
+    "reviewed": true
   },
   {
     "category": "Zeichnen",
     "topic": "Musik",
     "question": "Gitarre",
-    "answer": "Gitarre"
+    "answer": "Gitarre",
+    "reviewed": true
   },
   {
     "category": "Zeichnen",
     "topic": "Technik",
     "question": "Roboter",
-    "answer": "Roboter"
+    "answer": "Roboter",
+    "reviewed": true
   },
   {
     "category": "Zeichnen",
     "topic": "Natur",
     "question": "Vulkan",
-    "answer": "Vulkan"
+    "answer": "Vulkan",
+    "reviewed": true
   },
   {
     "category": "Zeichnen",
     "topic": "Tiere",
     "question": "Pinguin",
-    "answer": "Pinguin"
+    "answer": "Pinguin",
+    "reviewed": true
   },
   {
     "category": "Zeichnen",
     "topic": "Alltag",
     "question": "Zahnbürste",
-    "answer": "Zahnbürste"
+    "answer": "Zahnbürste",
+    "reviewed": true
   },
   {
     "category": "Zeichnen",
     "topic": "Technik",
     "question": "Rakete",
-    "answer": "Rakete"
+    "answer": "Rakete",
+    "reviewed": true
   },
   {
     "category": "Zeichnen",
     "topic": "Gegenstände",
     "question": "Krone",
-    "answer": "Krone"
+    "answer": "Krone",
+    "reviewed": true
   },
   {
     "category": "Zeichnen",
     "topic": "Freizeit",
     "question": "Achterbahn",
-    "answer": "Achterbahn"
+    "answer": "Achterbahn",
+    "reviewed": true
   },
   {
     "category": "Zeichnen",
     "topic": "Jahreszeiten",
     "question": "Schneemann",
-    "answer": "Schneemann"
+    "answer": "Schneemann",
+    "reviewed": true
   },
   {
     "category": "Zeichnen",
     "topic": "Natur",
     "question": "Kaktus",
-    "answer": "Kaktus"
+    "answer": "Kaktus",
+    "reviewed": true
   },
   {
     "category": "Zeichnen",
     "topic": "Fantasie",
     "question": "Geist",
-    "answer": "Geist"
+    "answer": "Geist",
+    "reviewed": true
   },
   {
     "category": "Zeichnen",
     "topic": "Fahrzeuge",
     "question": "Fahrrad",
-    "answer": "Fahrrad"
+    "answer": "Fahrrad",
+    "reviewed": true
   },
   {
     "category": "Zeichnen",
     "topic": "Bauwerke",
     "question": "Leuchtturm",
-    "answer": "Leuchtturm"
+    "answer": "Leuchtturm",
+    "reviewed": true
   },
   {
     "category": "Zeichnen",
     "topic": "Fantasie",
     "question": "Drache",
-    "answer": "Drache"
+    "answer": "Drache",
+    "reviewed": true
   },
   {
     "category": "Zeichnen",
     "topic": "Natur",
     "question": "Regenbogen",
-    "answer": "Regenbogen"
+    "answer": "Regenbogen",
+    "reviewed": true
   },
   {
     "category": "Zeichnen",
     "topic": "Fantasie",
     "question": "Zauberstab",
-    "answer": "Zauberstab"
+    "answer": "Zauberstab",
+    "reviewed": true
   },
   {
     "category": "Zeichnen",
     "topic": "Tiere",
     "question": "Krake",
-    "answer": "Krake"
+    "answer": "Krake",
+    "reviewed": true
   },
   {
     "category": "Zeichnen",
     "topic": "Freizeit",
     "question": "Zelt",
-    "answer": "Zelt"
+    "answer": "Zelt",
+    "reviewed": true
   },
   {
     "category": "Zeichnen",
     "topic": "Alltag",
     "question": "Glühbirne",
-    "answer": "Glühbirne"
+    "answer": "Glühbirne",
+    "reviewed": true
   },
   {
     "category": "Zeichnen",
     "topic": "Geschichte",
     "question": "Ritter",
-    "answer": "Ritter"
+    "answer": "Ritter",
+    "reviewed": true
   },
   {
     "category": "Zeichnen",
     "topic": "Alltag",
     "question": "Ballon",
-    "answer": "Ballon"
+    "answer": "Ballon",
+    "reviewed": true
   },
   {
     "category": "Zeichnen",
     "topic": "Fahrzeuge",
     "question": "U-Boot",
-    "answer": "U-Boot"
+    "answer": "U-Boot",
+    "reviewed": true
   },
   {
     "category": "Zeichnen",
     "topic": "Gegenstände",
     "question": "Kompass",
-    "answer": "Kompass"
+    "answer": "Kompass",
+    "reviewed": true
   },
   {
     "category": "Zeichnen",
     "topic": "Tiere",
     "question": "Schmetterling",
-    "answer": "Schmetterling"
+    "answer": "Schmetterling",
+    "reviewed": true
   },
   {
     "category": "Zeichnen",
     "topic": "Bauwerke",
     "question": "Windmühle",
-    "answer": "Windmühle"
+    "answer": "Windmühle",
+    "reviewed": true
   },
   {
     "category": "Zeichnen",
     "topic": "Beruf",
     "question": "Astronaut",
-    "answer": "Astronaut"
+    "answer": "Astronaut",
+    "reviewed": true
   },
   {
     "category": "Zeichnen",
     "topic": "Tiere",
     "question": "Fledermaus",
-    "answer": "Fledermaus"
+    "answer": "Fledermaus",
+    "reviewed": true
   },
   {
     "category": "Zeichnen",
     "topic": "Gegenstände",
     "question": "Sanduhr",
-    "answer": "Sanduhr"
+    "answer": "Sanduhr",
+    "reviewed": true
   },
   {
-    "category": "Historischer Kontext",
+    "category": "Normale Fragen",
     "topic": "Militär & Kriegsführung",
     "question": "Gegen welchen Gegner verlor das australische Militär 1932 einen offiziell erklärten Krieg?",
-    "answer": "Gegen wilde Emus – die Vögel waren den Maschinengewehren schlicht zu schnell und zu schlau"
+    "answer": "Gegen wilde Emus – die Vögel waren den Maschinengewehren schlicht zu schnell und zu schlau",
+    "reviewed": false
   },
   {
-    "category": "Historischer Kontext",
+    "category": "Normale Fragen",
     "topic": "Tiere & Natur",
     "question": "Wie lange lebte das berühmte Huhn „Mike\", nachdem ihm 1945 versehentlich der Kopf abgeschlagen wurde?",
-    "answer": "Noch 18 Monate – gefüttert per Pipette direkt in die Speiseröhre"
+    "answer": "Noch 18 Monate – gefüttert per Pipette direkt in die Speiseröhre",
+    "reviewed": false
   },
   {
-    "category": "Historischer Kontext",
+    "category": "Normale Fragen",
     "topic": "Alltag & Technik",
     "question": "Was richtete ein geplatzter Sirup-Tank 1919 in Boston an?",
-    "answer": "Eine rund 8 Meter hohe Sirup-Welle raste mit bis zu 56 km/h durch die Straßen und tötete 21 Menschen"
+    "answer": "Eine rund 8 Meter hohe Sirup-Welle raste mit bis zu 56 km/h durch die Straßen und tötete 21 Menschen",
+    "reviewed": false
   },
   {
-    "category": "Historischer Kontext",
+    "category": "Normale Fragen",
     "topic": "Alltag & Technik",
     "question": "Was verursachte 1814 der Bruch eines riesigen Braukessels in London?",
-    "answer": "Eine 4,6 Meter hohe Bierwelle (über 1,4 Millionen Liter) walzte durch ein Armenviertel und tötete 8 Menschen"
+    "answer": "Eine 4,6 Meter hohe Bierwelle (über 1,4 Millionen Liter) walzte durch ein Armenviertel und tötete 8 Menschen",
+    "reviewed": false
   },
   {
-    "category": "Historischer Kontext",
+    "category": "Normale Fragen",
     "topic": "Aberglaube & Bräuche",
     "question": "Was passierte im Sommer 1518 in Straßburg, als eine Frau namens Frau Troffea plötzlich auf der Straße zu tanzen begann?",
-    "answer": "Hunderte Menschen schlossen sich tagelang unkontrolliert tanzend an, manche bis zur Erschöpfung oder zum Tod"
+    "answer": "Hunderte Menschen schlossen sich tagelang unkontrolliert tanzend an, manche bis zur Erschöpfung oder zum Tod",
+    "reviewed": false
   },
   {
-    "category": "Historischer Kontext",
+    "category": "Normale Fragen",
     "topic": "Alltag & Technik",
     "question": "Wie viel konnte eine einzelne, besonders seltene Tulpenzwiebel 1637 in den Niederlanden auf dem Höhepunkt der „Tulpenmanie\" wert sein?",
-    "answer": "Mehr als ein ganzes Haus in Amsterdam"
+    "answer": "Mehr als ein ganzes Haus in Amsterdam",
+    "reviewed": false
   },
   {
-    "category": "Historischer Kontext",
+    "category": "Normale Fragen",
     "topic": "Herrscher & Politik",
     "question": "Welchen skurrilen Beruf gab es im Preußen Friedrichs des Großen, nachdem er 1781 ein Kaffee-Monopol einführte?",
-    "answer": "„Kaffeeriecher\" – Beamte, die durch die Straßen zogen und am Geruch illegal gerösteten Kaffee erschnüffelten"
+    "answer": "„Kaffeeriecher\" – Beamte, die durch die Straßen zogen und am Geruch illegal gerösteten Kaffee erschnüffelten",
+    "reviewed": false
   },
   {
-    "category": "Historischer Kontext",
+    "category": "Normale Fragen",
     "topic": "Militär & Kriegsführung",
     "question": "Was passierte der ersten Spionage-Katze, die die CIA in den 1960ern für 20 Millionen Dollar zur Abhör-Waffe umgebaut hatte, bei ihrem allerersten Einsatz?",
     "answer": "Sie wurde direkt beim Losschicken von einem Taxi überfahren",
-    "reviewed": true
+    "reviewed": false
   },
   {
-    "category": "Historischer Kontext",
+    "category": "Normale Fragen",
     "topic": "Wissenschaft & Forschung",
     "question": "Was geschah 1962 an einer Mädchenschule im heutigen Tansania, das binnen 18 Monaten 14 Schulen zur Schließung zwang?",
     "answer": "Eine „Lach-Epidemie“ – unkontrollierbares, ansteckendes Lachen befiel über 1.000 Menschen, ganz ohne erkennbaren Auslöser",
-    "reviewed": true
+    "reviewed": false
   },
   {
-    "category": "Historischer Kontext",
+    "category": "Normale Fragen",
     "topic": "Militär & Kriegsführung",
     "question": "Welchen bizarren Plan verfolgte das US-Militär im Zweiten Weltkrieg mit Fledermäusen?",
     "answer": "Ihnen kleine Brandbomben umzuschnallen und sie über japanischen Städten auszusetzen – ein Testlauf setzte versehentlich sogar einen eigenen Militärstützpunkt in Brand",
-    "reviewed": true
+    "reviewed": false
   }
 ]
