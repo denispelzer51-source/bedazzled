@@ -609,6 +609,11 @@ function setTokenWorldPos(tokenIdx, wx, wz) {
 function placeTokens() {
   updateTokenLayout();
   tokensData.forEach((t, idx) => {
+    const mesh = tokenMeshes[idx];
+    mesh.userData.isMoving = false;
+    const offset = mesh.userData.slotOffset || { x: 0, z: 0 };
+    mesh.userData.currentOffset = { x: offset.x, z: offset.z };
+    mesh.scale.setScalar(mesh.userData.slotScale !== undefined ? mesh.userData.slotScale : 1);
     const pos = fieldPosition(t.pos);
     setTokenWorldPos(idx, pos.x, pos.z);
   });
@@ -724,8 +729,12 @@ function animateMove(tokenIdx, steps, onComplete) {
   // Reihe wird von vorne rübergeschaut, nie von hinten. Bei der linken Reihe kommt die
   // Kamera von vorne-rechts, bei der rechten Reihe von vorne-links - nie eine reine
   // Seiten- oder Rückansicht.
-  const INSIDE_HEIGHT = 3.4;
-  const INSIDE_RADIUS = 9.5;
+  // WICHTIG: muss spürbar NÄHER sein als die Übersichts-Kamera (jetzt Distanz ~9.2), sonst
+  // ist der Zoom-Effekt beim Ranfahren an eine ziehende Figur nicht mehr wahrnehmbar - genau
+  // das ist beim letzten Kamera-Update passiert (Übersicht wurde näher geholt, diese Werte
+  // hier aber nicht mit angepasst, wodurch beide Distanzen fast gleich groß waren).
+  const INSIDE_HEIGHT = 2.3;
+  const INSIDE_RADIUS = 3.6;
   const halfW = RING_W / 2, halfH = RING_H / 2;
   function classifyEdge(world) {
     const distFront = Math.abs(world.z - halfH);
@@ -817,12 +826,8 @@ function animateMove(tokenIdx, steps, onComplete) {
   tokenMeshes[tokenIdx].userData.slotOffset = { x: 0, z: 0 };
   tokenMeshes[tokenIdx].userData.slotScale = 1;
   tokenMeshes[tokenIdx].scale.setScalar(1);
+  tokenMeshes[tokenIdx].userData.isMoving = true;
   updateTokenLayout(tokenIdx);
-  tokensData.forEach((t, idx) => {
-    if (idx === tokenIdx) return;
-    const p = fieldPosition(t.pos);
-    setTokenWorldPos(idx, p.x, p.z);
-  });
 
   const zoomInMs = 700, trackMs = 900 + steps * 90, zoomOutMs = 700;
   const totalMs = zoomInMs + trackMs + zoomOutMs;
@@ -865,14 +870,13 @@ function animateMove(tokenIdx, steps, onComplete) {
       requestAnimationFrame(frame);
     } else {
       tokensData[tokenIdx].pos = endPos;
+      tokenMeshes[tokenIdx].userData.isMoving = false;
+      tokenMeshes[tokenIdx].userData.currentOffset = { x: 0, z: 0 };
       // Neu ankommende Figur wird jetzt wieder Teil der ganz normalen Feld-Formation -
       // gemeinsam mit allen anderen Figuren neu einsortieren (auch das Zielfeld kann ja
-      // bereits andere Figuren tragen).
+      // bereits andere Figuren tragen). Die tatsächliche Bewegung in die neue Formation
+      // passiert danach weich in tick() - kein hartes "Reinpressen" mehr.
       updateTokenLayout();
-      tokensData.forEach((t, idx) => {
-        const p = fieldPosition(t.pos);
-        setTokenWorldPos(idx, p.x, p.z);
-      });
       animating = false;
       controls.enabled = orbitEnabled;
       if (onComplete) onComplete();
@@ -1062,6 +1066,23 @@ function tick() {
   tokenMeshes.forEach((mesh, idx) => {
     const base = fieldTopY(tokensData[idx].pos) + TOKEN_HOVER_GAP;
     mesh.position.y = base + Math.sin(t * 1.6 + mesh.userData.bobPhase) * 0.05;
+
+    // Weicher Positions-Übergang statt hartem "Reinpressen": wenn sich die Formation eines
+    // Feldes ändert (eine Figur kommt dazu oder verlässt es), wird der neue Versatz nur als
+    // ZIEL gesetzt (siehe updateTokenLayout) - hier nähert sich jede stehende Figur (die
+    // gerade NICHT selbst mitten im Zug ist) Frame für Frame sanft daran an, statt sofort
+    // dorthin zu springen.
+    if (!mesh.userData.isMoving) {
+      const fieldPos = fieldPosition(tokensData[idx].pos);
+      const targetOffset = mesh.userData.slotOffset || { x: 0, z: 0 };
+      if (!mesh.userData.currentOffset) mesh.userData.currentOffset = { x: targetOffset.x, z: targetOffset.z };
+      const cur = mesh.userData.currentOffset;
+      cur.x += (targetOffset.x - cur.x) * 0.1;
+      cur.z += (targetOffset.z - cur.z) * 0.1;
+      mesh.position.x = fieldPos.x + cur.x;
+      mesh.position.z = fieldPos.z + cur.z;
+    }
+
     // Weicher Größen-Übergang statt hartem Sprung: wenn sich die Formation ändert (z.B.
     // eine weitere Figur zieht auf dasselbe Feld oder verlässt es), wird die Zielgröße nur
     // gesetzt (siehe updateTokenLayout) - hier wird jeden Frame ein Stück in Richtung
