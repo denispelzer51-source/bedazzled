@@ -408,7 +408,11 @@ for (let i = 0; i < DECK_CARD_COUNT; i++) {
     // rotation.x = +PI/2 (kein zusätzlicher Roll) steht die Frage am Ende exakt aufrecht
     // UND zur Kamera gedreht (mit drei.js-Quaternionen exakt nachgerechnet: beide Werte
     // ergeben Dot-Produkt +1,0 - unabhängig von der aktuellen Kamera-Position/dem -winkel).
-    frontPlane.rotation.x = Math.PI / 2;
+    // WICHTIG: Diese Rotation gehört fest zur "öffnet nach rechts + Reveal-Kamera schaut
+    // von oben drauf"-Kombination in drawCardAnimation weiter unten. Mit drei.js-
+    // Quaternionen exakt nachgerechnet: Dot-Produkt +1,0 für "aufrecht" UND "zur
+    // Reveal-Kamera zeigend".
+    frontPlane.rotation.set(Math.PI / 2, 0, Math.PI);
     frontPlane.position.y = -DECK_CARD_H / 2 - 0.0006;
     card.add(frontPlane);
   }
@@ -1018,47 +1022,40 @@ function drawCardAnimation(questionText) {
   topCardMesh.quaternion.identity();
   topCardMesh.visible = true;
 
-  // Kamera-Richtung berechnen, EINMALIG am Anfang der Animation
-  const camDir = new THREE.Vector3();
-  camera.getWorldDirection(camDir);
-  const endDistance = 1.1;
-  const endPos = camera.position.clone().add(camDir.multiplyScalar(endDistance));
+  // WICHTIG: "Nach rechts öffnen" (Drehung um die Achse, die zur Kamera zeigt) und "am Ende
+  // exakt zur - jetzt schräg im 45°-Winkel stehenden - Hauptkamera zeigen" schließen sich bei
+  // einer einzigen Drehung geometrisch aus (rechnerisch nachgewiesen). Lösung: Für den
+  // Reveal-Moment fährt eine EIGENE, feste Kamera-Position senkrecht über die Karte - von
+  // DORT aus schauend, ist "nach rechts aufklappen, flach liegen bleiben" automatisch exakt
+  // "parallel zum Bildschirm" (mit drei.js-Quaternionen exakt verifiziert: Dot-Produkt +1,0
+  // für "aufrecht" UND "zur Reveal-Kamera zeigend").
+  const cardEndPos = new THREE.Vector3(0, 2.6, 1.8);
+  const revealCamPos = new THREE.Vector3(cardEndPos.x, cardEndPos.y + 2.6, cardEndPos.z + 0.0005);
+  const revealCamTarget = cardEndPos.clone();
+  const endDistance = revealCamPos.distanceTo(cardEndPos);
 
-  // Phasen: nur noch EIN Abheben, gefolgt von EINER durchgehenden Bewegung, in der sich die
-  // Karte gleichzeitig zur Seite hin öffnet UND zum Bildschirm fliegt (keine separate,
-  // stillstehende Umklapp-Phase mehr davor).
+  const mainCamPos = camera.position.clone();
+  const mainCamTarget = controls.target.clone();
+
   const liftMs = 600;  // P1: senkrecht über den Stapel heben, Karte bleibt flach liegen
-  const openMs = 2300; // P2: Karte klappt nach rechts auf UND fliegt dabei durchgehend zum Bildschirm
-  const totalMs = liftMs + openMs;
+  const openMs = 2300; // P2: Karte klappt nach rechts auf, Reveal-Kamera fährt gleichzeitig darüber
+  const returnMs = 500; // P3: Haupt-Kamera kehrt zurück zur gewohnten Übersicht
+  const totalMs = liftMs + openMs + returnMs;
 
   const liftTarget = new THREE.Vector3(startPos.x, startPos.y + 0.9, startPos.z);
-  // Skalierung NICHT mehr geraten, sondern exakt aus Kamera-FOV und Abstand berechnet,
-  // damit die Karte am Ende wirklich nur bildschirmfüllend ist statt riesig überzuschießen.
+  // Skalierung exakt aus der Reveal-Kamera-FOV/Distanz berechnet, damit die Karte am Ende
+  // bildschirmfüllend ist, unabhängig davon, wo die Haupt-Kamera gerade steht.
   const vFOV = camera.fov * Math.PI / 180;
   const visibleHeightAtEnd = 2 * Math.tan(vFOV / 2) * endDistance;
   const fillFactor = 0.82; // etwas Rand lassen, damit nichts über den Bildschirmrand hinausragt
   const endScale = (visibleHeightAtEnd / CARD_D) * fillFactor;
   const startTime  = performance.now();
 
-  // Kamera-UNABHÄNGIGE Ausrichtung: statt einer festen Dreh-Achse (die nur bei einer exakt
-  // senkrecht von oben stehenden Kamera "flach nach oben" richtig aussieht) wird hier live
-  // berechnet, wie die Karte gedreht werden muss, um am Ende exakt aufrecht UND direkt zur
-  // AKTUELLEN Kamera-Position zu zeigen - bleibt also auch korrekt, falls die Kamera-Position
-  // später nochmal angepasst wird (rechnerisch mit drei.js-Quaternionen exakt nachgerechnet:
-  // Dot-Produkt +1,0 für "aufrecht" UND "zur Kamera zeigend", unabhängig vom Kamera-Winkel).
-  const lookDummy = new THREE.Object3D();
-  lookDummy.position.copy(endPos);
-  lookDummy.up.set(0, 1, 0);
-  lookDummy.lookAt(camera.position);
-  const qLookAt = lookDummy.quaternion.clone();
-  const axisFixMatrix = new THREE.Matrix4().makeBasis(
-    new THREE.Vector3(-1, 0, 0),
-    new THREE.Vector3(0, 0, 1),
-    new THREE.Vector3(0, 1, 0)
-  );
-  const qAxisFix = new THREE.Quaternion().setFromRotationMatrix(axisFixMatrix);
-  const qFix180 = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI);
-  const qOrientFull = qLookAt.clone().multiply(qFix180).multiply(qAxisFix);
+  // Öffnen: 180° um die Achse, die zur (Reveal-)Kamera zeigt - "rechts klappt nach links",
+  // die Karte bleibt dabei flach liegen (von der Reveal-Kamera aus gesehen: parallel zum
+  // Bildschirm, exakt lesbar).
+  const flipAxis = new THREE.Vector3(0, 0, 1);
+  const qFlipFull = new THREE.Quaternion().setFromAxisAngle(flipAxis, Math.PI);
 
   let overlayShown = false;
 
@@ -1072,14 +1069,15 @@ function drawCardAnimation(questionText) {
       topCardMesh.quaternion.identity();
       topCardMesh.scale.setScalar(1);
 
-    } else {
-      // P2: EIN durchgehender Bewegungsablauf - Position bewegt sich die GANZE Zeit über
-      // Richtung Bildschirm, während sich die Karte in EINER einzigen, glatten Drehung
-      // aufrichtet und dabei direkt zur Kamera dreht.
+    } else if (el < liftMs + openMs) {
+      // P2: Karte klappt nach rechts auf und fliegt zur festen Reveal-Position, WÄHREND die
+      // Kamera gleichzeitig zur Reveal-Kamera-Position (senkrecht über der Karte) fährt.
       const p = easeInOutCubic((el - liftMs) / openMs);
-      topCardMesh.position.lerpVectors(liftTarget, endPos, p);
-      topCardMesh.quaternion.identity().slerp(qOrientFull, p);
+      topCardMesh.position.lerpVectors(liftTarget, cardEndPos, p);
+      topCardMesh.quaternion.identity().slerp(qFlipFull, p);
       topCardMesh.scale.setScalar(lerp(1, endScale, p));
+      camera.position.lerpVectors(mainCamPos, revealCamPos, p);
+      controls.target.lerpVectors(mainCamTarget, revealCamTarget, p);
 
       // 2D-Frage-Overlay schon knapp VOR dem völligen Abschluss der Animation einblenden
       // (nicht erst exakt am Ende) - durch die vorhandene CSS-Fade-Transition wirkt der
@@ -1088,6 +1086,12 @@ function drawCardAnimation(questionText) {
         overlayShown = true;
         document.getElementById('question-overlay').classList.remove('hidden');
       }
+    } else {
+      // P3: Haupt-Kamera kehrt zurück zur gewohnten Übersicht (die Karte bleibt an Ort und
+      // Stelle stehen - das 2D-Overlay übernimmt zu diesem Zeitpunkt ohnehin die Anzeige)
+      const p = easeInOutCubic((el - liftMs - openMs) / returnMs);
+      camera.position.lerpVectors(revealCamPos, mainCamPos, p);
+      controls.target.lerpVectors(revealCamTarget, mainCamTarget, p);
     }
 
     if (el < totalMs) {

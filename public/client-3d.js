@@ -1308,8 +1308,8 @@ function sync3DBoard(players, fromPositions, animate, onComplete) {
 let cardDrawAnimationPlaying = false;
 let cardDrawAnimationPlayedThisRound = false;
 // Dauer der 3D-Karten-Animation (muss zur Timing-Summe in board3d-core.js passen:
-// liftMs 600 + openMs 2300 = 2900ms), plus etwas Puffer für Netzwerk-Latenz.
-const CARD_DRAW_ANIMATION_MS = 3100;
+// liftMs 600 + openMs 2300 + returnMs 500 = 3400ms), plus etwas Puffer für Netzwerk-Latenz.
+const CARD_DRAW_ANIMATION_MS = 3600;
 
 function setCardDrawGateVisible(visible) {
   document.getElementById('btn-draw-card-trigger').classList.toggle('hidden', !visible);
@@ -1904,7 +1904,13 @@ socket.on('state', (state) => {
     // NEU: ganz am Anfang des Spiels (Lobby -> allererste Runde) zuerst die verspielte
     // Einführungs-Animation zeigen (Kamera zoomt zum Startfeld, Figuren poppen dort auf),
     // bevor es mit dem gewohnten "Karte ziehen"-Ablauf weitergeht.
-    const enteringFirstRoundEver = lastState && lastState.phase === 'lobby' && state.phase === 'previewQuestion';
+    // WICHTIG: Das Spiel geht zwischen JEDER Runde kurz zurück in die Lobby (Moderator-
+    // Wechsel), bevor die nächste Runde beginnt - "lastState.phase === 'lobby'" allein reicht
+    // also NICHT aus, um "die allererste Runde" zu erkennen (das hat die Einführung bisher
+    // vor JEDER Runde erneut ausgelöst, nicht nur vor der ersten). Das Flag "gameStarted"
+    // bleibt dagegen ab dem allerersten Rundenstart dauerhaft true, damit lässt sich die
+    // echte allererste Runde zuverlässig von der Zwischen-Runden-Lobby unterscheiden.
+    const enteringFirstRoundEver = lastState && lastState.phase === 'lobby' && !lastState.gameStarted && state.phase === 'previewQuestion';
     if (enteringFirstRoundEver && !introPlacementPlaying) {
       playIntroPlacementThenGate(state);
     } else if (!introPlacementPlaying) {
