@@ -940,6 +940,19 @@ socket.on('voteLocked', ({ reason }) => {
   document.getElementById('vote-submitted-msg').textContent = reason;
 });
 
+// Falls der Server eine Stimmabgabe ablehnt (z.B. versehentlich für die eigene Antwort),
+// darf der Client NICHT weiter "abgeschickt" anzeigen, obwohl serverseitig nichts
+// gespeichert wurde - hier wird der optimistische Zustand wieder zurückgenommen.
+socket.on('voteRejected', ({ reason }) => {
+  voteSubmitted = false;
+  selectedVote = null;
+  document.querySelectorAll('.vote-option').forEach(el => el.classList.remove('selected'));
+  document.getElementById('btn-submit-vote').classList.add('hidden');
+  const msgEl = document.getElementById('vote-submitted-msg');
+  msgEl.classList.remove('hidden');
+  msgEl.textContent = reason;
+});
+
 socket.on('answerLocked', ({ reason }) => {
   document.getElementById('input-answer').disabled = true;
   document.getElementById('input-answer-number').disabled = true;
@@ -1223,9 +1236,9 @@ socket.on('someoneGuessedCorrectly', ({ name }) => {
 
 // ---------- REVEAL ----------
 // Der Auflösungs-Screen (wer hat welche Antwort abgegeben, wer ist reingefallen, etc.) darf
-// frühestens 10 Sekunden nach Rundenbeginn übersprungen werden - sonst schafft es kaum
+// frühestens 8 Sekunden nach Rundenbeginn übersprungen werden - sonst schafft es kaum
 // jemand, in der Kürze der Zeit überhaupt zu lesen, was gerade passiert ist.
-const REVEAL_BOARD_MIN_WAIT_MS = 10000;
+const REVEAL_BOARD_MIN_WAIT_MS = 8000;
 let revealBoardUnlockAt = 0;
 let revealBoardCountdownTimer = null;
 

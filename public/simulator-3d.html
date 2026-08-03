@@ -162,41 +162,59 @@
       // Name/Spielfigur für den Test-Slot) noch synchron abschließen können.
       await new Promise(r => setTimeout(r, 400));
 
-      const hostDoc = iframes[0].contentDocument;
-      const hostWin = iframes[0].contentWindow;
-
-      hostDoc.getElementById('btn-create').click();
-      await new Promise(r => setTimeout(r, 150));
-      hostDoc.getElementById('btn-confirm-setup').click();
-
-      const gotCode = await waitFor(() => hostWin.__bedazzledTest && hostWin.__bedazzledTest.getRoomCode(), 8000);
-      if (!gotCode) throw new Error('Konnte keinen Raum-Code vom ersten Spieler-Fenster bekommen.');
-      const code = hostWin.__bedazzledTest.getRoomCode();
-
-      for (let i = 1; i < iframes.length; i++) {
-        const doc = iframes[i].contentDocument;
-        doc.getElementById('input-code').value = code;
-        doc.getElementById('btn-join').click();
-        // Warten, bis die Beitritts-Prüfung durch ist und der Setup-Bildschirm erscheint
-        await waitFor(() => {
-          const el = doc.getElementById('screen-setup');
-          return el && el.classList.contains('active');
-        }, 6000);
-        await new Promise(r => setTimeout(r, 150));
+      // WICHTIG: der direkte "Raum erstellen"-Weg hat sich als nicht zuverlässig automatisierbar
+      // erwiesen - stattdessen wird hier exakt der vom Nutzer bestätigte, manuell funktionierende
+      // Weg über "🎲 Multiplayer (zufällige Lobby)" nachgebaut: jedes Fenster tritt derselben
+      // Größen-Warteschlange bei (4er- oder 6er-Lobby, je nach gewählter Spieleranzahl), sobald
+      // genug Fenster beigetreten sind, entsteht automatisch eine gemeinsame Lobby.
+      const mpSize = playerCount <= 4 ? 4 : 6;
+      iframes.forEach((iframe) => {
+        const doc = iframe.contentDocument;
+        doc.getElementById('btn-multiplayer-toggle').click();
+        doc.getElementById(mpSize === 4 ? 'btn-mp-size-4' : 'btn-mp-size-6').click();
         doc.getElementById('btn-confirm-setup').click();
+      });
+
+      // Warten, bis aus der Warteschlange eine gemeinsame Lobby mit allen Testspielern
+      // entstanden ist (bei einer Spieleranzahl, die nicht exakt 4 oder 6 ist, dauert das
+      // ggf. länger, da erst der Matchmaking-Countdown ablaufen muss).
+      const refWin = iframes[0].contentWindow;
+      const gotLobby = await waitFor(
+        () => refWin.__bedazzledTest
+          && refWin.__bedazzledTest.getPhase() === 'lobby'
+          && refWin.__bedazzledTest.getPlayerCount() >= playerCount,
+        25000
+      );
+      if (!gotLobby) throw new Error('Es ist keine gemeinsame Lobby mit allen Testspielern zustande gekommen.');
+
+      // Kurzer Puffer, damit der Lobby-State (inkl. Avatar-Auswahl-UI) in jedem Fenster
+      // sicher gerendert wurde, bevor Spielfiguren ausgewählt werden.
+      await new Promise(r => setTimeout(r, 400));
+
+      // Spielfiguren nacheinander (nicht parallel!) auswählen lassen, damit sich zwei
+      // Fenster nicht versehentlich dieselbe Figur gleichzeitig schnappen.
+      for (const iframe of iframes) {
+        const doc = iframe.contentDocument;
+        const freeOption = Array.from(doc.querySelectorAll('#avatar-picker .avatar-option'))
+          .find(el => !el.classList.contains('taken'));
+        if (freeOption) freeOption.click();
+        await new Promise(r => setTimeout(r, 300));
       }
 
-      const allJoined = await waitFor(
-        () => hostWin.__bedazzledTest && hostWin.__bedazzledTest.getPlayerCount() >= playerCount,
-        10000
+      const allHaveAvatars = await waitFor(
+        () => refWin.__bedazzledTest && refWin.__bedazzledTest.getAllHaveAvatars(),
+        8000
       );
-      if (!allJoined) throw new Error('Nicht alle Testspieler sind rechtzeitig dem Raum beigetreten.');
+      if (!allHaveAvatars) throw new Error('Nicht alle Testspieler haben rechtzeitig eine Spielfigur bekommen.');
 
-      // Kurzer Puffer, damit auch der letzte Lobby-State-Broadcast überall angekommen ist,
-      // bevor der Host-Button "Runde starten" geklickt wird.
-      await new Promise(r => setTimeout(r, 400));
-      const startBtn = hostDoc.getElementById('btn-start-round');
-      if (startBtn) startBtn.click();
+      await new Promise(r => setTimeout(r, 300));
+
+      // Auf alle Fenster klicken (nur beim tatsächlichen Host/Moderator hat das einen
+      // Effekt - der Server weist den Klick von allen anderen zurück).
+      iframes.forEach((iframe) => {
+        const btn = iframe.contentDocument.getElementById('btn-start-round');
+        if (btn) btn.click();
+      });
     } catch (err) {
       alert('Automatisches Einrichten ist fehlgeschlagen: ' + err.message + '\nBitte den Rest manuell fertig einrichten.');
     } finally {

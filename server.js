@@ -1680,7 +1680,14 @@ io.on('connection', (socket) => {
     const myId = socket.data.token;
     const moderatorId = room.players[room.moderatorIndex].id;
     if (myId === moderatorId) return; // Moderator stimmt nicht ab
-    if (chosenOwnerId === myId) return; // die eigene Antwort ist zwar sichtbar, aber nicht wählbar
+    if (chosenOwnerId === myId) {
+      // Sollte durch die Client-UI (eigene Antwort nicht anklickbar) gar nicht erst
+      // vorkommen - trotzdem serverseitig abgesichert. WICHTIG: nicht mehr "still" ablehnen
+      // (das führte dazu, dass der Client trotzdem optimistisch "abgeschickt" anzeigte,
+      // obwohl serverseitig gar nichts gespeichert wurde) - stattdessen aktiv Bescheid geben.
+      socket.emit('voteRejected', { reason: 'Du kannst nicht für deine eigene Antwort abstimmen.' });
+      return;
+    }
 
     const totalVoters = room.players.filter(p => p.id !== moderatorId).length;
     const alreadyVoted = room.votes[myId] !== undefined;
@@ -1829,7 +1836,7 @@ io.on('connection', (socket) => {
     // Serverseitig absichern (nicht nur der ausgegraute Button auf dem Client): der
     // Auflösungs-Screen muss mindestens 10 Sekunden sichtbar gewesen sein, damit alle
     // Mitspieler:innen wenigstens kurz lesen können, was gerade passiert ist.
-    if (room.revealStartedAt && Date.now() - room.revealStartedAt < 10000 && !socket.data.isSuperAdmin) return;
+    if (room.revealStartedAt && Date.now() - room.revealStartedAt < 8000 && !socket.data.isSuperAdmin) return;
     room.phase = 'board';
     broadcastState(code);
   });

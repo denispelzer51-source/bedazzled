@@ -898,6 +898,19 @@ socket.on('voteLocked', ({ reason }) => {
   document.getElementById('vote-submitted-msg').textContent = reason;
 });
 
+// Falls der Server eine Stimmabgabe ablehnt (z.B. versehentlich für die eigene Antwort),
+// darf der Client NICHT weiter "abgeschickt" anzeigen, obwohl serverseitig nichts
+// gespeichert wurde - hier wird der optimistische Zustand wieder zurückgenommen.
+socket.on('voteRejected', ({ reason }) => {
+  voteSubmitted = false;
+  selectedVote = null;
+  document.querySelectorAll('.vote-option').forEach(el => el.classList.remove('selected'));
+  document.getElementById('btn-submit-vote').classList.add('hidden');
+  const msgEl = document.getElementById('vote-submitted-msg');
+  msgEl.classList.remove('hidden');
+  msgEl.textContent = reason;
+});
+
 socket.on('answerLocked', ({ reason }) => {
   document.getElementById('input-answer').disabled = true;
   document.getElementById('input-answer-number').disabled = true;
@@ -996,6 +1009,17 @@ function renderVoteOptions(shuffledAnswers) {
   box.innerHTML = '';
   shuffledAnswers.forEach((a, i) => {
     const div = document.createElement('div');
+    if (a.isMine) {
+      // Die eigene Antwort wird zwischen den anderen mit angezeigt (man soll sie
+      // wiederfinden können), ist aber bewusst NICHT anklickbar/wählbar - vorher fehlte
+      // diese Prüfung hier (nur im 2D-Client vorhanden), wodurch man aus Versehen für die
+      // eigene Antwort "abstimmen" konnte; das schickte submitVote, der Server lehnte es
+      // still ab, der Client zeigte aber trotzdem "abgeschickt" an.
+      div.className = 'vote-option vote-option-mine';
+      div.innerHTML = `${escapeHtml(a.text)} <span class="vote-option-mine-tag">Deine Antwort</span>`;
+      box.appendChild(div);
+      return;
+    }
     div.className = 'vote-option';
     div.textContent = a.text;
     div.dataset.ownerId = a.ownerId;
@@ -1172,7 +1196,37 @@ socket.on('someoneGuessedCorrectly', ({ name }) => {
 });
 
 // ---------- REVEAL ----------
+// Der Auflösungs-Screen darf frühestens 8 Sekunden nach Rundenbeginn übersprungen werden -
+// sonst schafft es kaum jemand, in der Kürze der Zeit überhaupt zu lesen, was gerade
+// passiert ist. (War bisher nur im 2D-Client als Countdown sichtbar - hier im 3D-Client
+// wurde ein früher Klick vom Server einfach still ignoriert, ohne dass man das gesehen hat.)
+const REVEAL_BOARD_MIN_WAIT_MS = 8000;
+let revealBoardUnlockAt = 0;
+let revealBoardCountdownTimer = null;
+
+function startRevealBoardCountdown() {
+  clearInterval(revealBoardCountdownTimer);
+  revealBoardUnlockAt = Date.now() + REVEAL_BOARD_MIN_WAIT_MS;
+  updateRevealBoardButton();
+  revealBoardCountdownTimer = setInterval(updateRevealBoardButton, 250);
+}
+
+function updateRevealBoardButton() {
+  const btn = document.getElementById('btn-to-board');
+  if (!btn) return;
+  const msLeft = revealBoardUnlockAt - Date.now();
+  if (msLeft > 0) {
+    btn.disabled = true;
+    btn.textContent = `Weiter zum Spielbrett (${Math.ceil(msLeft / 1000)}s)`;
+  } else {
+    btn.disabled = false;
+    btn.textContent = 'Weiter zum Spielbrett';
+    clearInterval(revealBoardCountdownTimer);
+  }
+}
+
 document.getElementById('btn-to-board').addEventListener('click', () => {
+  if (Date.now() < revealBoardUnlockAt) return; // sollte durch disabled schon verhindert sein, sicherheitshalber nochmal geprüft
   socket.emit('showBoard', { code: currentCode });
 });
 
@@ -1856,7 +1910,10 @@ socket.on('state', (state) => {
   const enteringAnswering = state.phase === 'answering' && ((!lastState || lastState.phase !== 'answering') || justReconnected);
   const enteringBoard = state.phase === 'board' && (!lastState || lastState.phase !== 'board');
   const enteringReveal = state.phase === 'reveal' && (!lastState || lastState.phase !== 'reveal');
-  if (enteringReveal) playRevealSound();
+  if (enteringReveal) {
+    playRevealSound();
+    startRevealBoardCountdown();
+  }
   if (enteringAnswering) {
     miniBarShowsLive = false;
     roundStartPositions = {};
@@ -2658,4 +2715,5 @@ window.__bedazzledTest = {
   getRoomCode: () => currentCode,
   getPhase: () => (lastState ? lastState.phase : null),
   getPlayerCount: () => (lastState && lastState.players ? lastState.players.length : 0),
+  getAllHaveAvatars: () => !!(lastState && lastState.players && lastState.players.length > 0 && lastState.players.every(p => !!p.avatar)),
 };
