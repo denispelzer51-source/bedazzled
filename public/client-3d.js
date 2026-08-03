@@ -866,7 +866,7 @@ document.getElementById('btn-invite-close').addEventListener('click', () => {
 });
 
 document.getElementById('btn-copy-link').addEventListener('click', async () => {
-  const link = `${window.location.origin}/?room=${currentCode}`;
+  const link = `${window.location.origin}${window.location.pathname}?room=${currentCode}`;
   try {
     await navigator.clipboard.writeText(link);
   } catch (e) {
@@ -884,7 +884,7 @@ document.getElementById('btn-copy-link').addEventListener('click', async () => {
 });
 
 document.getElementById('btn-share-whatsapp').addEventListener('click', () => {
-  const link = `${window.location.origin}/?room=${currentCode}`;
+  const link = `${window.location.origin}${window.location.pathname}?room=${currentCode}`;
   const text = `Spiel mit bei Bedazzled! 🎭\n${link}`;
   window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
 });

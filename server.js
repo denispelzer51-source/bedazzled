@@ -14,6 +14,17 @@ const io = new Server(server);
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 
+// Eigener, direkter Link für die "echte" 3D-Spielversion (mit Animationen), separat vom
+// normalen 2D-Spiel unter "/" und vom Mehrfenster-Testsimulator unter "/simulator-3d.html".
+// Damit können echte Mitspieler:innen ganz normal miteinander spielen, nur eben mit dem
+// 3D-Brett statt der 2D-Ansicht - technisch ist das dieselbe index-3d.html, die der
+// Testsimulator ohnehin schon mehrfach als iframe einbettet, hier aber als eigenständige,
+// normal aufrufbare Seite (kein "testSlot"-Parameter, also auch keine Test-Komfortfunktionen
+// wie automatisch vorausgefüllte Namen/Spielfiguren).
+app.get('/3d', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index-3d.html'));
+});
+
 const QUESTIONS_PATH = path.join(__dirname, 'questions.json');
 const ESTIMATE_QUESTIONS_PATH = path.join(__dirname, 'estimate_questions.json');
 
