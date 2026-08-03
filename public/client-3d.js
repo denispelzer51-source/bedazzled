@@ -1302,6 +1302,7 @@ document.getElementById('btn-new-game').addEventListener('click', () => {
 let estimateTriggerFields = [5, 8, 13, 18]; // Standardwert, wird vom Server überschrieben
 let foreignwordTriggerFields = [2, 10, 16, 22];
 let drawingTriggerFields = [4, 12, 19, 24];
+let lastSentFieldTypesKey = null; // verhindert wiederholtes, unnötiges Neu-Texturieren des 3D-Bretts
 
 function renderBoard(players, positionsOverride) {
   const track = document.getElementById('board-track');
@@ -1984,6 +1985,21 @@ socket.on('state', (state) => {
   if (state.estimateTriggerFields) estimateTriggerFields = state.estimateTriggerFields;
   if (state.foreignwordTriggerFields) foreignwordTriggerFields = state.foreignwordTriggerFields;
   if (state.drawingTriggerFields) drawingTriggerFields = state.drawingTriggerFields;
+  // Die echten Trigger-Feld-Positionen an das 3D-Brett weitergeben, damit ein Zeichnen-Feld
+  // im 3D-Brett auch wirklich an derselben Position liegt wie im 2D-Brett (statt eines davon
+  // unabhängigen, fest einprogrammierten Werts). Nur einmal senden (nicht bei jedem
+  // State-Update), da sich diese Werte während eines laufenden Spiels nicht mehr ändern und
+  // ein erneutes Senden im 3D-Brett unnötig alle 28 Feld-Texturen neu aufbauen würde.
+  const fieldTypesKey = JSON.stringify([estimateTriggerFields, foreignwordTriggerFields, drawingTriggerFields]);
+  if (fieldTypesKey !== lastSentFieldTypesKey) {
+    lastSentFieldTypesKey = fieldTypesKey;
+    sendToBoard3D({
+      type: 'setFieldTypes',
+      estimateFields: estimateTriggerFields,
+      foreignwordFields: foreignwordTriggerFields,
+      drawingFields: drawingTriggerFields,
+    });
+  }
   const iAmModerator = state.moderatorId === myId;
   isMyTurnToDraw = iAmModerator;
 

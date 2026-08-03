@@ -77,7 +77,33 @@ scene.add(table);
 // ---------- Textur-Erzeugung (Zahlen, Farben, Start-/Zielfeld) per Canvas ----------
 const REGULAR_PALETTE = ['#BB00FF', '#DD00FF', '#8800EE', '#CC11FF'];
 
-function makeFieldTexture({ number, isFinish, isEstimate, paletteIndex }) {
+// ---------- Feld-Typen: normale Frage (lila), Fremdwort (blau), Schätzfrage (grün/teal),
+// Zeichnen (gelb) - dieselben vier Kategorien wie im 2D-Brett (siehe style.css: .key-purple/
+// .key-blue/.key-green/.key-yellow und die entsprechenden Trigger-Felder in server.js).
+// Startwerte hier entsprechen den Standard-Trigger-Feldern aus server.js, werden aber sofort
+// überschrieben, sobald echte Spieldaten ankommen (siehe 'setFieldTypes' Nachricht unten) -
+// damit stimmt die Zuordnung auch dann, falls sich die Trigger-Felder mal ändern sollten.
+let TRIGGER_FIELDS = {
+  estimate: [5, 8, 13, 18],
+  foreignword: [2, 10, 16, 22],
+  drawing: [4, 12, 19, 24],
+};
+function fieldTypeOf(i) {
+  if (i === FINISH_INDEX) return 'finish';
+  if (TRIGGER_FIELDS.estimate.includes(i)) return 'estimate';
+  if (TRIGGER_FIELDS.foreignword.includes(i)) return 'foreignword';
+  if (TRIGGER_FIELDS.drawing.includes(i)) return 'drawing';
+  return 'normal';
+}
+// Farben 1:1 aus style.css übernommen (--primary/--teal/--gold + das feste Fremdwort-Blau),
+// damit 2D- und 3D-Brett optisch exakt dieselbe Farbsprache sprechen.
+const FIELD_TYPE_COLORS = {
+  estimate: '#3FBFA0',
+  foreignword: '#5895F9',
+  drawing: '#F5C842',
+};
+
+function makeFieldTexture({ number, isFinish, fieldType, paletteIndex }) {
   const size = 256;
   const canvas = document.createElement('canvas');
   canvas.width = size; canvas.height = size;
@@ -108,7 +134,7 @@ function makeFieldTexture({ number, isFinish, isEstimate, paletteIndex }) {
     ctx.lineWidth = 14;
     ctx.strokeRect(7, 7, size - 14, size - 14);
   } else {
-    const baseColor = isEstimate ? '#00E6A8' : REGULAR_PALETTE[paletteIndex % REGULAR_PALETTE.length];
+    const baseColor = FIELD_TYPE_COLORS[fieldType] || REGULAR_PALETTE[paletteIndex % REGULAR_PALETTE.length];
     // Vollflächig gesättigte Grundfarbe – kein weißer Verlauf mehr der die Farbe verwäscht
     ctx.fillStyle = baseColor;
     ctx.fillRect(0, 0, size, size);
@@ -138,7 +164,6 @@ function makeFieldTexture({ number, isFinish, isEstimate, paletteIndex }) {
 // ---------- Spielfelder: ECHTE erhöhte 3D-Objekte mit echten Zahlen-Texturen ----------
 const BOARD_SLOTS = 28;
 const FINISH_INDEX = 0;
-const ESTIMATE_FIELDS = [5, 9, 18, 24];
 const RING_W = 3.48, RING_H = 5.62; // eng beieinander, kleiner Abstand (~0.07) zwischen Feldern
 // Die Frage, die gleich im 2D-Overlay angezeigt wird - dieselbe steht jetzt auch schon
 // auf der Kartenvorderseite, damit beides nahtlos zusammenpasst.
@@ -182,14 +207,14 @@ const fieldMeshes = [];
 for (let i = 0; i < BOARD_SLOTS; i++) {
   const pos = fieldPosition(i);
   const isFinish = i === FINISH_INDEX;
-  const isEstimate = ESTIMATE_FIELDS.includes(i);
+  const fieldType = fieldTypeOf(i);
 
   const height = isFinish ? 0.50 : 0.30;
   const fw = isFinish ? 0.66 : 0.58;   // Breite
   const fd = isFinish ? 0.58 : 0.52;   // Tiefe (leicht schmaler -> leicht rechteckig)
   const geo = new THREE.BoxGeometry(fw, height, fd);
 
-  const topTex = makeFieldTexture({ number: i, isFinish, isEstimate, paletteIndex: i });
+  const topTex = makeFieldTexture({ number: i, isFinish, fieldType, paletteIndex: i });
   const topMat = new THREE.MeshBasicMaterial({ map: topTex });
   // BoxGeometry-Flächen-Reihenfolge: [+x, -x, +y (oben), -y (unten), +z, -z]
   const materials = [sideMat, sideMat, topMat, sideMat, sideMat, sideMat];
@@ -198,10 +223,27 @@ for (let i = 0; i < BOARD_SLOTS; i++) {
   mesh.position.set(pos.x, height / 2, pos.z);
   mesh.castShadow = true;
   mesh.receiveShadow = true;
+  mesh.userData.fieldType = fieldType;
   fieldsGroup.add(mesh);
   fieldMeshes.push(mesh);
 }
 scene.add(fieldsGroup);
+
+// Wird aufgerufen, sobald die echten Trigger-Felder aus dem laufenden Spiel ankommen (siehe
+// 'setFieldTypes'-Nachricht unten) - texturiert alle Felder neu, ohne die Geometrie/Position
+// anzufassen (nur die oben aufliegende Textur wird ausgetauscht).
+function rebuildFieldTextures() {
+  fieldMeshes.forEach((mesh, i) => {
+    const isFinish = i === FINISH_INDEX;
+    const fieldType = fieldTypeOf(i);
+    mesh.userData.fieldType = fieldType;
+    const newTex = makeFieldTexture({ number: i, isFinish, fieldType, paletteIndex: i });
+    const topMat = mesh.material[2];
+    if (topMat.map) topMat.map.dispose();
+    topMat.map = newTex;
+    topMat.needsUpdate = true;
+  });
+}
 
 // ---------- Spielbrett-Fläche (rechteckig, liegt auf dem Tisch, Felder stehen drauf) ----------
 function makeBoardTexture() {
@@ -776,6 +818,16 @@ window.addEventListener('message', (event) => {
     drawCardAnimation(data.questionText || '❓');
   } else if (data.type === 'introPlacement') {
     playIntroPlacement(data.players);
+  } else if (data.type === 'setFieldTypes') {
+    // Echte Trigger-Felder aus dem laufenden Spiel (server.js) - stellt sicher, dass z.B.
+    // ein Zeichnen-Feld im 3D-Brett auch wirklich dieselbe Position hat wie im 2D-Brett,
+    // statt eines davon unabhängigen, fest einprogrammierten Werts.
+    TRIGGER_FIELDS = {
+      estimate: data.estimateFields || TRIGGER_FIELDS.estimate,
+      foreignword: data.foreignwordFields || TRIGGER_FIELDS.foreignword,
+      drawing: data.drawingFields || TRIGGER_FIELDS.drawing,
+    };
+    rebuildFieldTextures();
   }
 });
 // Der einbettenden Seite mitteilen, dass die 3D-Szene bereit ist, Daten zu empfangen
