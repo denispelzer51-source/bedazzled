@@ -151,10 +151,10 @@ function stripId(doc) {
   return rest;
 }
 
-const BOARD_LENGTH = 26; // Standard-Länge - UNVERÄNDERT für das normale/laufende Spiel
-// Für die 3D-Testversion kann ein Raum stattdessen mit 28 Feldern erstellt werden (passend
-// zum bestehenden 3D-Brett-Prototyp, der nicht angepasst werden sollte). Bestehende/normale
-// Räume sind von alldem komplett unberührt - board28 ist bei ihnen nie gesetzt (= 26 wie eh und je).
+const BOARD_LENGTH = 28; // jetzt an das 3D-Testbrett angeglichen (das schon länger den Wert 28 nutzt, siehe board28 unten)
+// Der board28-Sonderfall unten ist dadurch inzwischen ein reines No-Op (28 === 28) - bleibt
+// aber bewusst als Parameter bestehen, falls das 3D-Brett zukünftig doch mal einen anderen
+// Wert als die normalen Räume brauchen sollte.
 function scaleTriggerFields(fields, boardLength) {
   return fields.map(f => Math.round((f * boardLength) / BOARD_LENGTH));
 }

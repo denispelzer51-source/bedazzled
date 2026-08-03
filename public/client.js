@@ -1296,7 +1296,7 @@ let drawingTriggerFields = [4, 12, 19, 24];
 
 function renderBoard(players, positionsOverride) {
   const track = document.getElementById('board-track');
-  const BOARD_LENGTH = 26;
+  const BOARD_LENGTH = 28;
   track.innerHTML = '';
   for (let i = 0; i <= BOARD_LENGTH; i++) {
     const field = document.createElement('div');
@@ -1320,8 +1320,8 @@ function renderBoard(players, positionsOverride) {
 }
 
 // ---------- BOARD RENDER (large, animated, rechteckige Laufbahn) ----------
-const BOARD_LENGTH = 26;
-const BOARD_SLOTS = BOARD_LENGTH + 1; // Felder 0..20
+const BOARD_LENGTH = 28;
+const BOARD_SLOTS = BOARD_LENGTH + 1; // Felder 0..28
 const HOP_MS = 380; // Dauer pro Feld-Hop bei der Animation
 let roundStartPositions = {};
 let miniBarShowsLive = true; // Mini-Leiste zeigt neue Positionen erst, sobald das große Spielbrett sie enthüllt

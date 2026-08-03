@@ -568,6 +568,14 @@ const tokenMeshes = tokensData.map(t => {
   scene.add(mesh);
   return mesh;
 });
+// Diese sechs Tokens oben sind reine Platzhalter-Demodaten für die eigenständige
+// Werkstatt-Seite (board-threejs-demo.html). Im eingebetteten Spiel (board-threejs-embed.html,
+// per iframe im echten Spiel) sind sie NIE echte Spieler und sollen daher niemals sichtbar
+// aufblitzen, bevor kurz danach die echten Spieler per syncPlayersFromExternal ankommen -
+// deshalb hier sofort ausblenden, sobald erkannt wird, dass wir eingebettet laufen.
+if (window.parent && window.parent !== window) {
+  tokenMeshes.forEach(mesh => { mesh.visible = false; });
+}
 
 // Verhindert, dass mehrere Figuren auf demselben Feld exakt ineinander stehen (war bei 2-3
 // Figuren auf einem Feld praktisch nicht mehr unterscheidbar, weil die Figuren dafür zu groß
@@ -696,11 +704,12 @@ function playIntroPlacement(players) {
   const zoomInMs = 1100;
   // Figuren erscheinen NACHEINANDER (nicht alle gleichzeitig) - ein deutlicher zeitlicher
   // Versatz pro Figur, plus etwas Zeit am Ende, damit die zuletzt aufgetauchte Figur noch in
-  // Ruhe fertig "hineinwachsen" kann (die weiche Skalierung selbst läuft über die schon
-  // vorhandene Angleichung in tick()), BEVOR wieder rausgezoomt wird.
-  const revealStaggerMs = 380;
-  const revealGrowTailMs = 1000;
-  const revealPhaseMs = Math.max(1, tokenMeshes.length - 1) * revealStaggerMs + revealGrowTailMs;
+  // Ruhe fertig herabschweben/hineinwachsen kann (siehe introDrop-Handling in tick()), BEVOR
+  // wieder rausgezoomt wird. Insgesamt bewusst etwas gemächlicher als vorher.
+  const revealStaggerMs = 480;
+  const introDropHeight = 2.2; // wie weit "von oben" jede Figur sichtbar herabschwebt
+  const introDropDurationMs = 1300;
+  const revealPhaseMs = Math.max(1, tokenMeshes.length - 1) * revealStaggerMs + introDropDurationMs;
   const zoomOutMs = 1100;
   const totalMs = zoomInMs + revealPhaseMs + zoomOutMs;
 
@@ -715,14 +724,20 @@ function playIntroPlacement(players) {
       controls.target.lerpVectors(overviewCamTarget, camTarget, p);
     } else if (el < zoomInMs + revealPhaseMs) {
       // P2: Kamera steht fest auf dem Feld - Figuren werden nacheinander sichtbar
-      // geschaltet und wachsen von dort automatisch weich auf ihre Zielgröße
+      // geschaltet, schweben dabei sichtbar von oben herab und wachsen gleichzeitig weich
+      // auf ihre Zielgröße (siehe tick())
       camera.position.copy(camPos);
       controls.target.copy(camTarget);
       const elapsedInReveal = el - zoomInMs;
       const shouldBeRevealed = Math.min(tokenMeshes.length, Math.floor(elapsedInReveal / revealStaggerMs) + 1);
       while (revealedCount < shouldBeRevealed) {
         const mesh = tokenMeshes[revealedCount];
-        if (mesh) mesh.visible = true;
+        if (mesh) {
+          mesh.visible = true;
+          mesh.userData.introDropStart = performance.now();
+          mesh.userData.introDropDurationMs = introDropDurationMs;
+          mesh.userData.introDropHeight = introDropHeight;
+        }
         revealedCount++;
       }
     } else if (el < totalMs) {
@@ -738,8 +753,9 @@ function playIntroPlacement(players) {
       requestAnimationFrame(frame);
     } else {
       // Sicherheitsnetz: falls durch eine Framerate-Schwankung ein Reveal-Schritt
-      // übersprungen wurde, müssen am Ende garantiert alle Figuren sichtbar sein
-      tokenMeshes.forEach(mesh => { mesh.visible = true; });
+      // übersprungen wurde, müssen am Ende garantiert alle Figuren sichtbar sein und exakt
+      // auf ihrer Ruheposition stehen (kein Rest-Versatz vom Herabschweben)
+      tokenMeshes.forEach(mesh => { mesh.visible = true; delete mesh.userData.introDropStart; });
       controls.enabled = orbitEnabled;
       if (window.parent && window.parent !== window) {
         window.parent.postMessage({ type: 'introPlacementComplete' }, '*');
@@ -1230,6 +1246,19 @@ function tick() {
       mesh.position.x = fieldPos.x + cur.x;
       mesh.position.z = fieldPos.z + cur.z;
     }
+
+    // Herabsenken "von oben" beim Auftauchen in der Einführungs-Animation (siehe
+    // playIntroPlacement): sobald eine Figur sichtbar geschaltet wird, bekommt sie kurz einen
+    // hohen Startversatz nach oben, der hier weich auf 0 abgebaut wird - dadurch sieht man sie
+    // sichtbar von oben herabschweben, statt einfach nur an Ort und Stelle zu wachsen.
+    let introDrop = 0;
+    if (mesh.userData.introDropStart !== undefined) {
+      const dropElapsed = performance.now() - mesh.userData.introDropStart;
+      const dropP = Math.min(1, Math.max(0, dropElapsed / mesh.userData.introDropDurationMs));
+      introDrop = (1 - easeInOutCubic(dropP)) * mesh.userData.introDropHeight;
+      if (dropP >= 1) delete mesh.userData.introDropStart;
+    }
+    mesh.position.y += introDrop;
 
     // Weicher Größen-Übergang statt hartem Sprung: wenn sich die Formation ändert (z.B.
     // eine weitere Figur zieht auf dasselbe Feld oder verlässt es), wird die Zielgröße nur

@@ -1452,10 +1452,10 @@ function playIntroPlacementThenGate(state) {
     });
   });
 
-  // Sicherheitsnetz (Paint-Wartezeit ~150-200ms + Zoom rein 1100 + gestaffeltes Auftauchen
-  // aller Figuren nacheinander (bis zu ~2900ms bei 6 Spielern) + Zoom raus 1100 = bis zu
-  // ~5300ms + Puffer)
-  setTimeout(finish, 6000);
+  // Sicherheitsnetz (Paint-Wartezeit ~150-200ms + Zoom rein 1100 + gestaffeltes,
+  // langsameres Auftauchen aller Figuren nacheinander (bis zu ~3700ms bei 6 Spielern) +
+  // Zoom raus 1100 = bis zu ~6100ms + Puffer)
+  setTimeout(finish, 7000);
 }
 
 // Bündelt die Logik "was zeigen wir gerade in der Fragen-Vorschau-Phase" - wiederverwendbar,
