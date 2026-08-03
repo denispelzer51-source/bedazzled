@@ -8,6 +8,40 @@ if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Spl
 
 const socket = io({ timeout: 45000, reconnectionAttempts: 15 });
 
+// ---------- HINTERGRUND-SCROLL SPERREN, SOLANGE EIN POPUP OFFEN IST ----------
+// Popups (.overlay) werden an ganz verschiedenen Stellen im Code ein-/ausgeblendet (per
+// classList.toggle('hidden')). Statt jede einzelne Stelle einzeln anzupassen, wird hier
+// zentral per MutationObserver beobachtet, ob IRGENDEIN Popup gerade sichtbar ist - sobald
+// das der Fall ist, wird die Seite dahinter "eingefroren" (kein Weiterscrollen im
+// Hintergrund mehr möglich, auch nicht am oberen/unteren Rand des Popup-Inhalts), und beim
+// Schließen des letzten offenen Popups wird exakt an die vorherige Scroll-Position
+// zurückgesprungen.
+let overlayScrollLockActive = false;
+let overlayScrollLockY = 0;
+function refreshOverlayScrollLock() {
+  const anyOpen = Array.from(document.querySelectorAll('.overlay')).some(el => !el.classList.contains('hidden'));
+  if (anyOpen && !overlayScrollLockActive) {
+    overlayScrollLockActive = true;
+    overlayScrollLockY = window.scrollY;
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${overlayScrollLockY}px`;
+    document.body.style.left = '0';
+    document.body.style.right = '0';
+    document.body.style.width = '100%';
+  } else if (!anyOpen && overlayScrollLockActive) {
+    overlayScrollLockActive = false;
+    document.body.style.position = '';
+    document.body.style.top = '';
+    document.body.style.left = '';
+    document.body.style.right = '';
+    document.body.style.width = '';
+    window.scrollTo(0, overlayScrollLockY);
+  }
+}
+document.querySelectorAll('.overlay').forEach(el => {
+  new MutationObserver(refreshOverlayScrollLock).observe(el, { attributes: true, attributeFilter: ['class'] });
+});
+
 let connectionTroubleShown = false;
 socket.on('connect_error', () => {
   if (connectionTroubleShown) return;
@@ -1367,13 +1401,11 @@ const CARD_DRAW_ANIMATION_MS = 3600;
 
 function setCardDrawGateVisible(visible) {
   document.getElementById('btn-draw-card-trigger').classList.toggle('hidden', !visible);
-  document.getElementById('card-draw-waiting-msg').classList.toggle('hidden', !visible);
   // Die "normalen" Brett-Buttons (die für den ECHTEN Rundenabschluss gedacht sind) müssen
   // während dieses Zwischenschritts verschwinden, sonst stehen "Nächste Runde"/"Ergebnisse"
   // verwirrend neben "Karte ziehen".
   document.getElementById('btn-next-round').classList.toggle('hidden', visible);
   document.getElementById('btn-new-game').classList.toggle('hidden', true); // bleibt sowieso meist versteckt
-  document.getElementById('board-waiting-msg').classList.toggle('hidden', visible);
   document.getElementById('btn-show-results-recap').classList.toggle('hidden', visible);
 }
 
@@ -1384,9 +1416,6 @@ function showCardDrawGate(state) {
   const btn = document.getElementById('btn-draw-card-trigger');
   btn.disabled = false;
   btn.textContent = '🃏 Karte ziehen';
-  const moderatorPlayer = state.players.find(p => p.id === state.moderatorId);
-  document.getElementById('card-draw-waiting-msg').textContent =
-    `Warte, bis ${moderatorPlayer ? moderatorPlayer.name : 'der/die Moderator:in'} die Karte zieht …`;
   // Spielbrett im iframe auf dem aktuellen Stand zeigen (ohne Zug-Animation, nur Positionen)
   sync3DBoard(state.players, {}, false, null);
   showScreen('board');
@@ -1399,7 +1428,6 @@ function playCardDrawThenReveal(state) {
   setCardDrawGateVisible(true);
   document.getElementById('btn-draw-card-trigger').disabled = true;
   document.getElementById('btn-draw-card-trigger').textContent = '🃏 Karte wird gezogen …';
-  document.getElementById('card-draw-waiting-msg').textContent = 'Die Karte wird gezogen …';
   // WICHTIG: nur der/die Moderator:in bekommt den echten Fragetext auf der Karte zu sehen -
   // alle anderen sehen dieselbe Animation, aber mit einem Platzhalter statt der Frage.
   const qp = state.questionPreview;
@@ -2391,9 +2419,6 @@ socket.on('state', (state) => {
     showScreen('board');
     document.getElementById('btn-next-round').classList.toggle('hidden', !!state.gameOver);
     document.getElementById('btn-new-game').classList.toggle('hidden', !state.gameOver);
-    if (document.getElementById('board-waiting-msg')) {
-      document.getElementById('board-waiting-msg').classList.toggle('hidden', !!state.gameOver);
-    }
   }
 });
 

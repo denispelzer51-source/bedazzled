@@ -160,20 +160,35 @@
       await Promise.all(iframes.map(waitForIframeLoaded));
       // Kleiner Puffer: die Seite muss ihr eigenes Setup (Socket-Verbindung, Vorbelegung von
       // Name/Spielfigur für den Test-Slot) noch synchron abschließen können.
-      await new Promise(r => setTimeout(r, 400));
+      await new Promise(r => setTimeout(r, 600));
 
       // WICHTIG: der direkte "Raum erstellen"-Weg hat sich als nicht zuverlässig automatisierbar
-      // erwiesen - stattdessen wird hier exakt der vom Nutzer bestätigte, manuell funktionierende
-      // Weg über "🎲 Multiplayer (zufällige Lobby)" nachgebaut: jedes Fenster tritt derselben
-      // Größen-Warteschlange bei (4er- oder 6er-Lobby, je nach gewählter Spieleranzahl), sobald
-      // genug Fenster beigetreten sind, entsteht automatisch eine gemeinsame Lobby.
+      // erwiesen - stattdessen wird hier der vom Nutzer bestätigte, manuell funktionierende Weg
+      // über "🎲 Multiplayer (zufällige Lobby)" nachgebaut. Anders als vorher werden die Klicks
+      // jetzt bewusst NACHEINANDER (nicht alle Fenster gleichzeitig) und mit echten Pausen
+      // dazwischen ausgeführt - deutlich näher an echtem, manuellem Klicken, statt alles in
+      // einem einzigen Synchron-Durchlauf abzufeuern.
       const mpSize = playerCount <= 4 ? 4 : 6;
-      iframes.forEach((iframe) => {
+      for (const iframe of iframes) {
         const doc = iframe.contentDocument;
         doc.getElementById('btn-multiplayer-toggle').click();
+        await new Promise(r => setTimeout(r, 250));
         doc.getElementById(mpSize === 4 ? 'btn-mp-size-4' : 'btn-mp-size-6').click();
+        await new Promise(r => setTimeout(r, 250));
         doc.getElementById('btn-confirm-setup').click();
-      });
+        // Warten, bis dieses eine Fenster den Matchmaking-Warte-Bildschirm auch wirklich
+        // erreicht hat, BEVOR das nächste Fenster überhaupt anfängt - deckt u.a. auf, wenn
+        // ein einzelnes Fenster (z.B. wegen eines leeren Namensfelds) gar nicht erst beitritt.
+        const reachedWaiting = await waitFor(() => {
+          const el = doc.getElementById('screen-matchmaking');
+          return el && el.classList.contains('active');
+        }, 4000);
+        if (!reachedWaiting) {
+          const errMsg = (doc.getElementById('setup-error-msg') || {}).textContent || '(keine Fehlermeldung im Fenster sichtbar)';
+          throw new Error(`Ein Testfenster ist nicht in die Warteschlange gekommen. Meldung im Fenster: "${errMsg}"`);
+        }
+        await new Promise(r => setTimeout(r, 300));
+      }
 
       // Warten, bis aus der Warteschlange eine gemeinsame Lobby mit allen Testspielern
       // entstanden ist (bei einer Spieleranzahl, die nicht exakt 4 oder 6 ist, dauert das
@@ -185,19 +200,33 @@
           && refWin.__bedazzledTest.getPlayerCount() >= playerCount,
         25000
       );
-      if (!gotLobby) throw new Error('Es ist keine gemeinsame Lobby mit allen Testspielern zustande gekommen.');
+      if (!gotLobby) {
+        const diag = iframes.map((f, i) => {
+          const w = f.contentWindow;
+          const phase = w.__bedazzledTest ? w.__bedazzledTest.getPhase() : '(keine Test-API)';
+          const count = w.__bedazzledTest ? w.__bedazzledTest.getPlayerCount() : '?';
+          return `Fenster ${i + 1}: Phase="${phase}", Spieler im State=${count}`;
+        }).join('\n');
+        throw new Error('Es ist keine gemeinsame Lobby mit allen Testspielern zustande gekommen.\n' + diag);
+      }
 
       // Kurzer Puffer, damit der Lobby-State (inkl. Avatar-Auswahl-UI) in jedem Fenster
       // sicher gerendert wurde, bevor Spielfiguren ausgewählt werden.
       await new Promise(r => setTimeout(r, 400));
 
       // Spielfiguren nacheinander (nicht parallel!) auswählen lassen, damit sich zwei
-      // Fenster nicht versehentlich dieselbe Figur gleichzeitig schnappen.
+      // Fenster nicht versehentlich dieselbe Figur gleichzeitig schnappen. WICHTIG: nach
+      // dem Matchmaking läuft die Auswahl über die LOBBY-eigene Auswahl-Box
+      // (#lobby-avatar-picker + eigener Bestätigen-Button), NICHT über die Setup-Screen-Box
+      // (#avatar-picker) - die wird beim Multiplayer-Weg ja bewusst ausgeblendet.
       for (const iframe of iframes) {
         const doc = iframe.contentDocument;
-        const freeOption = Array.from(doc.querySelectorAll('#avatar-picker .avatar-option'))
+        const freeOption = Array.from(doc.querySelectorAll('#lobby-avatar-picker .avatar-option'))
           .find(el => !el.classList.contains('taken'));
         if (freeOption) freeOption.click();
+        await new Promise(r => setTimeout(r, 150));
+        const confirmBtn = doc.getElementById('btn-confirm-lobby-avatar');
+        if (confirmBtn && !confirmBtn.disabled) confirmBtn.click();
         await new Promise(r => setTimeout(r, 300));
       }
 

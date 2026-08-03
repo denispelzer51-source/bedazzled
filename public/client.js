@@ -2250,9 +2250,6 @@ socket.on('state', (state) => {
     showScreen('board');
     document.getElementById('btn-next-round').classList.toggle('hidden', !!state.gameOver);
     document.getElementById('btn-new-game').classList.toggle('hidden', !state.gameOver);
-    if (document.getElementById('board-waiting-msg')) {
-      document.getElementById('board-waiting-msg').classList.toggle('hidden', !!state.gameOver);
-    }
   }
 });
 

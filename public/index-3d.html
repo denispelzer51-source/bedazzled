@@ -430,10 +430,8 @@
 
     <div class="screen-footer">
       <button id="btn-draw-card-trigger" class="btn btn-primary mod-only hidden">🃏 Karte ziehen</button>
-      <p id="card-draw-waiting-msg" class="waiting-msg mod-hide hidden">Warte, bis die Karte gezogen wird …</p>
       <button id="btn-next-round" class="btn btn-primary mod-only">Nächste Runde</button>
       <button id="btn-new-game" class="btn btn-primary hidden">🔄 Neue Runde (gleiche Lobby)</button>
-      <p id="board-waiting-msg" class="waiting-msg mod-hide">Warte auf den Moderator …</p>
       <button id="btn-show-results-recap" class="btn btn-secondary">📊 Ergebnisse</button>
       <button class="btn-leave-game">Spiel verlassen</button>
     </div>
@@ -499,7 +497,7 @@
 <div id="settings-overlay" class="overlay hidden">
   <div class="overlay-card settings-card">
     <h2>⚙️ Einstellungen</h2>
-    <div id="settings-content" class="settings-content">
+    <div id="settings-content" class="settings-content overlay-scroll-body">
       <div id="settings-room-row" class="settings-row settings-room-row hidden">
         <span>Raum-Code</span>
         <span id="settings-room-code" class="settings-code">----</span>
@@ -527,7 +525,6 @@
       </div>
 
       <div id="admin-tools-box" class="hidden" style="margin-top:14px; padding-top:14px; border-top:1px solid rgba(255,255,255,0.1);">
-        <p class="hint" style="margin:0 0 10px;">🛠 Admin-Werkzeuge (nur für dich sichtbar)</p>
         <button id="btn-admin-skip-round" class="btn btn-secondary" style="margin-bottom:10px;">⏭ Aktuelle Runde überspringen</button>
         <button id="btn-admin-force-drawing" class="btn btn-secondary" style="margin-bottom:10px;">🎨 Zeichnenrunde jetzt starten (Test)</button>
         <button id="btn-admin-force-board" class="btn btn-secondary" style="margin-bottom:10px;">🎲 Zufallszüge + Spielbrett zeigen (Test)</button>
@@ -541,17 +538,19 @@
 <div id="scoreboard-overlay" class="overlay hidden">
   <div class="overlay-card" style="max-width:360px; width:92%;">
     <h2 style="margin-top:0;">📊 Punkteliste</h2>
-    <p id="scoreboard-win-hint" class="hint" style="margin-bottom:16px;"></p>
-    <div id="scoreboard-list" style="display:flex; flex-direction:column; gap:8px; margin-bottom:20px;"></div>
+    <div class="overlay-scroll-body">
+      <p id="scoreboard-win-hint" class="hint" style="margin-bottom:16px;"></p>
+      <div id="scoreboard-list" style="display:flex; flex-direction:column; gap:8px; margin-bottom:8px;"></div>
+    </div>
     <button id="btn-close-scoreboard" class="btn btn-primary">Schließen</button>
   </div>
 </div>
 
 <div id="winner-overlay" class="overlay hidden">
   <div class="overlay-card winner-card">
-    <span class="brand-mask big">🏆</span>
+    <span class="brand-mask big" style="flex-shrink:0;">🏆</span>
     <h2 id="winner-text"></h2>
-    <div id="awards-list" class="awards-list"></div>
+    <div id="awards-list" class="awards-list overlay-scroll-body"></div>
     <button id="btn-close-winner" class="btn btn-primary">Schließen</button>
   </div>
 </div>
