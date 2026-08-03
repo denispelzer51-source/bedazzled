@@ -1452,9 +1452,10 @@ function playIntroPlacementThenGate(state) {
     });
   });
 
-  // Sicherheitsnetz (Paint-Wartezeit ~150-200ms + Zoom rein 1100 + Halten 1500 + Zoom raus
-  // 1100 = ~3900-4000ms + Puffer)
-  setTimeout(finish, 4700);
+  // Sicherheitsnetz (Paint-Wartezeit ~150-200ms + Zoom rein 1100 + gestaffeltes Auftauchen
+  // aller Figuren nacheinander (bis zu ~2900ms bei 6 Spielern) + Zoom raus 1100 = bis zu
+  // ~5300ms + Puffer)
+  setTimeout(finish, 6000);
 }
 
 // Bündelt die Logik "was zeigen wir gerade in der Fragen-Vorschau-Phase" - wiederverwendbar,
@@ -2644,3 +2645,17 @@ document.getElementById('btn-demo-next').addEventListener('click', () => {
     showScreen('start');
   }
 });
+
+// ---------- TEST-AUTOMATISIERUNG FÜR DEN SIMULATOR ----------
+// Der Test-Simulator (simulator-3d.html) bettet mehrere Instanzen dieser Seite als iframes
+// ein (alle same-origin) und kann darüber den "Testrunde automatisch einrichten"-Button
+// anbieten. Dafür braucht die Eltern-Seite Zugriff auf ein paar interne Werte, die hier
+// bewusst als kleine, stabile API bereitgestellt werden, statt dass der Simulator direkt in
+// interne, mit "let" deklarierte Variablen greifen müsste (die wären von außen ohnehin nicht
+// sichtbar, da "let"/"const" im Top-Level-Scope eines klassischen Scripts NICHT automatisch
+// zu window-Properties werden).
+window.__bedazzledTest = {
+  getRoomCode: () => currentCode,
+  getPhase: () => (lastState ? lastState.phase : null),
+  getPlayerCount: () => (lastState && lastState.players ? lastState.players.length : 0),
+};

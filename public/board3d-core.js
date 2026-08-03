@@ -677,7 +677,13 @@ function movePlayerByIdExternal(playerId, steps) {
 // zur gewohnten Übersicht.
 function playIntroPlacement(players) {
   syncPlayersFromExternal(players);
-  tokenMeshes.forEach(mesh => { mesh.scale.setScalar(0.001); });
+  // Figuren bleiben zunächst KOMPLETT unsichtbar (nicht nur winzig skaliert) - sie dürfen
+  // erst auftauchen, NACHDEM die Kamera fertig auf das Start-/Zielfeld gezoomt ist, nicht
+  // schon während des Zoomens.
+  tokenMeshes.forEach(mesh => {
+    mesh.visible = false;
+    mesh.scale.setScalar(0.001);
+  });
 
   const startWorld = fieldPosition(0);
   const dir = dirForEdge(classifyEdge(startWorld));
@@ -687,20 +693,41 @@ function playIntroPlacement(players) {
   const overviewCamTarget = controls.target.clone();
 
   controls.enabled = false;
-  const zoomInMs = 1100, holdMs = 1500, zoomOutMs = 1100;
-  const totalMs = zoomInMs + holdMs + zoomOutMs;
+  const zoomInMs = 1100;
+  // Figuren erscheinen NACHEINANDER (nicht alle gleichzeitig) - ein deutlicher zeitlicher
+  // Versatz pro Figur, plus etwas Zeit am Ende, damit die zuletzt aufgetauchte Figur noch in
+  // Ruhe fertig "hineinwachsen" kann (die weiche Skalierung selbst läuft über die schon
+  // vorhandene Angleichung in tick()), BEVOR wieder rausgezoomt wird.
+  const revealStaggerMs = 380;
+  const revealGrowTailMs = 1000;
+  const revealPhaseMs = Math.max(1, tokenMeshes.length - 1) * revealStaggerMs + revealGrowTailMs;
+  const zoomOutMs = 1100;
+  const totalMs = zoomInMs + revealPhaseMs + zoomOutMs;
+
+  let revealedCount = 0;
   const start = performance.now();
   function frame(now) {
     const el = now - start;
     if (el < zoomInMs) {
+      // P1: nur die Kamera zoomt heran - alle Figuren bleiben unsichtbar
       const p = easeInOutCubic(el / zoomInMs);
       camera.position.lerpVectors(overviewCamPos, camPos, p);
       controls.target.lerpVectors(overviewCamTarget, camTarget, p);
-    } else if (el < zoomInMs + holdMs) {
+    } else if (el < zoomInMs + revealPhaseMs) {
+      // P2: Kamera steht fest auf dem Feld - Figuren werden nacheinander sichtbar
+      // geschaltet und wachsen von dort automatisch weich auf ihre Zielgröße
       camera.position.copy(camPos);
       controls.target.copy(camTarget);
+      const elapsedInReveal = el - zoomInMs;
+      const shouldBeRevealed = Math.min(tokenMeshes.length, Math.floor(elapsedInReveal / revealStaggerMs) + 1);
+      while (revealedCount < shouldBeRevealed) {
+        const mesh = tokenMeshes[revealedCount];
+        if (mesh) mesh.visible = true;
+        revealedCount++;
+      }
     } else if (el < totalMs) {
-      const p = easeInOutCubic((el - zoomInMs - holdMs) / zoomOutMs);
+      // P3: alle Figuren stehen, Kamera zoomt zurück zur gewohnten Übersicht
+      const p = easeInOutCubic((el - zoomInMs - revealPhaseMs) / zoomOutMs);
       camera.position.lerpVectors(camPos, overviewCamPos, p);
       controls.target.lerpVectors(camTarget, overviewCamTarget, p);
     } else {
@@ -710,6 +737,9 @@ function playIntroPlacement(players) {
     if (el < totalMs) {
       requestAnimationFrame(frame);
     } else {
+      // Sicherheitsnetz: falls durch eine Framerate-Schwankung ein Reveal-Schritt
+      // übersprungen wurde, müssen am Ende garantiert alle Figuren sichtbar sein
+      tokenMeshes.forEach(mesh => { mesh.visible = true; });
       controls.enabled = orbitEnabled;
       if (window.parent && window.parent !== window) {
         window.parent.postMessage({ type: 'introPlacementComplete' }, '*');
