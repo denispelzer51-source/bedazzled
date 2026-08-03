@@ -1046,7 +1046,15 @@ function drawCardAnimation(questionText) {
   const faceDir = viewDir.clone(); // Richtung von der Karten-Endposition zur Kamera
 
   const flipAxis = new THREE.Vector3(0, 1, 0).add(faceDir).normalize();
-  const qFlipFull = new THREE.Quaternion().setFromAxisAngle(flipAxis, Math.PI);
+  // 540° (= 1,5 volle Umdrehungen) statt nur 180° - endet bei EXAKT derselben Ausrichtung
+  // wie eine einfache 180°-Drehung (540° mod 360° = 180°), sieht dabei aber deutlich
+  // dynamischer aus (Karte dreht sich sichtbar mehrfach, statt nur einmal aufzuklappen).
+  // WICHTIG: dafür darf NICHT slerp() zwischen zwei Quaternions verwendet werden (das würde
+  // immer nur den kürzesten Weg - also wieder nur 180° - nehmen, egal wie der Zielwinkel
+  // benannt ist), sondern der Drehwinkel wird jeden Frame direkt neu aus dem Fortschritt p
+  // berechnet und per setFromAxisAngle gesetzt.
+  const FLIP_TURNS = 1.5;
+  const flipAngleTotal = FLIP_TURNS * Math.PI * 2; // 540° in Radiant
 
   const liftTarget = new THREE.Vector3(startPos.x, startPos.y + 0.9, startPos.z);
   // Skalierung so berechnet, dass die Karte am Ende bildschirmfüllend ist - unabhängig
@@ -1079,7 +1087,7 @@ function drawCardAnimation(questionText) {
       // ganze Zeit exakt an ihrer Position/ihrem Blickwinkel stehen.
       const p = easeInOutCubic((el - liftMs) / openMs);
       topCardMesh.position.lerpVectors(liftTarget, cardEndPos, p);
-      topCardMesh.quaternion.identity().slerp(qFlipFull, p);
+      topCardMesh.quaternion.setFromAxisAngle(flipAxis, flipAngleTotal * p);
       topCardMesh.scale.setScalar(lerp(1, endScale, p));
 
       // 2D-Frage-Overlay schon knapp VOR dem völligen Abschluss der Animation einblenden

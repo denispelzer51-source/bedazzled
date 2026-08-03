@@ -1433,9 +1433,28 @@ function playIntroPlacementThenGate(state) {
     renderPreviewQuestionFlow(lastState || state);
   }
   onIntroPlacementComplete = finish;
-  sendToBoard3D({ type: 'introPlacement', players: playersPayload });
-  // Sicherheitsnetz (Zoom rein 1100 + Halten 1500 + Zoom raus 1100 = 3700ms + Puffer)
-  setTimeout(finish, 4300);
+
+  // WICHTIG: das 3D-Brett-iframe existiert schon die ganze Zeit im Hintergrund (auch
+  // während Lobby/Antwortphase etc.), ist aber unsichtbar, solange der Board-Screen nicht
+  // aktiv ist ("display:none" auf der umschließenden Sektion). Würde die Platzierungs-
+  // Animation SOFORT im selben Moment losgeschickt, in dem showScreen('board') aufgerufen
+  // wird, könnte sie ganz oder teilweise ablaufen, BEVOR der Browser den Bildschirmwechsel
+  // tatsächlich gemalt und das iframe sichtbar/entdrosselt hat - dann sähen die Spieler die
+  // Figuren u.U. schon fertig platziert, statt das Auftauchen mitzubekommen. Deshalb hier
+  // erst zwei aufeinanderfolgende requestAnimationFrame-Zyklen abwarten (garantiert: der
+  // vorherige Frame wurde vom Browser gemalt) und danach noch eine kleine Pufferzeit, bevor
+  // die eigentliche Animation angestoßen wird.
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        sendToBoard3D({ type: 'introPlacement', players: playersPayload });
+      }, 150);
+    });
+  });
+
+  // Sicherheitsnetz (Paint-Wartezeit ~150-200ms + Zoom rein 1100 + Halten 1500 + Zoom raus
+  // 1100 = ~3900-4000ms + Puffer)
+  setTimeout(finish, 4700);
 }
 
 // Bündelt die Logik "was zeigen wir gerade in der Fragen-Vorschau-Phase" - wiederverwendbar,
