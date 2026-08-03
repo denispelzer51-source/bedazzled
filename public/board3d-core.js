@@ -1027,13 +1027,14 @@ function drawCardAnimation(questionText) {
   // sich die KARTE selbst in genau den Winkel, in dem die (fest stehende) Kamera ohnehin auf
   // das Spielbrett schaut, und bewegt sich dabei auf die Kamera/den Bildschirm zu.
   //
-  // Geometrischer Trick dafuer: die Karte liegt anfangs flach auf dem Stapel, ihre
-  // Vorderseiten-Normale zeigt also nach oben (0,1,0). Damit sie am Ende GENAU zur Kamera
-  // zeigt (= "im selben Winkel wie der Bildschirm aufs Brett schaut"), muss ihre Normale am
-  // Ende auf "faceDir" zeigen (die Richtung von der Karten-Endposition zur Kamera). Eine
-  // 180Grad-Drehung um die Achse "Mitte zwischen (0,1,0) und faceDir" bildet (0,1,0) exakt
-  // auf faceDir ab (Standard-Eigenschaft von 180 Grad-Drehungen um eine Winkelhalbierende) -
-  // UND liest sich dabei weiterhin wie ein normales "Aufklappen" (kein Kamera-Sprung noetig).
+  // Geometrischer Trick dafuer: die Karte liegt anfangs flach auf dem Stapel. Damit ihre
+  // Vorderseite (Frage-Text) am Ende GENAU zur Kamera zeigt (= "im selben Winkel wie der
+  // Bildschirm aufs Brett schaut"), muss ihre Normale am Ende auf "faceDir" zeigen (die
+  // Richtung von der Karten-Endposition zur Kamera). Eine 180°-Drehung um die Achse "Mitte
+  // zwischen Ruhe-Normale und faceDir" bildet die Ruhe-Normale exakt auf faceDir ab
+  // (Standard-Eigenschaft von 180°-Drehungen um eine Winkelhalbierende) - UND liest sich
+  // dabei weiterhin wie ein normales Aufklappen (kein Kamera-Sprung nötig). Welche Richtung
+  // die Ruhe-Normale tatsächlich hat, steht weiter unten (restingFaceNormal).
   const mainCamPos = camera.position.clone();
   const mainCamTarget = controls.target.clone();
   const viewDir = mainCamPos.clone().sub(mainCamTarget).normalize(); // von Brettmitte zur Kamera
@@ -1045,7 +1046,15 @@ function drawCardAnimation(questionText) {
   const cardEndPos = mainCamPos.clone().addScaledVector(viewDir, -distFromCam);
   const faceDir = viewDir.clone(); // Richtung von der Karten-Endposition zur Kamera
 
-  const flipAxis = new THREE.Vector3(0, 1, 0).add(faceDir).normalize();
+  // KORREKTUR: die Frage-Textur sitzt in Ruhelage an der UNTERSEITE der Karte (deswegen
+  // "Rückseite oben, Frage unten" beim Abheben vom Stapel, siehe Kartenaufbau weiter oben:
+  // die Front-Plane hat eine negative Y-Position). Die Vorderseiten-Normale bei Identität
+  // zeigt also nach UNTEN (0,-1,0), NICHT nach oben - eine frühere Version dieser Funktion
+  // ging fälschlich von "Normale zeigt nach oben" aus, wodurch die Drehachse fast senkrecht
+  // wurde und die Karte wie ein Kreisel um die eigene Hochachse rotierte, statt sich wie eine
+  // Tür/Buchseite zur Seite zu öffnen.
+  const restingFaceNormal = new THREE.Vector3(0, -1, 0);
+  const flipAxis = restingFaceNormal.clone().add(faceDir).normalize();
   // 540° (= 1,5 volle Umdrehungen) statt nur 180° - endet bei EXAKT derselben Ausrichtung
   // wie eine einfache 180°-Drehung (540° mod 360° = 180°), sieht dabei aber deutlich
   // dynamischer aus (Karte dreht sich sichtbar mehrfach, statt nur einmal aufzuklappen).

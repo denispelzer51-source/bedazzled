@@ -1883,6 +1883,15 @@ socket.on('state', (state) => {
     miniBarShowsLive = true;
   }
 
+  const enteringQuestionPreview = state.phase === 'previewQuestion' && (!lastState || lastState.phase !== 'previewQuestion');
+  // "Die allererste Runde des gesamten Spiels" (Lobby -> erste previewQuestion) - siehe
+  // playIntroPlacementThenGate weiter unten. MUSS wie alle anderen "entering*"-Flags VOR
+  // der Zeile "lastState = state;" berechnet werden, sonst vergleicht der Check lastState
+  // mit sich selbst und erkennt den Phasenwechsel nie (das war der Bug: dadurch feuerte
+  // weder die Einführungs-Animation noch der Karten-Animation-Reset je nach der allerersten
+  // Runde).
+  const enteringFirstRoundEver = state.phase === 'previewQuestion' && lastState && lastState.phase === 'lobby' && !lastState.gameStarted;
+
   lastState = state;
   justReconnected = false;
   updateConnectionBanner(state);
@@ -1910,7 +1919,6 @@ socket.on('state', (state) => {
   }
 
   if (state.phase === 'previewQuestion') {
-    const enteringQuestionPreview = !lastState || lastState.phase !== 'previewQuestion';
     if (enteringQuestionPreview) {
       qpSwapAreaRevealed = false;
       document.getElementById('qp-swap-area').classList.add('hidden');
@@ -1929,7 +1937,6 @@ socket.on('state', (state) => {
     // vor JEDER Runde erneut ausgelöst, nicht nur vor der ersten). Das Flag "gameStarted"
     // bleibt dagegen ab dem allerersten Rundenstart dauerhaft true, damit lässt sich die
     // echte allererste Runde zuverlässig von der Zwischen-Runden-Lobby unterscheiden.
-    const enteringFirstRoundEver = lastState && lastState.phase === 'lobby' && !lastState.gameStarted && state.phase === 'previewQuestion';
     if (enteringFirstRoundEver && !introPlacementPlaying) {
       playIntroPlacementThenGate(state);
     } else if (!introPlacementPlaying) {
