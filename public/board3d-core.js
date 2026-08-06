@@ -1305,20 +1305,12 @@ function drawCardAnimation(questionText, categoryLabel, accentColor) {
   const mainCamTarget = controls.target.clone();
   const viewDir = mainCamPos.clone().sub(mainCamTarget).normalize(); // von Brettmitte zur Kamera
 
-  // Endposition der Karte: auf der Sichtachse der Kamera, aber deutlich naeher an der
-  // Kamera als der Kartenstapel - die Karte bewegt sich dadurch sichtbar auf den
-  // Bildschirm/die Kamera zu, statt dass die Kamera zu ihr fährt.
+  // Endposition der Karte: exakt auf der Sichtachse der Kamera (also garantiert mittig im
+  // Bild), aber deutlich naeher an der Kamera als der Kartenstapel - die Karte bewegt sich
+  // dadurch sichtbar auf den Bildschirm/die Kamera zu, statt dass die Kamera zu ihr fährt.
   const distFromCam = 2.6;
   const cardEndPos = mainCamPos.clone().addScaledVector(viewDir, -distFromCam);
-  // WICHTIG: etwas nach oben verschoben, damit unten von vornherein Platz für die
-  // Fragen-Vorschau-Steuerung (Vorherige/Nächste/Bestätigen-Box) frei bleibt. Vorher landete
-  // die Karte exakt mittig im Bild - sobald die Box danach erschien, deckte sie den unteren
-  // Kartenrand ab, was wie ein nachträglicher Sprung der Karte wirkte, obwohl sich die Karte
-  // selbst gar nicht bewegt hatte.
-  cardEndPos.y += 0.85;
-  // faceDir NACH der Verschiebung neu berechnen (nicht mehr einfach viewDir übernehmen),
-  // damit die Karte trotz der leicht veränderten Position weiterhin exakt zur Kamera zeigt.
-  const faceDir = mainCamPos.clone().sub(cardEndPos).normalize();
+  const faceDir = viewDir.clone(); // Richtung von der Karten-Endposition zur Kamera
 
   // KORREKTUR: die Frage-Textur sitzt in Ruhelage an der UNTERSEITE der Karte (deswegen
   // "Rückseite oben, Frage unten" beim Abheben vom Stapel, siehe Kartenaufbau weiter oben:
@@ -1515,7 +1507,11 @@ function tick() {
     // dieses Ziels angenähert, statt sofort dorthin zu springen.
     const targetScale = mesh.userData.slotScale !== undefined ? mesh.userData.slotScale : 1;
     if (Math.abs(mesh.scale.x - targetScale) > 0.002) {
-      mesh.scale.setScalar(mesh.scale.x + (targetScale - mesh.scale.x) * 0.045);
+      // Bewusst langsamer als die Positions-Angleichung (0.045) - das Verkleinern beim
+      // Ankommen auf einem schon besetzten Feld wirkte trotz weicher Interpolation noch zu
+      // "abgehackt"/auffällig. Ein kleinerer Faktor macht den Übergang deutlich sanfter und
+      // weniger ins Auge fallend.
+      mesh.scale.setScalar(mesh.scale.x + (targetScale - mesh.scale.x) * 0.025);
     }
     if (mesh.userData.gem) {
       // Rein kosmetische, langsame Eigendrehung des Edelstein-Körpers - unabhängig von

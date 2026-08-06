@@ -487,7 +487,7 @@ h2 { font-family: var(--font-display); font-weight: 700; font-size: 24px; text-a
 
 /* Einstellungen-Zahnrad: nur auf dem Startbildschirm sichtbar, oben links (wo sonst der
    Zurück-Pfeil sitzt - auf dem Startbildschirm gibt's den ja nicht) */
-#btn-settings { display: flex; font-size: 22px; position: fixed; top: calc(16px + env(safe-area-inset-top)); right: 16px; left: auto; z-index: 31; }
+#btn-settings { display: flex; font-size: 22px; position: fixed; top: calc(16px + env(safe-area-inset-top)); right: 16px; left: auto; z-index: 80; }
 #btn-settings.visible { display: flex; }
 .settings-card { text-align: left; max-width: 380px; width: 100%; }
 .settings-card h2 { text-align: center; }

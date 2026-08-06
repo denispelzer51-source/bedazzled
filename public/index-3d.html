@@ -377,15 +377,15 @@
            der Kamera), keine Bildschirm-Überleitung mehr. Moderator:in bekommt hier nur noch
            einen "nächste Frage"-Pfeil (kein "zurück", da linear vorwärts) + Bestätigen-Button
            direkt unter der Karte; andere Spieler:innen sehen nur einen Warte-Hinweis. -->
-      <div id="qp-inline-moderator" class="hidden" style="background:var(--night-2); border:1.5px solid rgba(172,88,249,0.35); border-radius:var(--radius); padding:16px;">
-        <div style="display:flex; gap:8px; margin-bottom:8px;">
-          <button id="btn-qp-inline-prev" class="btn btn-secondary" style="flex:1;" disabled>◀ Vorherige Frage</button>
-          <button id="btn-qp-inline-next" class="btn btn-secondary" style="flex:1;">Nächste Frage ▶</button>
+      <div id="qp-inline-moderator" class="hidden" style="background:var(--night-2); border:1.5px solid rgba(172,88,249,0.35); border-radius:var(--radius); padding:10px;">
+        <div style="display:flex; gap:8px; margin-bottom:6px;">
+          <button id="btn-qp-inline-prev" class="btn btn-secondary" style="flex:1; padding:8px 4px; font-size:13px;" disabled>◀ Vorherige</button>
+          <button id="btn-qp-inline-next" class="btn btn-secondary" style="flex:1; padding:8px 4px; font-size:13px;">Nächste ▶</button>
         </div>
-        <button id="btn-qp-inline-confirm" class="btn btn-primary">✓ Runde mit dieser Frage starten</button>
+        <button id="btn-qp-inline-confirm" class="btn btn-primary" style="padding:10px 4px; font-size:14px;">✓ Runde mit dieser Frage starten</button>
       </div>
-      <div id="qp-inline-waiting" class="hidden" style="text-align:center; background:var(--night-2); border:1.5px solid rgba(172,88,249,0.35); border-radius:var(--radius); padding:16px;">
-        <p id="qp-inline-waiting-text" class="hint" style="font-size:15px; margin:0;"></p>
+      <div id="qp-inline-waiting" class="hidden" style="text-align:center; background:var(--night-2); border:1.5px solid rgba(172,88,249,0.35); border-radius:var(--radius); padding:10px;">
+        <p id="qp-inline-waiting-text" class="hint" style="font-size:14px; margin:0;"></p>
       </div>
 
       <button id="btn-next-round" class="btn btn-primary mod-only">Nächste Runde</button>
