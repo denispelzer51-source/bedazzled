@@ -820,7 +820,12 @@ function placeTokens() {
     mesh.userData.isMoving = false;
     const offset = mesh.userData.slotOffset || { x: 0, z: 0 };
     mesh.userData.currentOffset = { x: offset.x, z: offset.z };
-    mesh.scale.setScalar(mesh.userData.slotScale !== undefined ? mesh.userData.slotScale : 1);
+    // KEIN mesh.scale.setScalar(...) mehr hier (war die letzte verbliebene Stelle, die die
+    // Größe schlagartig statt weich gesetzt hat - jede Figur "hüpfte" sichtbar, sobald
+    // placeTokens() erneut lief, z.B. bei jeder Positions-Synchronisation während des
+    // Spiels). Die Zielgröße (slotScale) wird oben in updateTokenLayout() gesetzt, der
+    // eigentliche Übergang läuft für ALLE Größenänderungen einheitlich weich über die
+    // tick()-Schleife.
     const pos = fieldPosition(t.pos);
     setTokenWorldPos(idx, pos.x, pos.z);
   });
@@ -1163,7 +1168,9 @@ function animateMove(tokenIdx, steps, onComplete) {
   // nach, statt bis zum Zug-Ende in der alten (jetzt zu großen) Anordnung stehen zu bleiben.
   tokenMeshes[tokenIdx].userData.slotOffset = { x: 0, z: 0 };
   tokenMeshes[tokenIdx].userData.slotScale = 1;
-  tokenMeshes[tokenIdx].scale.setScalar(1);
+  // KEIN sofortiges scale.setScalar(1) mehr - das ließ die Figur beim Losziehen abrupt
+  // "aufploppen". Jetzt wächst sie über die normale tick()-Angleichung weich auf volle
+  // Größe, auch schon während der Flug-Bewegung selbst (wie gewünscht), statt schlagartig.
   tokenMeshes[tokenIdx].userData.isMoving = true;
   updateTokenLayout(tokenIdx);
   preRegroupDestinationField(tokenIdx, endPos);
@@ -1298,12 +1305,20 @@ function drawCardAnimation(questionText, categoryLabel, accentColor) {
   const mainCamTarget = controls.target.clone();
   const viewDir = mainCamPos.clone().sub(mainCamTarget).normalize(); // von Brettmitte zur Kamera
 
-  // Endposition der Karte: exakt auf der Sichtachse der Kamera (also garantiert mittig im
-  // Bild), aber deutlich naeher an der Kamera als der Kartenstapel - die Karte bewegt sich
-  // dadurch sichtbar auf den Bildschirm/die Kamera zu, statt dass die Kamera zu ihr fährt.
+  // Endposition der Karte: auf der Sichtachse der Kamera, aber deutlich naeher an der
+  // Kamera als der Kartenstapel - die Karte bewegt sich dadurch sichtbar auf den
+  // Bildschirm/die Kamera zu, statt dass die Kamera zu ihr fährt.
   const distFromCam = 2.6;
   const cardEndPos = mainCamPos.clone().addScaledVector(viewDir, -distFromCam);
-  const faceDir = viewDir.clone(); // Richtung von der Karten-Endposition zur Kamera
+  // WICHTIG: etwas nach oben verschoben, damit unten von vornherein Platz für die
+  // Fragen-Vorschau-Steuerung (Vorherige/Nächste/Bestätigen-Box) frei bleibt. Vorher landete
+  // die Karte exakt mittig im Bild - sobald die Box danach erschien, deckte sie den unteren
+  // Kartenrand ab, was wie ein nachträglicher Sprung der Karte wirkte, obwohl sich die Karte
+  // selbst gar nicht bewegt hatte.
+  cardEndPos.y += 0.85;
+  // faceDir NACH der Verschiebung neu berechnen (nicht mehr einfach viewDir übernehmen),
+  // damit die Karte trotz der leicht veränderten Position weiterhin exakt zur Kamera zeigt.
+  const faceDir = mainCamPos.clone().sub(cardEndPos).normalize();
 
   // KORREKTUR: die Frage-Textur sitzt in Ruhelage an der UNTERSEITE der Karte (deswegen
   // "Rückseite oben, Frage unten" beim Abheben vom Stapel, siehe Kartenaufbau weiter oben:

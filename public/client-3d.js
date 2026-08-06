@@ -1812,7 +1812,12 @@ function selectLobbyTimerChoice(seconds) {
   if (lastState) renderLobbyGameSettings(lastState);
 }
 document.getElementById('btn-open-game-settings').addEventListener('click', () => {
-  document.getElementById('game-settings-overlay').classList.remove('hidden');
+  const overlay = document.getElementById('game-settings-overlay');
+  if (!overlay.classList.contains('hidden')) {
+    overlay.classList.add('hidden');
+    return;
+  }
+  overlay.classList.remove('hidden');
   if (lastState) renderLobbyGameSettings(lastState);
 });
 document.getElementById('btn-close-game-settings').addEventListener('click', () => {
