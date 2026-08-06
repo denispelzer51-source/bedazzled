@@ -377,13 +377,16 @@
            der Kamera), keine Bildschirm-Überleitung mehr. Moderator:in bekommt hier nur noch
            einen "nächste Frage"-Pfeil (kein "zurück", da linear vorwärts) + Bestätigen-Button
            direkt unter der Karte; andere Spieler:innen sehen nur einen Warte-Hinweis. -->
-      <div id="qp-inline-moderator" class="hidden">
-        <button id="btn-qp-inline-next" class="btn btn-secondary" style="margin-bottom:8px;">Nächste Frage ▶</button>
+      <div id="qp-inline-moderator" class="hidden" style="background:var(--night-2); border:1.5px solid rgba(172,88,249,0.35); border-radius:var(--radius); padding:16px;">
+        <div style="display:flex; gap:8px; margin-bottom:8px;">
+          <button id="btn-qp-inline-prev" class="btn btn-secondary" style="flex:1;" disabled>◀ Vorherige Frage</button>
+          <button id="btn-qp-inline-next" class="btn btn-secondary" style="flex:1;">Nächste Frage ▶</button>
+        </div>
         <button id="btn-qp-inline-confirm" class="btn btn-primary">✓ Runde mit dieser Frage starten</button>
-        <p id="qp-inline-swap-hint" class="hint" style="margin-top:8px;"></p>
+        <p id="qp-inline-swap-hint" class="hint" style="margin-top:8px; margin-bottom:0;"></p>
       </div>
-      <div id="qp-inline-waiting" class="hidden" style="text-align:center;">
-        <p id="qp-inline-waiting-text" class="hint" style="font-size:15px;"></p>
+      <div id="qp-inline-waiting" class="hidden" style="text-align:center; background:var(--night-2); border:1.5px solid rgba(172,88,249,0.35); border-radius:var(--radius); padding:16px;">
+        <p id="qp-inline-waiting-text" class="hint" style="font-size:15px; margin:0;"></p>
       </div>
 
       <button id="btn-next-round" class="btn btn-primary mod-only">Nächste Runde</button>

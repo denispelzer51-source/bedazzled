@@ -1487,7 +1487,7 @@ function playCardDrawThenReveal(state) {
     ? qp.candidates[qp.currentIndex].question
     : '❓ Der/die Moderator:in wählt die Frage aus …';
   qpLastSentCardText = amModeratorNow ? questionText : null;
-  sendToBoard3D({ type: 'drawCard', questionText });
+  sendToBoard3D({ type: 'drawCard', questionText, roundType: qp ? qp.roundType : null });
   let revealed = false;
   function reveal() {
     if (revealed) return;
@@ -1509,16 +1509,12 @@ function playCardDrawThenReveal(state) {
 // bestätigen für die Moderation, Warte-Hinweis für alle anderen). Kein Bildschirmwechsel
 // mehr wie vorher (das war die alte "screen-question-preview"-Vollbild-Ansicht).
 let qpLastSentCardText = null;
-function roundTypeBigLabel(roundType) {
-  if (roundType === 'estimate') return '🔢 Schätzfrage';
-  if (roundType === 'foreignword') return '📖 Fremdwörter';
-  if (roundType === 'drawing') return '🎨 Zeichnen';
-  return '🎭 Normale Frage';
-}
 function renderQuestionPreviewScreen(state) {
   setBoardFooterMode('preview');
   const qp = state.questionPreview;
-  document.getElementById('board-screen-heading').textContent = qp ? roundTypeBigLabel(qp.roundType) : 'Wer zieht wie weit?';
+  // Die Kategorie steht jetzt direkt auf der Karte selbst (siehe roundTypeCardLabel in
+  // board3d-core.js) - hier oben deshalb nur noch eine neutrale, kurze Überschrift.
+  document.getElementById('board-screen-heading').textContent = 'Frage wird gezogen';
   const amModeratorNow = state.moderatorId === myId;
 
   if (qp && amModeratorNow) {
@@ -1532,9 +1528,10 @@ function renderQuestionPreviewScreen(state) {
       // würde die kleine Bestätigungs-Animation ständig neu anspringen.
       if (current.question !== qpLastSentCardText) {
         qpLastSentCardText = current.question;
-        sendToBoard3D({ type: 'updateCardText', questionText: current.question });
+        sendToBoard3D({ type: 'updateCardText', questionText: current.question, roundType: qp.roundType });
       }
     }
+    document.getElementById('btn-qp-inline-prev').disabled = qp.currentIndex <= 0;
     document.getElementById('btn-qp-inline-next').classList.toggle('hidden', !qp.canSwapMore);
     document.getElementById('qp-inline-swap-hint').textContent = state.unlimitedQuestionSwaps
       ? 'Unbegrenzt viele Wechsel möglich.'
@@ -1555,6 +1552,10 @@ function renderQuestionPreviewScreen(state) {
   showScreen('board');
 }
 
+document.getElementById('btn-qp-inline-prev').addEventListener('click', () => {
+  if (!currentCode || qpCurrentIndex <= 0) return;
+  socket.emit('selectPreviewCandidate', { code: currentCode, index: qpCurrentIndex - 1 });
+});
 document.getElementById('btn-qp-inline-next').addEventListener('click', () => {
   if (!currentCode) return;
   socket.emit('previewOtherQuestion', { code: currentCode });
@@ -1562,6 +1563,11 @@ document.getElementById('btn-qp-inline-next').addEventListener('click', () => {
 document.getElementById('btn-qp-inline-confirm').addEventListener('click', () => {
   if (!currentCode) return;
   socket.emit('confirmQuestion', { code: currentCode });
+  // Karte sofort zurück auf den Stapel legen - ihre Aufgabe ist erledigt, sie darf für die
+  // Antwort-/Abstimm-/Auflösungs-/Zugphase NICHT weiter sichtbar vor der Kamera schweben
+  // (das führte vorher dazu, dass die Kamera bei der Zug-Animation buchstäblich durch die
+  // alte Karte "hindurchfuhr").
+  sendToBoard3D({ type: 'resetCard' });
 });
 
 // ---------- Einführungs-Animation: einmalig ganz zu Beginn eines neuen Spiels ----------

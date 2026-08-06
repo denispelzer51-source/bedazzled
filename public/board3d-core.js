@@ -107,6 +107,17 @@ const FIELD_TYPE_COLORS = {
   foreignword: '#2F6FFF',
   drawing: '#FFC300',
 };
+// Für die Kartenrückseiten-Beschriftung (drawCardAnimation/updateCardTextInPlace) - dieselbe
+// Farbwelt wie die Spielfelder, damit Karte und Feld eindeutig zur selben Kategorie gehören.
+function roundTypeCardLabel(roundType) {
+  if (roundType === 'estimate') return 'Schätzfrage';
+  if (roundType === 'foreignword') return 'Fremdwörter';
+  if (roundType === 'drawing') return 'Zeichnen';
+  return 'Normale Frage';
+}
+function roundTypeCardColor(roundType) {
+  return FIELD_TYPE_COLORS[roundType] || '#8C39F7';
+}
 
 function makeFieldTexture({ number, isFinish, isStartActive, fieldType, paletteIndex }) {
   const size = 256;
@@ -606,7 +617,7 @@ function wrapCanvasText(ctx, text, maxWidth) {
 
 // Vorderseite der Karte (Frage-Seite) - zeigt die tatsächliche Frage, damit man sie schon
 // auf der Karte lesen kann, bevor sie nahtlos ins 2D-Overlay übergeht.
-function makeCardFrontTexture(questionText) {
+function makeCardFrontTexture(questionText, categoryLabel, accentColor) {
   const w = 512, h = 716;
   const canvas = document.createElement('canvas');
   canvas.width = w; canvas.height = h;
@@ -621,14 +632,17 @@ function makeCardFrontTexture(questionText) {
   ctx.arcTo(0, 0, w, 0, r);
   ctx.closePath();
   ctx.fill();
-  ctx.strokeStyle = '#AC58F9';
+  ctx.strokeStyle = accentColor || '#AC58F9';
   ctx.lineWidth = 10;
   ctx.stroke();
 
-  ctx.fillStyle = '#8C39F7';
+  // Zeigt jetzt die tatsächliche Kategorie der Runde (z.B. "SCHÄTZFRAGE"/"ZEICHNEN") statt
+  // des vorher fest eingebrannten Worts "FRAGE" - so sieht man direkt auf der Karte, worum
+  // es in dieser Runde geht.
+  ctx.fillStyle = accentColor || '#8C39F7';
   ctx.font = 'bold 30px Arial, sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText('FRAGE', w / 2, 90);
+  ctx.fillText((categoryLabel || 'FRAGE').toUpperCase(), w / 2, 90);
 
   ctx.fillStyle = '#2a1740';
   ctx.font = '600 44px Georgia, serif';
@@ -790,10 +804,31 @@ placeTokens();
 // (postMessage), z.B. von client-3d.js. Ohne eine solche einbettende Seite passiert hier
 // einfach nichts - die eigenständige Demo-Nutzung dieser Datei bleibt unverändert. ----------
 function syncPlayersFromExternal(players) {
+  const incoming = (players || []).slice(0, 6);
+  const currentIds = tokensData.map(t => t.playerId);
+  const incomingIds = incoming.map(p => p.id);
+  const samePlayerSet = currentIds.length === incomingIds.length
+    && currentIds.every((id, i) => id === incomingIds[i]);
+  if (samePlayerSet && tokenMeshes.length > 0) {
+    // WICHTIG gegen den kurzen "Ruckler/Wackler": wird z.B. direkt nach der
+    // Einführungs-Animation nochmal derselbe Spielerstand synchronisiert (kein Beitritt,
+    // keine Positionsänderung), NICHT alle Meshes zerstören und neu erzeugen - das
+    // verursachte einen sichtbaren Sprung (u.a. weil neu erzeugte Meshes ihre
+    // Wackel-/Bob-Phase zufällig neu bekommen). Stattdessen nur die Positionsdaten
+    // aktualisieren, die bestehenden Meshes bleiben unangetastet.
+    incoming.forEach((p, i) => {
+      tokensData[i].pos = p.position || 0;
+      tokensData[i].name = p.name;
+    });
+    placeTokens();
+    updateStartFinishTileDesign();
+    if (typeof renderFigurePicker === 'function') renderFigurePicker();
+    return;
+  }
   tokenMeshes.forEach(m => scene.remove(m));
   tokenMeshes.length = 0;
   tokensData.length = 0;
-  (players || []).slice(0, 6).forEach(p => {
+  incoming.forEach(p => {
     const set = avatarSetByKey(p.avatarKey);
     tokensData.push({ ...set, pos: p.position || 0, playerId: p.id, name: p.name });
     const mesh = createToken(set.key, set.color);
@@ -909,9 +944,9 @@ window.addEventListener('message', (event) => {
     movePlayerByIdExternal(data.playerId, data.steps);
   } else if (data.type === 'drawCard') {
     resetCardPosition();
-    drawCardAnimation(data.questionText || '❓');
+    drawCardAnimation(data.questionText || '❓', roundTypeCardLabel(data.roundType), roundTypeCardColor(data.roundType));
   } else if (data.type === 'updateCardText') {
-    updateCardTextInPlace(data.questionText || '❓');
+    updateCardTextInPlace(data.questionText || '❓', roundTypeCardLabel(data.roundType), roundTypeCardColor(data.roundType));
   } else if (data.type === 'resetCard') {
     resetCardPosition();
   } else if (data.type === 'introPlacement') {
@@ -1201,7 +1236,7 @@ document.getElementById('btnMoveAll').addEventListener('click', () => {
 
 // ---------- Karte ziehen: hebt vom Stapel ab, dreht sich, fliegt zur Kamera, zeigt Frage ----------
 let cardDrawing = false;
-function drawCardAnimation(questionText) {
+function drawCardAnimation(questionText, categoryLabel, accentColor) {
   if (cardDrawing || !topCardMesh) return;
   cardDrawing = true;
   controls.enabled = false;
@@ -1209,7 +1244,7 @@ function drawCardAnimation(questionText) {
   // Echten Fragetext auf die Karten-Vorderseite setzen (Live-Spiel) - ohne Angabe bleibt
   // der bisherige Demo-Text erhalten (Werkstatt-Button "Karte ziehen").
   if (questionText && topCardFrontPlaneMat) {
-    topCardFrontPlaneMat.map = makeCardFrontTexture(questionText);
+    topCardFrontPlaneMat.map = makeCardFrontTexture(questionText, categoryLabel, accentColor);
     topCardFrontPlaneMat.needsUpdate = true;
   }
 
@@ -1316,9 +1351,9 @@ function drawCardAnimation(questionText) {
 // einmal pro Runde; ein Wechsel zu einer anderen Frage währenddessen tauscht nur den Text,
 // mit einem kurzen Puls als visuellem Feedback, dass sich etwas geändert hat).
 let cardTextPulseActive = false;
-function updateCardTextInPlace(questionText) {
+function updateCardTextInPlace(questionText, categoryLabel, accentColor) {
   if (!topCardMesh || !topCardFrontPlaneMat) return;
-  topCardFrontPlaneMat.map = makeCardFrontTexture(questionText);
+  topCardFrontPlaneMat.map = makeCardFrontTexture(questionText, categoryLabel, accentColor);
   topCardFrontPlaneMat.needsUpdate = true;
   if (cardTextPulseActive) return; // keine überlappenden Pulse, falls schnell mehrfach geklickt wird
   cardTextPulseActive = true;
