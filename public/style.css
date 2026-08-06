@@ -432,6 +432,16 @@ h2 { font-family: var(--font-display); font-weight: 700; font-size: 24px; text-a
   z-index: 50;
   overscroll-behavior: contain;
 }
+/* Popups, die AUS einem anderen Popup heraus geöffnet werden (z.B. Admin-Werkzeuge aus
+   den Einstellungen, Mitspieler-Verwaltung aus den Admin-Werkzeugen), müssen über dem
+   ursprünglichen Popup erscheinen, nicht dahinter - sonst müsste man erst das untere
+   schließen, um das obere überhaupt zu sehen. Reine DOM-Reihenfolge reicht dafür nicht
+   (beide haben denselben z-index 50), daher hier explizit gestaffelt.
+   Ebene 1: Einstellungen (z-index 50, Standard)
+   Ebene 2: Admin-Werkzeuge, aus den Einstellungen geöffnet (z-index 60)
+   Ebene 3: Mitspieler-Verwaltung, aus den Admin-Werkzeugen geöffnet (z-index 70) */
+#admin-tools-overlay { z-index: 60; }
+#admin-players-overlay { z-index: 70; }
 /* Popups duerfen nie oben/unten aus dem sichtbaren Bildschirm herauslaufen: die Karte
    bekommt eine maximale Hoehe (unter Beruecksichtigung von Notch/Home-Indicator via
    safe-area) und wird selbst zur Flex-Spalte, damit der Inhalt scrollt, waehrend der

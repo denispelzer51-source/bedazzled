@@ -289,6 +289,14 @@ document.getElementById('btn-close-admin-tools').addEventListener('click', () =>
   document.getElementById('admin-tools-overlay').classList.add('hidden');
 });
 
+document.getElementById('btn-open-admin-players').addEventListener('click', () => {
+  document.getElementById('admin-players-overlay').classList.remove('hidden');
+  renderAdminPlayerList();
+});
+document.getElementById('btn-close-admin-players').addEventListener('click', () => {
+  document.getElementById('admin-players-overlay').classList.add('hidden');
+});
+
 document.getElementById('btn-admin-swap-question').addEventListener('click', () => {
   if (!currentCode) return;
   socket.emit('adminForceSwapQuestion', { code: currentCode });
