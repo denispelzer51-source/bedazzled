@@ -15,11 +15,12 @@ const COLORS = {
 // ---------- Grundgerüst ----------
 const holder = document.getElementById('canvas-holder');
 const scene = new THREE.Scene();
-// Der restliche Raum außerhalb des Bretts war bisher reines Schwarz (0x000000) - jetzt in
-// ein dunkles Marken-Lila getaucht (COLORS.void), damit auch die Umgebung zur restlichen
-// Farbwelt des Spiels passt statt neutral schwarz zu wirken.
-scene.background = new THREE.Color(COLORS.void);
-scene.fog = new THREE.FogExp2(COLORS.void, 0.008);
+// Der restliche Raum außerhalb des Bretts war zunächst reines Schwarz, dann auf das sehr
+// dunkle Marken-"void"-Lila umgestellt - das war laut Rückmeldung immer noch kaum als Lila
+// erkennbar (zu nah an Schwarz). Jetzt ein spürbar helleres, klar violettes Dunkellila.
+const ROOM_COLOR = 0x1A0A3D;
+scene.background = new THREE.Color(ROOM_COLOR);
+scene.fog = new THREE.FogExp2(ROOM_COLOR, 0.008);
 
 const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 200);
 // Deutlich näher am Brett und im 45°-Winkel von vorne (statt vorher fast senkrecht von oben
@@ -98,21 +99,56 @@ function fieldTypeOf(i) {
   if (TRIGGER_FIELDS.drawing.includes(i)) return 'drawing';
   return 'normal';
 }
-// Farben 1:1 aus style.css übernommen (--primary/--teal/--gold + das feste Fremdwort-Blau),
-// damit 2D- und 3D-Brett optisch exakt dieselbe Farbsprache sprechen.
+// Farben bewusst kräftiger/satter gewählt als die entsprechenden 2D-UI-Akzentfarben - im
+// 3D-Brett stehen sie großflächig, umgeben von dunklem Lila, und wirkten mit den
+// ursprünglichen (für kleine UI-Elemente gedachten) Tönen deutlich zu blass/sanft.
 const FIELD_TYPE_COLORS = {
-  estimate: '#3FBFA0',
-  foreignword: '#5895F9',
-  drawing: '#F5C842',
+  estimate: '#00E6A8',
+  foreignword: '#2F6FFF',
+  drawing: '#FFC300',
 };
 
-function makeFieldTexture({ number, isFinish, fieldType, paletteIndex }) {
+function makeFieldTexture({ number, isFinish, isStartActive, fieldType, paletteIndex }) {
   const size = 256;
   const canvas = document.createElement('canvas');
   canvas.width = size; canvas.height = size;
   const ctx = canvas.getContext('2d');
 
-  if (isFinish) {
+  if (isFinish && isStartActive) {
+    // START-Design: strahlender Lila-Farbverlauf mit Strahlenkranz und weißem Rahmen -
+    // soll nach "Losfahren/Aufbruch" aussehen, bewusst als Gegenstück zum goldenen
+    // Karo-Zielfeld-Design gestaltet (gleiche Grundkomposition: Kontur + weißer Kreis +
+    // zentrales Emoji, aber andere Farbwelt), damit sofort klar ist: selbes besonderes
+    // Feld, nur ein anderer Zustand.
+    const burst = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size * 0.72);
+    burst.addColorStop(0, '#C577FB');
+    burst.addColorStop(1, '#330D98');
+    ctx.fillStyle = burst;
+    ctx.fillRect(0, 0, size, size);
+    // Strahlenkranz aus der Mitte, wie ein Aufbruchs-/Startsignal
+    ctx.save();
+    ctx.translate(size / 2, size / 2);
+    const rays = 14;
+    for (let i = 0; i < rays; i++) {
+      ctx.rotate((Math.PI * 2) / rays);
+      ctx.fillStyle = i % 2 === 0 ? 'rgba(255,255,255,0.14)' : 'rgba(255,255,255,0)';
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.arc(0, 0, size * 0.75, -0.13, 0.13);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.restore();
+    // Kräftiger weißer Rahmen statt Gold - klar unterscheidbar vom Zielfeld
+    ctx.strokeStyle = '#FFFFFF';
+    ctx.lineWidth = 16;
+    ctx.strokeRect(8, 8, size - 16, size - 16);
+    ctx.fillStyle = 'rgba(255,255,255,0.95)';
+    ctx.beginPath(); ctx.arc(size / 2, size / 2, 58, 0, Math.PI * 2); ctx.fill();
+    ctx.font = '90px sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('🚀', size / 2, size / 2 + 6);
+  } else if (isFinish) {
     // Klassisches Ziel-Karo-Muster (schwarz/weiß) statt der alten, unauffälligen
     // Diagonal-Teilung - deutlich klarer als "Ziel" erkennbar, dazu mit den
     // Marken-Farben (Gold-Glanz + goldener Rahmen) statt neutralem Schwarz/Weiß pur.
@@ -147,9 +183,10 @@ function makeFieldTexture({ number, isFinish, fieldType, paletteIndex }) {
     // Vollflächig gesättigte Grundfarbe – kein weißer Verlauf mehr der die Farbe verwäscht
     ctx.fillStyle = baseColor;
     ctx.fillRect(0, 0, size, size);
-    // Nur kleiner Highlight-Glanz oben-links (nicht das ganze Feld aufhellen)
-    const shine = ctx.createLinearGradient(0, 0, size * 0.5, size * 0.5);
-    shine.addColorStop(0, 'rgba(255,255,255,0.28)');
+    // Nur ein kleiner, dezenter Glanzpunkt oben-links (statt eines großen, die halbe
+    // Fläche aufhellenden Verlaufs, der die kräftige Grundfarbe stark verwässert hat)
+    const shine = ctx.createRadialGradient(size * 0.22, size * 0.2, 0, size * 0.22, size * 0.2, size * 0.35);
+    shine.addColorStop(0, 'rgba(255,255,255,0.20)');
     shine.addColorStop(1, 'rgba(255,255,255,0)');
     ctx.fillStyle = shine;
     ctx.fillRect(0, 0, size, size);
@@ -167,6 +204,12 @@ function makeFieldTexture({ number, isFinish, fieldType, paletteIndex }) {
   }
   const tex = new THREE.CanvasTexture(canvas);
   tex.anisotropy = 4;
+  // WICHTIG gegen "sanfte/verwaschene" Farben: ohne dieses Tag weiß der Renderer nicht,
+  // dass die Canvas-Pixel bereits im Anzeige-Farbraum (sRGB) vorliegen, und behandelt sie
+  // stattdessen wie lineare Farbwerte - das lässt kräftige Farben spürbar blasser wirken.
+  // Die Logo-Textur hatte dieses Tag schon (siehe logoTexture weiter unten), den
+  // Feld-Texturen hat es bisher gefehlt.
+  tex.colorSpace = THREE.SRGBColorSpace;
   return tex;
 }
 
@@ -211,6 +254,11 @@ function buildFieldPositions(total, W, H) {
 
 const sideMat = new THREE.MeshStandardMaterial({ color: COLORS.royal, roughness: 0.5, metalness: 0.2 });
 
+// Start-/Zielfeld: zeigt anfangs das "Start"-Design (alle Figuren stehen zu Rundenbeginn
+// dort) - wird weiter unten (updateStartFinishTileDesign) automatisch aktualisiert, sobald
+// die letzte Figur das Feld verlassen hat bzw. jemand wieder darauf landet.
+let startTileShowsStartDesign = true;
+
 const fieldsGroup = new THREE.Group();
 const fieldMeshes = [];
 for (let i = 0; i < BOARD_SLOTS; i++) {
@@ -223,7 +271,7 @@ for (let i = 0; i < BOARD_SLOTS; i++) {
   const fd = isFinish ? 0.58 : 0.52;   // Tiefe (leicht schmaler -> leicht rechteckig)
   const geo = new THREE.BoxGeometry(fw, height, fd);
 
-  const topTex = makeFieldTexture({ number: i, isFinish, fieldType, paletteIndex: i });
+  const topTex = makeFieldTexture({ number: i, isFinish, isStartActive: isFinish && startTileShowsStartDesign, fieldType, paletteIndex: i });
   const topMat = new THREE.MeshBasicMaterial({ map: topTex });
   // WICHTIG gegen "ausgeblichene" Farben: das ACESFilmicToneMapping (siehe renderer weiter
   // oben) ist für die stimmungsvolle, kinoartige Beleuchtung der Szene gedacht - es
@@ -252,12 +300,31 @@ function rebuildFieldTextures() {
     const isFinish = i === FINISH_INDEX;
     const fieldType = fieldTypeOf(i);
     mesh.userData.fieldType = fieldType;
-    const newTex = makeFieldTexture({ number: i, isFinish, fieldType, paletteIndex: i });
+    const newTex = makeFieldTexture({ number: i, isFinish, isStartActive: isFinish && startTileShowsStartDesign, fieldType, paletteIndex: i });
     const topMat = mesh.material[2];
     if (topMat.map) topMat.map.dispose();
     topMat.map = newTex;
     topMat.needsUpdate = true;
   });
+}
+
+// ---------- Start-/Zielfeld: wechselt sein Design je nachdem, ob noch Figuren darauf
+// stehen ----------
+// Zu Rundenbeginn stehen alle Figuren auf Feld 0 -> "Start"-Design (Rakete/Lila). Sobald die
+// letzte Figur das Feld verlassen hat, wechselt es automatisch auf das "Ziel"-Design
+// (Zielflagge/Gold-Karo) - und zurück, falls doch nochmal jemand exakt dort landet oder das
+// Feld erneut zum Rundenbeginn belegt wird.
+function updateStartFinishTileDesign() {
+  const occupied = tokensData.some(t => (((t.pos % BOARD_SLOTS) + BOARD_SLOTS) % BOARD_SLOTS) === FINISH_INDEX);
+  if (occupied === startTileShowsStartDesign) return; // keine Änderung nötig
+  startTileShowsStartDesign = occupied;
+  const mesh = fieldMeshes[FINISH_INDEX];
+  if (!mesh) return;
+  const newTex = makeFieldTexture({ number: FINISH_INDEX, isFinish: true, isStartActive: startTileShowsStartDesign, fieldType: 'finish', paletteIndex: FINISH_INDEX });
+  const topMat = mesh.material[2];
+  if (topMat.map) topMat.map.dispose();
+  topMat.map = newTex;
+  topMat.needsUpdate = true;
 }
 
 // ---------- Spielbrett-Fläche (rechteckig, liegt auf dem Tisch, Felder stehen drauf) ----------
@@ -734,6 +801,7 @@ function syncPlayersFromExternal(players) {
     tokenMeshes.push(mesh);
   });
   placeTokens();
+  updateStartFinishTileDesign();
   if (typeof renderFigurePicker === 'function') renderFigurePicker();
 }
 function movePlayerByIdExternal(playerId, steps) {
@@ -1071,6 +1139,7 @@ function animateMove(tokenIdx, steps, onComplete) {
       requestAnimationFrame(frame);
     } else {
       tokensData[tokenIdx].pos = endPos;
+      updateStartFinishTileDesign();
       tokenMeshes[tokenIdx].userData.isMoving = false;
       tokenMeshes[tokenIdx].userData.currentOffset = { x: 0, z: 0 };
       // Neu ankommende Figur wird jetzt wieder Teil der ganz normalen Feld-Formation -
