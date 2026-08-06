@@ -264,7 +264,7 @@ socket.on('adminAuthResult', ({ success }) => {
     isSuperAdminUnlocked = true;
     const enteredCode = document.getElementById('input-admin-code').value.trim();
     if (enteredCode) localStorage.setItem(ADMIN_CODE_KEY, enteredCode);
-    document.getElementById('admin-tools-box').classList.remove('hidden');
+    document.getElementById('admin-tools-trigger-row').classList.remove('hidden');
     document.getElementById('admin-unlock-row').classList.add('hidden');
     msgEl.textContent = '';
     renderAdminPlayerList();
@@ -281,6 +281,19 @@ document.getElementById('btn-admin-unlock').addEventListener('click', () => {
   tryAdminAuth(code);
 });
 
+document.getElementById('btn-open-admin-tools').addEventListener('click', () => {
+  document.getElementById('admin-tools-overlay').classList.remove('hidden');
+  renderAdminPlayerList();
+});
+document.getElementById('btn-close-admin-tools').addEventListener('click', () => {
+  document.getElementById('admin-tools-overlay').classList.add('hidden');
+});
+
+document.getElementById('btn-admin-swap-question').addEventListener('click', () => {
+  if (!currentCode) return;
+  socket.emit('adminForceSwapQuestion', { code: currentCode });
+});
+
 document.getElementById('btn-admin-skip-round').addEventListener('click', () => {
   if (!currentCode) return;
   if (!confirm('Aktuelle Runde wirklich überspringen und zurück in die Lobby?')) return;
@@ -290,12 +303,7 @@ document.getElementById('btn-admin-skip-round').addEventListener('click', () => 
 document.getElementById('btn-admin-force-drawing').addEventListener('click', () => {
   if (!currentCode) return;
   socket.emit('adminForceDrawingRound', { code: currentCode });
-  document.getElementById('settings-overlay').classList.add('hidden');
-});
-
-document.getElementById('btn-admin-force-board').addEventListener('click', () => {
-  if (!currentCode) return;
-  socket.emit('adminForceBoardRandom', { code: currentCode });
+  document.getElementById('admin-tools-overlay').classList.add('hidden');
   document.getElementById('settings-overlay').classList.add('hidden');
 });
 

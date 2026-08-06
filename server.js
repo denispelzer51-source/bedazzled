@@ -2010,6 +2010,27 @@ io.on('connection', (socket) => {
     broadcastState(code);
   });
 
+  // Super-Admin kann die aktuelle Vorschau-Frage jederzeit mit einem Klick austauschen,
+  // OHNE das normale 2x-Limit (für den Fall, dass die verbleibenden Kandidaten den
+  // Spieler:innen schon bekannt sind). Anders als previewOtherQuestion NICHT auf den
+  // Moderator beschränkt, sondern nur auf den Super-Admin-Status geprüft.
+  socket.on('adminForceSwapQuestion', ({ code }) => {
+    const room = rooms[code];
+    if (!room || !socket.data.isSuperAdmin) return;
+    if (room.phase !== 'previewQuestion') return;
+    if (!room.questionCandidates) room.questionCandidates = [];
+    const excludeIndices = room.questionCandidates.map(c => c.index);
+    const next = pickNextQuestion(room, room.roundType, excludeIndices);
+    if (!next) {
+      socket.emit('errorMsg', 'Keine weitere Frage in dieser Kategorie verfügbar.');
+      return;
+    }
+    room.questionCandidates.push(next);
+    room.previewIndex = room.questionCandidates.length - 1;
+    broadcastState(code);
+    console.log(`[ADMIN-TOOL] Frage in Raum ${code} zwangsweise ausgetauscht (Super-Admin).`);
+  });
+
   socket.on('adminSkipRound', ({ code }) => {
     if (!socket.data.isSuperAdmin) return;
     const room = rooms[code];

@@ -433,6 +433,20 @@
   </div>
 </div>
 
+<!-- Admin-Werkzeuge-Overlay (eigenes Popup, aus den Einstellungen heraus erreichbar) -->
+<div id="admin-tools-overlay" class="overlay hidden">
+  <div class="overlay-card settings-card">
+    <h2>🛠 Admin-Werkzeuge</h2>
+    <div class="overlay-scroll-body">
+      <button id="btn-admin-swap-question" class="btn btn-secondary" style="margin-bottom:10px;">🔀 Frage des aktuellen Spielers jetzt tauschen</button>
+      <button id="btn-admin-skip-round" class="btn btn-secondary" style="margin-bottom:10px;">⏭ Aktuelle Runde überspringen</button>
+      <button id="btn-admin-force-drawing" class="btn btn-secondary" style="margin-bottom:10px;">🎨 Zeichnenrunde jetzt starten (Test)</button>
+      <div id="admin-player-list"></div>
+    </div>
+    <button id="btn-close-admin-tools" class="btn btn-primary">Schließen</button>
+  </div>
+</div>
+
 <!-- Settings-Overlay (jederzeit erreichbar) -->
 <div id="settings-overlay" class="overlay hidden">
   <div class="overlay-card settings-card">
@@ -464,12 +478,8 @@
         <p id="admin-unlock-msg" class="hint" style="margin:0;"></p>
       </div>
 
-      <div id="admin-tools-box" class="hidden" style="margin-top:14px; padding-top:14px; border-top:1px solid rgba(255,255,255,0.1);">
-        <p class="hint" style="margin:0 0 10px;">🛠 Admin-Werkzeuge (nur für dich sichtbar)</p>
-        <button id="btn-admin-skip-round" class="btn btn-secondary" style="margin-bottom:10px;">⏭ Aktuelle Runde überspringen</button>
-        <button id="btn-admin-force-drawing" class="btn btn-secondary" style="margin-bottom:10px;">🎨 Zeichnenrunde jetzt starten (Test)</button>
-        <button id="btn-admin-force-board" class="btn btn-secondary" style="margin-bottom:10px;">🎲 Zufallszüge + Spielbrett zeigen (Test)</button>
-        <div id="admin-player-list"></div>
+      <div id="admin-tools-trigger-row" class="hidden" style="margin-top:14px; padding-top:14px; border-top:1px solid rgba(255,255,255,0.1);">
+        <button id="btn-open-admin-tools" type="button" class="btn btn-secondary">🛠 Admin-Werkzeuge öffnen</button>
       </div>
     </div>
     <button id="btn-close-settings" class="btn btn-primary">Schließen</button>
