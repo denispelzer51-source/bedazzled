@@ -79,7 +79,10 @@ table.receiveShadow = true;
 scene.add(table);
 
 // ---------- Textur-Erzeugung (Zahlen, Farben, Start-/Zielfeld) per Canvas ----------
-const REGULAR_PALETTE = ['#BB00FF', '#DD00FF', '#8800EE', '#CC11FF'];
+// Einheitliches, kräftiges Lila für ALLE normalen Felder (vorher rotierten 4 leicht
+// unterschiedliche Lila-Töne durch, was inkonsistent aussah - jetzt exakt der Ton, der
+// vorher zufällig auf Feld 17 lag).
+const REGULAR_COLOR = '#DD00FF';
 
 // ---------- Feld-Typen: normale Frage (lila), Fremdwort (blau), Schätzfrage (grün/teal),
 // Zeichnen (gelb) - dieselben vier Kategorien wie im 2D-Brett (siehe style.css: .key-purple/
@@ -190,7 +193,7 @@ function makeFieldTexture({ number, isFinish, isStartActive, fieldType, paletteI
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText('🏁', size / 2, size / 2 + 6);
   } else {
-    const baseColor = FIELD_TYPE_COLORS[fieldType] || REGULAR_PALETTE[paletteIndex % REGULAR_PALETTE.length];
+    const baseColor = FIELD_TYPE_COLORS[fieldType] || REGULAR_COLOR;
     // Vollflächig gesättigte Grundfarbe – kein weißer Verlauf mehr der die Farbe verwäscht
     ctx.fillStyle = baseColor;
     ctx.fillRect(0, 0, size, size);
@@ -623,7 +626,9 @@ function makeCardFrontTexture(questionText, categoryLabel, accentColor) {
   canvas.width = w; canvas.height = h;
   const ctx = canvas.getContext('2d');
   const r = 46;
-  ctx.fillStyle = '#F7F1FA';
+  // Richtig kräftiges Weiß statt des vorherigen leicht gräulich-lila Tons (#F7F1FA), der
+  // laut Rückmeldung "wie ein komischer Schimmer" aussah.
+  ctx.fillStyle = '#FFFFFF';
   ctx.beginPath();
   ctx.moveTo(r, 0);
   ctx.arcTo(w, 0, w, h, r);
@@ -632,19 +637,41 @@ function makeCardFrontTexture(questionText, categoryLabel, accentColor) {
   ctx.arcTo(0, 0, w, 0, r);
   ctx.closePath();
   ctx.fill();
-  ctx.strokeStyle = accentColor || '#AC58F9';
+  const accent = accentColor || '#AC58F9';
+  ctx.strokeStyle = accent;
   ctx.lineWidth = 10;
   ctx.stroke();
 
-  // Zeigt jetzt die tatsächliche Kategorie der Runde (z.B. "SCHÄTZFRAGE"/"ZEICHNEN") statt
-  // des vorher fest eingebrannten Worts "FRAGE" - so sieht man direkt auf der Karte, worum
-  // es in dieser Runde geht.
-  ctx.fillStyle = accentColor || '#8C39F7';
-  ctx.font = 'bold 30px Arial, sans-serif';
+  // Zeigt die tatsächliche Kategorie der Runde (z.B. "SCHÄTZFRAGE"/"ZEICHNEN") statt eines
+  // fest eingebrannten Worts "FRAGE" - als kräftige, gefüllte Pille statt reiner Farbschrift
+  // auf Weiß (helle Akzentfarben wie Gold waren als reiner Text auf Weiß kaum lesbar; die
+  // Pille mit weißer Schrift + dünner dunkler Kontur ist bei JEDER Akzentfarbe gut lesbar).
+  const label = (categoryLabel || 'FRAGE').toUpperCase();
+  ctx.font = 'bold 26px Arial, sans-serif';
+  const labelWidth = ctx.measureText(label).width;
+  const pillPadX = 26, pillH = 46;
+  const pillW = labelWidth + pillPadX * 2;
+  const pillX = (w - pillW) / 2, pillY = 46;
+  ctx.fillStyle = accent;
+  ctx.beginPath();
+  ctx.moveTo(pillX + pillH / 2, pillY);
+  ctx.arcTo(pillX + pillW, pillY, pillX + pillW, pillY + pillH, pillH / 2);
+  ctx.arcTo(pillX + pillW, pillY + pillH, pillX, pillY + pillH, pillH / 2);
+  ctx.arcTo(pillX, pillY + pillH, pillX, pillY, pillH / 2);
+  ctx.arcTo(pillX, pillY, pillX + pillW, pillY, pillH / 2);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = '#FFFFFF';
   ctx.textAlign = 'center';
-  ctx.fillText((categoryLabel || 'FRAGE').toUpperCase(), w / 2, 90);
+  ctx.textBaseline = 'middle';
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+  ctx.strokeText(label, w / 2, pillY + pillH / 2 + 2);
+  ctx.fillText(label, w / 2, pillY + pillH / 2 + 2);
 
-  ctx.fillStyle = '#2a1740';
+  // Kräftigeres, saturierteres Dunkel statt des vorherigen etwas blassen Lila-Grau -
+  // deutlich mehr Kontrast zum weißen Untergrund.
+  ctx.fillStyle = '#170A28';
   ctx.font = '600 44px Georgia, serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';

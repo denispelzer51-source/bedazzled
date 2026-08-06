@@ -1512,9 +1512,9 @@ let qpLastSentCardText = null;
 function renderQuestionPreviewScreen(state) {
   setBoardFooterMode('preview');
   const qp = state.questionPreview;
-  // Die Kategorie steht jetzt direkt auf der Karte selbst (siehe roundTypeCardLabel in
-  // board3d-core.js) - hier oben deshalb nur noch eine neutrale, kurze Überschrift.
-  document.getElementById('board-screen-heading').textContent = 'Frage wird gezogen';
+  // Kategorie steht schon auf der Karte selbst, hier oben braucht's keine zusätzliche
+  // Erklärung mehr ("man sieht ja, was passiert").
+  document.getElementById('board-screen-heading').textContent = '';
   const amModeratorNow = state.moderatorId === myId;
 
   if (qp && amModeratorNow) {
@@ -1532,12 +1532,8 @@ function renderQuestionPreviewScreen(state) {
       }
     }
     document.getElementById('btn-qp-inline-prev').disabled = qp.currentIndex <= 0;
-    document.getElementById('btn-qp-inline-next').classList.toggle('hidden', !qp.canSwapMore);
-    document.getElementById('qp-inline-swap-hint').textContent = state.unlimitedQuestionSwaps
-      ? 'Unbegrenzt viele Wechsel möglich.'
-      : (qp.canSwapMore
-        ? `Du kannst noch ${3 - qp.candidates.length}x wechseln.`
-        : 'Kein Wechsel mehr übrig – das war die letzte Möglichkeit.');
+    const hasNextAlready = qp.currentIndex < qp.candidates.length - 1;
+    document.getElementById('btn-qp-inline-next').classList.toggle('hidden', !hasNextAlready && !qp.canSwapMore);
   } else {
     document.getElementById('qp-inline-moderator').classList.add('hidden');
     document.getElementById('qp-inline-waiting').classList.remove('hidden');
@@ -1557,8 +1553,16 @@ document.getElementById('btn-qp-inline-prev').addEventListener('click', () => {
   socket.emit('selectPreviewCandidate', { code: currentCode, index: qpCurrentIndex - 1 });
 });
 document.getElementById('btn-qp-inline-next').addEventListener('click', () => {
-  if (!currentCode) return;
-  socket.emit('previewOtherQuestion', { code: currentCode });
+  if (!currentCode || !lastState || !lastState.questionPreview) return;
+  const qp = lastState.questionPreview;
+  if (qp.currentIndex < qp.candidates.length - 1) {
+    // Es gibt schon eine bereits gezogene Frage weiter vorn im Verlauf - einfach dorthin
+    // wechseln, statt eine komplett neue zu ziehen (das ist der Fall, wenn man zuvor mit
+    // "Vorherige" zurückgegangen ist).
+    socket.emit('selectPreviewCandidate', { code: currentCode, index: qp.currentIndex + 1 });
+  } else {
+    socket.emit('previewOtherQuestion', { code: currentCode });
+  }
 });
 document.getElementById('btn-qp-inline-confirm').addEventListener('click', () => {
   if (!currentCode) return;
@@ -2064,9 +2068,20 @@ socket.on('state', (state) => {
   // weder die Einführungs-Animation noch der Karten-Animation-Reset je nach der allerersten
   // Runde).
   const enteringFirstRoundEver = state.phase === 'previewQuestion' && lastState && lastState.phase === 'lobby' && !lastState.gameStarted;
+  // WICHTIG: jede:r Spieler:in hat ihr/sein eigenes 3D-iframe (läuft im jeweils eigenen
+  // Browser) - ein "Karte zurücksetzen"-Klick der Moderation wirkt sich nur auf DEREN
+  // eigenes iframe aus, nicht auf die der anderen! Deshalb hier zentral, für ALLE Clients
+  // gleichermaßen: sobald irgendjemand erkennt, dass die Fragen-Vorschau-Phase verlassen
+  // wurde (unabhängig davon, ob man selbst Moderator:in ist), wird die eigene Karte
+  // zurückgesetzt - vorher blieb sie bei den Mitspieler:innen während der Zugphase sichtbar
+  // stehen, während nur die Moderation sie zurückgesetzt bekam.
+  const leavingQuestionPreview = lastState && lastState.phase === 'previewQuestion' && state.phase !== 'previewQuestion';
 
   lastState = state;
   justReconnected = false;
+  if (leavingQuestionPreview) {
+    sendToBoard3D({ type: 'resetCard' });
+  }
   updateConnectionBanner(state);
   if (state.estimateTriggerFields) estimateTriggerFields = state.estimateTriggerFields;
   if (state.foreignwordTriggerFields) foreignwordTriggerFields = state.foreignwordTriggerFields;
