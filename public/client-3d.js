@@ -203,6 +203,14 @@ document.getElementById('btn-close-settings').addEventListener('click', () => {
   document.getElementById('settings-overlay').classList.add('hidden');
 });
 
+// ---------- REGELWERK-POPUP (Lobby) ----------
+document.getElementById('btn-open-rules').addEventListener('click', () => {
+  document.getElementById('rules-overlay').classList.remove('hidden');
+});
+document.getElementById('btn-close-rules').addEventListener('click', () => {
+  document.getElementById('rules-overlay').classList.add('hidden');
+});
+
 // ---------- PUNKTELISTE-POPUP ----------
 document.getElementById('btn-show-scoreboard').addEventListener('click', () => {
   renderScoreboard();
@@ -256,7 +264,7 @@ socket.on('adminAuthResult', ({ success }) => {
     isSuperAdminUnlocked = true;
     const enteredCode = document.getElementById('input-admin-code').value.trim();
     if (enteredCode) localStorage.setItem(ADMIN_CODE_KEY, enteredCode);
-    document.getElementById('admin-tools-box').classList.remove('hidden');
+    document.getElementById('admin-tools-trigger-row').classList.remove('hidden');
     document.getElementById('admin-unlock-row').classList.add('hidden');
     msgEl.textContent = '';
     renderAdminPlayerList();
@@ -273,6 +281,27 @@ document.getElementById('btn-admin-unlock').addEventListener('click', () => {
   tryAdminAuth(code);
 });
 
+document.getElementById('btn-open-admin-tools').addEventListener('click', () => {
+  document.getElementById('admin-tools-overlay').classList.remove('hidden');
+  renderAdminPlayerList();
+});
+document.getElementById('btn-close-admin-tools').addEventListener('click', () => {
+  document.getElementById('admin-tools-overlay').classList.add('hidden');
+});
+
+document.getElementById('btn-open-admin-players').addEventListener('click', () => {
+  document.getElementById('admin-players-overlay').classList.remove('hidden');
+  renderAdminPlayerList();
+});
+document.getElementById('btn-close-admin-players').addEventListener('click', () => {
+  document.getElementById('admin-players-overlay').classList.add('hidden');
+});
+
+document.getElementById('btn-admin-swap-question').addEventListener('click', () => {
+  if (!currentCode) return;
+  socket.emit('adminForceSwapQuestion', { code: currentCode });
+});
+
 document.getElementById('btn-admin-skip-round').addEventListener('click', () => {
   if (!currentCode) return;
   if (!confirm('Aktuelle Runde wirklich überspringen und zurück in die Lobby?')) return;
@@ -282,12 +311,14 @@ document.getElementById('btn-admin-skip-round').addEventListener('click', () => 
 document.getElementById('btn-admin-force-drawing').addEventListener('click', () => {
   if (!currentCode) return;
   socket.emit('adminForceDrawingRound', { code: currentCode });
+  document.getElementById('admin-tools-overlay').classList.add('hidden');
   document.getElementById('settings-overlay').classList.add('hidden');
 });
 
 document.getElementById('btn-admin-force-board').addEventListener('click', () => {
   if (!currentCode) return;
   socket.emit('adminForceBoardRandom', { code: currentCode });
+  document.getElementById('admin-tools-overlay').classList.add('hidden');
   document.getElementById('settings-overlay').classList.add('hidden');
 });
 
@@ -1710,6 +1741,7 @@ function renderLobbyGameSettings(state) {
   const hostHasChosenAvatar = !!(hostPlayer && hostPlayer.avatar);
   if (!amHost || state.gameStarted || !hostHasChosenAvatar) {
     block.classList.add('hidden');
+    document.getElementById('game-settings-overlay').classList.add('hidden');
     return;
   }
   block.classList.remove('hidden');
@@ -1730,6 +1762,13 @@ function selectLobbyTimerChoice(seconds) {
   lobbyTimerPendingChoice = seconds;
   if (lastState) renderLobbyGameSettings(lastState);
 }
+document.getElementById('btn-open-game-settings').addEventListener('click', () => {
+  document.getElementById('game-settings-overlay').classList.remove('hidden');
+  if (lastState) renderLobbyGameSettings(lastState);
+});
+document.getElementById('btn-close-game-settings').addEventListener('click', () => {
+  document.getElementById('game-settings-overlay').classList.add('hidden');
+});
 document.getElementById('btn-lobby-timer-60').addEventListener('click', () => selectLobbyTimerChoice(60));
 document.getElementById('btn-lobby-timer-120').addEventListener('click', () => selectLobbyTimerChoice(120));
 document.getElementById('btn-lobby-timer-none').addEventListener('click', () => selectLobbyTimerChoice(null));
@@ -1739,6 +1778,7 @@ document.getElementById('btn-lobby-timer-confirm').addEventListener('click', () 
   const seconds = lobbyTimerPendingChoice !== undefined ? lobbyTimerPendingChoice : confirmed;
   socket.emit('setAnswerTimeLimit', { code: currentCode, seconds });
   lobbyTimerPendingChoice = undefined;
+  document.getElementById('game-settings-overlay').classList.add('hidden');
 });
 
 function renderLobbyPlayerList(state) {

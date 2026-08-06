@@ -197,17 +197,8 @@
         <div id="lobby-avatar-picker" class="avatar-picker"></div>
         <button id="btn-confirm-lobby-avatar" class="btn btn-primary" style="margin-top:16px;" disabled>Auswählen</button>
       </div>
-      <div id="lobby-game-settings-block" class="hidden card" style="margin-bottom:16px;">
-        <h3 style="margin:0 0 12px;">⚙️ Spieleinstellungen</h3>
-        <div class="settings-row" style="flex-direction:column; align-items:stretch; gap:8px;">
-          <span>Zeitlimit fürs Antworten</span>
-          <div style="display:flex; gap:6px;">
-            <button id="btn-lobby-timer-60" class="btn btn-secondary" style="flex:1; padding:8px 4px;">1 Min</button>
-            <button id="btn-lobby-timer-120" class="btn btn-secondary" style="flex:1; padding:8px 4px;">2 Min</button>
-            <button id="btn-lobby-timer-none" class="btn btn-secondary" style="flex:1; padding:8px 4px;">Kein Limit</button>
-          </div>
-          <button id="btn-lobby-timer-confirm" class="btn btn-primary" style="margin-top:2px;">Bestätigen</button>
-        </div>
+      <div id="lobby-game-settings-block" class="hidden" style="margin-bottom:16px;">
+        <button id="btn-open-game-settings" type="button" class="btn btn-secondary">⚙️ Spieleinstellungen</button>
       </div>
       <ul id="player-list" class="player-list"></ul>
       <p id="min-players-hint" class="hint">Mindestens 3 Spieler nötig.</p>
@@ -215,56 +206,7 @@
       <button id="btn-invite" class="btn btn-secondary" style="margin-top:14px;">👥 Spieler einladen</button>
       <p id="lobby-error-msg" class="error"></p>
 
-      <details id="rules-panel" class="rules-panel">
-        <summary class="rules-summary">📖 Regelwerk anzeigen</summary>
-        <div class="rules-content">
-
-        <div class="rules-section">
-          <h4>Grundprinzip</h4>
-          <p>Jede Runde liest eine wechselnde Moderator:in-Rolle eine ungewöhnliche Frage vor. Alle anderen geben eine möglichst überzeugende Antwort ab (erfunden oder zufällig auch mal die echte). Danach stimmt jede:r ab, welche Antwort die echte ist.</p>
-        </div>
-
-        <div class="rules-section">
-          <h4>Punkte</h4>
-          <ul>
-            <li>Echte Antwort erraten: <strong>+3 Punkte</strong></li>
-            <li>Pro Mitspieler, der auf deine erfundene Antwort reinfällt: <strong>+2 Punkte</strong></li>
-            <li>Moderator:in bekommt in der Runde keine Punkte</li>
-          </ul>
-        </div>
-
-        <div class="rules-section">
-          <h4>Schätzen-Karten 🔢</h4>
-          <p>Türkise Felder (5, 8, 13, 18) lösen statt der normalen Frage eine Schätzen-Karte aus: alle tippen eine Zahl, kein Bluffen, kein Voting. Platz 1 = <strong>3 Punkte</strong>, Platz 2 = <strong>2 Punkte</strong>, Platz 3 = <strong>1 Punkt</strong>, der Rest geht leer aus.</p>
-        </div>
-
-        <div class="rules-section">
-          <h4>Aufholjagd 🚀</h4>
-          <p>Sobald jemand Feld 18 erreicht oder überschreitet, bekommt der/die Letzte einmalig pro Spiel automatisch <strong>+5 Bonusfelder</strong>. Damit bleibt es bis zum Schluss spannend.</p>
-        </div>
-
-        <div class="rules-section">
-          <h4>Spielfeld</h4>
-          <p>Das Brett hat Felder von 0 bis 28. Wer zuerst Feld 28 erreicht oder überschreitet, gewinnt sofort.</p>
-        </div>
-
-        <div class="rules-section">
-          <h4>Ablauf pro Runde</h4>
-          <ol>
-            <li>Frage wird gezeigt, alle außer Moderator:in tippen eine Antwort</li>
-            <li>Abstimmung: welche Antwort ist die echte?</li>
-            <li>Auflösung mit grün/rot-Feedback</li>
-            <li>Animiertes Spielbrett zeigt die neuen Positionen</li>
-            <li>Moderatorrolle wandert weiter, nächste Runde beginnt</li>
-          </ol>
-        </div>
-
-        <div class="rules-section">
-          <h4>Sonstiges</h4>
-          <p>Mindestens 3 Spieler nötig. Jede Spielfigur ist pro Raum nur einmal vergebbar. Antworten, die zu ähnlich zur echten Antwort sind, werden beim Absenden automatisch abgelehnt.</p>
-        </div>
-        </div>
-      </details>
+      <button id="btn-open-rules" type="button" class="btn btn-secondary" style="margin-top:14px;">📖 Regelwerk anzeigen</button>
     </div>
   </section>
 
@@ -494,6 +436,61 @@
 </div>
 
 <!-- Settings-Overlay (jederzeit erreichbar) -->
+<!-- Regelwerk-Overlay (aus der Lobby heraus aufrufbar) -->
+<div id="rules-overlay" class="overlay hidden">
+  <div class="overlay-card settings-card">
+    <h2>📖 Regelwerk</h2>
+    <div id="rules-overlay-content" class="settings-content overlay-scroll-body">
+
+      <div class="rules-section">
+        <h4>Grundprinzip</h4>
+        <p>Jede Runde liest eine wechselnde Moderator:in-Rolle eine ungewöhnliche Frage vor. Alle anderen geben eine möglichst überzeugende Antwort ab (erfunden oder zufällig auch mal die echte). Danach stimmt jede:r ab, welche Antwort die echte ist.</p>
+      </div>
+
+      <div class="rules-section">
+        <h4>Punkte</h4>
+        <ul>
+          <li>Echte Antwort erraten: <strong>+3 Punkte</strong></li>
+          <li>Pro Mitspieler, der auf deine erfundene Antwort reinfällt: <strong>+2 Punkte</strong></li>
+          <li>Moderator:in bekommt in der Runde keine Punkte</li>
+        </ul>
+      </div>
+
+      <div class="rules-section">
+        <h4>Schätzen-Karten 🔢</h4>
+        <p>Türkise Felder (5, 8, 13, 18) lösen statt der normalen Frage eine Schätzen-Karte aus: alle tippen eine Zahl, kein Bluffen, kein Voting. Platz 1 und Platz 2 = <strong>je 2 Punkte</strong>, Platz 3 = <strong>1 Punkt</strong>, der Rest geht leer aus. Tippen zwei Personen exakt denselben Wert, bekommen sie garantiert dieselbe Punktzahl.</p>
+      </div>
+
+      <div class="rules-section">
+        <h4>Aufholjagd 🚀</h4>
+        <p>Sobald jemand Feld 18 erreicht oder überschreitet, bekommt der/die Letzte einmalig pro Spiel automatisch <strong>+5 Bonusfelder</strong>. Damit bleibt es bis zum Schluss spannend.</p>
+      </div>
+
+      <div class="rules-section">
+        <h4>Spielfeld</h4>
+        <p>Das Brett hat Felder von 0 bis 28. Wer zuerst Feld 28 erreicht oder überschreitet, gewinnt sofort.</p>
+      </div>
+
+      <div class="rules-section">
+        <h4>Ablauf pro Runde</h4>
+        <ol>
+          <li>Frage wird gezeigt, alle außer Moderator:in tippen eine Antwort</li>
+          <li>Abstimmung: welche Antwort ist die echte?</li>
+          <li>Auflösung mit grün/rot-Feedback</li>
+          <li>Animiertes Spielbrett zeigt die neuen Positionen</li>
+          <li>Moderatorrolle wandert weiter, nächste Runde beginnt</li>
+        </ol>
+      </div>
+
+      <div class="rules-section">
+        <h4>Sonstiges</h4>
+        <p>Mindestens 3 Spieler nötig. Jede Spielfigur ist pro Raum nur einmal vergebbar. Antworten, die zu ähnlich zur echten Antwort sind, werden beim Absenden automatisch abgelehnt.</p>
+      </div>
+    </div>
+    <button id="btn-close-rules" class="btn btn-primary">Schließen</button>
+  </div>
+</div>
+
 <div id="settings-overlay" class="overlay hidden">
   <div class="overlay-card settings-card">
     <h2>⚙️ Einstellungen</h2>
@@ -524,14 +521,56 @@
         <p id="admin-unlock-msg" class="hint" style="margin:0;"></p>
       </div>
 
-      <div id="admin-tools-box" class="hidden" style="margin-top:14px; padding-top:14px; border-top:1px solid rgba(255,255,255,0.1);">
-        <button id="btn-admin-skip-round" class="btn btn-secondary" style="margin-bottom:10px;">⏭ Aktuelle Runde überspringen</button>
-        <button id="btn-admin-force-drawing" class="btn btn-secondary" style="margin-bottom:10px;">🎨 Zeichnenrunde jetzt starten (Test)</button>
-        <button id="btn-admin-force-board" class="btn btn-secondary" style="margin-bottom:10px;">🎲 Zufallszüge + Spielbrett zeigen (Test)</button>
-        <div id="admin-player-list"></div>
+      <div id="admin-tools-trigger-row" class="hidden" style="margin-top:14px; padding-top:14px; border-top:1px solid rgba(255,255,255,0.1);">
+        <button id="btn-open-admin-tools" type="button" class="btn btn-secondary">🛠 Admin-Werkzeuge öffnen</button>
       </div>
     </div>
     <button id="btn-close-settings" class="btn btn-primary">Schließen</button>
+  </div>
+</div>
+
+<!-- Admin: Mitspieler-Verwaltung-Overlay (eigenes Popup, aus den Admin-Werkzeugen heraus erreichbar) -->
+<div id="admin-players-overlay" class="overlay hidden">
+  <div class="overlay-card settings-card">
+    <h2>👥 Mitspieler verwalten</h2>
+    <div class="overlay-scroll-body">
+      <div id="admin-player-list"></div>
+    </div>
+    <button id="btn-close-admin-players" class="btn btn-primary">Schließen</button>
+  </div>
+</div>
+
+<!-- Admin-Werkzeuge-Overlay (eigenes Popup, aus den Einstellungen heraus erreichbar) -->
+<div id="admin-tools-overlay" class="overlay hidden">
+  <div class="overlay-card settings-card">
+    <h2>🛠 Admin-Werkzeuge</h2>
+    <div class="overlay-scroll-body">
+      <button id="btn-admin-swap-question" class="btn btn-secondary" style="margin-bottom:10px;">🔀 Frage des aktuellen Spielers jetzt tauschen</button>
+      <button id="btn-admin-skip-round" class="btn btn-secondary" style="margin-bottom:10px;">⏭ Aktuelle Runde überspringen</button>
+      <button id="btn-admin-force-drawing" class="btn btn-secondary" style="margin-bottom:10px;">🎨 Zeichnenrunde jetzt starten (Test)</button>
+      <button id="btn-admin-force-board" class="btn btn-secondary" style="margin-bottom:10px;">🎲 Zufallszüge + Spielbrett zeigen (Test)</button>
+      <button id="btn-open-admin-players" class="btn btn-secondary" style="margin-bottom:10px;">👥 Mitspieler verwalten</button>
+    </div>
+    <button id="btn-close-admin-tools" class="btn btn-primary">Schließen</button>
+  </div>
+</div>
+
+<!-- Spieleinstellungen-Overlay (aus der Lobby heraus aufrufbar, nur Host vor Rundenstart 1) -->
+<div id="game-settings-overlay" class="overlay hidden">
+  <div class="overlay-card settings-card">
+    <h2>⚙️ Spieleinstellungen</h2>
+    <div class="overlay-scroll-body">
+      <div class="settings-row" style="flex-direction:column; align-items:stretch; gap:8px;">
+        <span>Zeitlimit fürs Antworten</span>
+        <div style="display:flex; gap:6px;">
+          <button id="btn-lobby-timer-60" class="btn btn-secondary" style="flex:1; padding:8px 4px;">1 Min</button>
+          <button id="btn-lobby-timer-120" class="btn btn-secondary" style="flex:1; padding:8px 4px;">2 Min</button>
+          <button id="btn-lobby-timer-none" class="btn btn-secondary" style="flex:1; padding:8px 4px;">Kein Limit</button>
+        </div>
+        <button id="btn-lobby-timer-confirm" class="btn btn-primary" style="margin-top:2px;">Bestätigen</button>
+      </div>
+    </div>
+    <button id="btn-close-game-settings" class="btn btn-primary">Schließen</button>
   </div>
 </div>
 
