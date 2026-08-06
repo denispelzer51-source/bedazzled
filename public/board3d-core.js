@@ -15,8 +15,11 @@ const COLORS = {
 // ---------- Grundgerüst ----------
 const holder = document.getElementById('canvas-holder');
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x000000);
-scene.fog = new THREE.FogExp2(0x000000, 0.008);
+// Der restliche Raum außerhalb des Bretts war bisher reines Schwarz (0x000000) - jetzt in
+// ein dunkles Marken-Lila getaucht (COLORS.void), damit auch die Umgebung zur restlichen
+// Farbwelt des Spiels passt statt neutral schwarz zu wirken.
+scene.background = new THREE.Color(COLORS.void);
+scene.fog = new THREE.FogExp2(COLORS.void, 0.008);
 
 const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 200);
 // Deutlich näher am Brett und im 45°-Winkel von vorne (statt vorher fast senkrecht von oben
@@ -110,29 +113,35 @@ function makeFieldTexture({ number, isFinish, fieldType, paletteIndex }) {
   const ctx = canvas.getContext('2d');
 
   if (isFinish) {
-    ctx.fillStyle = '#FFFFFF';
+    // Klassisches Ziel-Karo-Muster (schwarz/weiß) statt der alten, unauffälligen
+    // Diagonal-Teilung - deutlich klarer als "Ziel" erkennbar, dazu mit den
+    // Marken-Farben (Gold-Glanz + goldener Rahmen) statt neutralem Schwarz/Weiß pur.
+    const checks = 8;
+    const cell = size / checks;
+    for (let r = 0; r < checks; r++) {
+      for (let c = 0; c < checks; c++) {
+        ctx.fillStyle = (r + c) % 2 === 0 ? '#FFFFFF' : '#0A0612';
+        ctx.fillRect(c * cell, r * cell, cell, cell);
+      }
+    }
+    // Warmer Gold-Glanz aus der Mitte, damit es nach "besonderes Feld", nicht nach
+    // neutralem Schachbrett aussieht
+    const glow = ctx.createRadialGradient(size / 2, size / 2, size * 0.05, size / 2, size / 2, size * 0.68);
+    glow.addColorStop(0, 'rgba(245,200,66,0.45)');
+    glow.addColorStop(1, 'rgba(245,200,66,0)');
+    ctx.fillStyle = glow;
     ctx.fillRect(0, 0, size, size);
-    ctx.beginPath();
-    ctx.moveTo(0, size); ctx.lineTo(size, 0); ctx.lineTo(size, size); ctx.closePath();
-    ctx.fillStyle = '#BB00FF';
-    ctx.fill();
-    // Kräftige Trennlinie
-    ctx.strokeStyle = '#04000A';
-    ctx.lineWidth = 8;
-    ctx.beginPath(); ctx.moveTo(0, size); ctx.lineTo(size, 0); ctx.stroke();
-    // Große weiße Kreise als Untergrund für maximale Lesbarkeit
+    // Kräftiger goldener Rahmen statt dunkler Kontur - hebt das Zielfeld klar von den
+    // normalen Feldern ab
+    ctx.strokeStyle = '#F5C842';
+    ctx.lineWidth = 16;
+    ctx.strokeRect(8, 8, size - 16, size - 16);
+    // Ziel-Flagge zentral und groß, mit weißem Untergrund-Kreis für Lesbarkeit
     ctx.fillStyle = 'rgba(255,255,255,0.95)';
-    ctx.beginPath(); ctx.arc(size * 0.26, size * 0.26, 52, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.arc(size * 0.74, size * 0.74, 52, 0, Math.PI * 2); ctx.fill();
-    // Maximale Emoji-Größe
-    ctx.font = '88px sans-serif';
+    ctx.beginPath(); ctx.arc(size / 2, size / 2, 58, 0, Math.PI * 2); ctx.fill();
+    ctx.font = '92px sans-serif';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText('🚩', size * 0.26, size * 0.29);
-    ctx.fillText('🏁', size * 0.74, size * 0.77);
-    // Außenkontur
-    ctx.strokeStyle = '#04000A';
-    ctx.lineWidth = 14;
-    ctx.strokeRect(7, 7, size - 14, size - 14);
+    ctx.fillText('🏁', size / 2, size / 2 + 6);
   } else {
     const baseColor = FIELD_TYPE_COLORS[fieldType] || REGULAR_PALETTE[paletteIndex % REGULAR_PALETTE.length];
     // Vollflächig gesättigte Grundfarbe – kein weißer Verlauf mehr der die Farbe verwäscht
@@ -216,6 +225,12 @@ for (let i = 0; i < BOARD_SLOTS; i++) {
 
   const topTex = makeFieldTexture({ number: i, isFinish, fieldType, paletteIndex: i });
   const topMat = new THREE.MeshBasicMaterial({ map: topTex });
+  // WICHTIG gegen "ausgeblichene" Farben: das ACESFilmicToneMapping (siehe renderer weiter
+  // oben) ist für die stimmungsvolle, kinoartige Beleuchtung der Szene gedacht - es
+  // komprimiert/entsättigt dabei aber auch kräftige, flache UI-Farben wie diese
+  // Feld-Texturen. toneMapped=false lässt DIESES Material an der Kamera vorbei exakt in
+  // seinen echten, vollen Canvas-Farben rendern.
+  topMat.toneMapped = false;
   // BoxGeometry-Flächen-Reihenfolge: [+x, -x, +y (oben), -y (unten), +z, -z]
   const materials = [sideMat, sideMat, topMat, sideMat, sideMat, sideMat];
 
@@ -333,13 +348,18 @@ logoTexture.colorSpace = THREE.SRGBColorSpace;
 const LOGO_ASPECT = 1322 / 706; // echtes Seitenverhältnis des rechteckigen Logos
 const logoWidth = 2.6;
 const logoGeo = new THREE.PlaneGeometry(logoWidth, logoWidth / LOGO_ASPECT);
-const logoMat = new THREE.MeshStandardMaterial({
+// WICHTIG gegen den "Schleier"/abgedunkelten Look: MeshStandardMaterial ist ein
+// beleuchtetes Material - bei der eher schwachen Umgebungshelligkeit (ambient=0.16) plus
+// Schatten, die auf receiveShadow=true fallen können, wirkte das Logo merklich dunkler als
+// seine echten Bild-Farben. Jetzt unlit (MeshBasicMaterial, wie schon die Feld-Texturen)
+// und zusätzlich toneMapped=false, damit es unabhängig von Licht/Kamera-Winkel immer in
+// seinen echten, vollen Marken-Farben erscheint.
+const logoMat = new THREE.MeshBasicMaterial({
   map: logoTexture,
   transparent: true,
-  roughness: 0.5,
-  metalness: 0.1,
   side: THREE.DoubleSide,
 });
+logoMat.toneMapped = false;
 const logoMesh = new THREE.Mesh(logoGeo, logoMat);
 logoMesh.rotation.x = -Math.PI / 2;
 // WICHTIG: Die Brett-Oberfläche liegt bei y=0.11 (0.18 hohe Box, zentriert bei y=0.02 ->
@@ -347,7 +367,9 @@ logoMesh.rotation.x = -Math.PI / 2;
 // des massiven Brett-Körpers, komplett unsichtbar von außen. Jetzt knapp oberhalb der
 // echten Brett-Oberfläche platziert, damit es sichtbar auf dem Brett liegt.
 logoMesh.position.y = 0.113;
-logoMesh.receiveShadow = true;
+// receiveShadow entfernt: ein unlit-Material profitiert davon ohnehin nicht (Schatten
+// werden nur bei beleuchteten Materialien berücksichtigt), stand hier nur als Rest von der
+// vorherigen MeshStandardMaterial-Variante.
 scene.add(logoMesh);
 
 // ---------- Kartenstapel auf dem Brett (echte Kartenrückseite als Textur) ----------
