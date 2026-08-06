@@ -1542,9 +1542,9 @@ document.getElementById('btn-lobby-timer-confirm').addEventListener('click', () 
   const seconds = lobbyTimerPendingChoice !== undefined ? lobbyTimerPendingChoice : confirmed;
   socket.emit('setAnswerTimeLimit', { code: currentCode, seconds });
   lobbyTimerPendingChoice = undefined;
-  // Nach dem Bestätigen automatisch schließen - man hat gerade eine Entscheidung
-  // getroffen, das Popup muss danach nicht mehr offen bleiben.
-  document.getElementById('game-settings-overlay').classList.add('hidden');
+  // Popup bleibt bewusst offen (nur der Button wird "Bestätigt ✓" + ausgegraut, siehe
+  // renderLobbyGameSettings) - man muss aktiv auf "Schließen" klicken, statt dass das
+  // Popup nach dem Bestätigen überraschend von selbst verschwindet.
 });
 
 function renderLobbyPlayerList(state) {

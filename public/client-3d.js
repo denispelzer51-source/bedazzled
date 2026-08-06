@@ -1445,6 +1445,10 @@ function setCardDrawGateVisible(visible) {
 function showCardDrawGate(state) {
   document.getElementById('board-screen-heading').textContent = 'Die nächste Frage wartet …';
   setCardDrawGateVisible(true);
+  document.getElementById('qp-inline-moderator').classList.add('hidden');
+  document.getElementById('qp-inline-waiting').classList.add('hidden');
+  qpLastSentCardText = null;
+  sendToBoard3D({ type: 'resetCard' });
   const btn = document.getElementById('btn-draw-card-trigger');
   btn.disabled = false;
   btn.textContent = '🃏 Karte ziehen';
@@ -1467,6 +1471,7 @@ function playCardDrawThenReveal(state) {
   const questionText = (amModeratorNow && qp && qp.candidates[qp.currentIndex])
     ? qp.candidates[qp.currentIndex].question
     : '❓ Der/die Moderator:in wählt die Frage aus …';
+  qpLastSentCardText = amModeratorNow ? questionText : null;
   sendToBoard3D({ type: 'drawCard', questionText });
   let revealed = false;
   function reveal() {
@@ -1484,46 +1489,64 @@ function playCardDrawThenReveal(state) {
   setTimeout(reveal, CARD_DRAW_ANIMATION_MS);
 }
 
-// Phase 3: die eigentliche, bereits bestehende Fragen-Vorschau (Frage lesen, austauschen,
-// bestätigen bzw. Warte-Hinweis für Mitspieler:innen)
+// Phase 3: die Fragen-Vorschau bleibt jetzt AUF dem Spielbrett-Screen - die gezogene Karte
+// steht sichtbar vor der Kamera, darunter nur noch schlanke Steuerung (nächste Frage /
+// bestätigen für die Moderation, Warte-Hinweis für alle anderen). Kein Bildschirmwechsel
+// mehr wie vorher (das war die alte "screen-question-preview"-Vollbild-Ansicht).
+let qpLastSentCardText = null;
 function renderQuestionPreviewScreen(state) {
   setCardDrawGateVisible(false);
+  document.getElementById('btn-draw-card-trigger').classList.add('hidden');
   const qp = state.questionPreview;
-  document.getElementById('qp-phase-tag').classList.toggle('hidden', !qp);
   document.getElementById('board-screen-heading').textContent = 'Wer zieht wie weit?';
-  if (qp) {
-    qpCurrentIndex = qp.currentIndex;
-    document.getElementById('qp-moderator-view').classList.remove('hidden');
-    document.getElementById('qp-waiting-view').classList.add('hidden');
-    if (qpSwapAreaRevealed) document.getElementById('qp-swap-area').classList.remove('hidden');
+  const amModeratorNow = state.moderatorId === myId;
 
-    document.getElementById('qp-current-num').textContent = qp.currentIndex + 1;
-    document.getElementById('qp-total-num').textContent = qp.candidates.length;
+  if (qp && amModeratorNow) {
+    qpCurrentIndex = qp.currentIndex;
+    document.getElementById('qp-inline-moderator').classList.remove('hidden');
+    document.getElementById('qp-inline-waiting').classList.add('hidden');
     const current = qp.candidates[qp.currentIndex];
     if (current) {
       const fieldInfo = fieldColorInfo(qp.roundType);
-      document.getElementById('qp-category').innerHTML =
+      document.getElementById('qp-inline-category').innerHTML =
         `<span class="key-dot ${fieldInfo.dotClass}" style="margin-right:6px; vertical-align:middle;"></span>${fieldInfo.label}` +
         (current.topic ? ' · ' + escapeHtml(current.topic) : '');
-      document.getElementById('qp-question-text').textContent = current.question;
+      // Die Karte selbst zeigt den Fragetext (3D-Textur) - nur bei einer TATSÄCHLICHEN
+      // Änderung neu an den iframe schicken (nicht bei jedem State-Update erneut), sonst
+      // würde die kleine Bestätigungs-Animation ständig neu anspringen.
+      if (current.question !== qpLastSentCardText) {
+        qpLastSentCardText = current.question;
+        sendToBoard3D({ type: 'updateCardText', questionText: current.question });
+      }
     }
-    document.getElementById('btn-qp-prev').disabled = qp.currentIndex <= 0;
-    document.getElementById('btn-qp-next-candidate').disabled = qp.currentIndex >= qp.candidates.length - 1;
-    document.getElementById('btn-qp-swap').disabled = !qp.canSwapMore;
-    document.getElementById('qp-swap-hint').textContent = state.unlimitedQuestionSwaps
+    document.getElementById('btn-qp-inline-next').classList.toggle('hidden', !qp.canSwapMore);
+    document.getElementById('qp-inline-swap-hint').textContent = state.unlimitedQuestionSwaps
       ? 'Unbegrenzt viele Wechsel möglich.'
       : (qp.canSwapMore
         ? `Du kannst noch ${3 - qp.candidates.length}x wechseln.`
         : 'Kein Wechsel mehr übrig – das war die letzte Möglichkeit.');
   } else {
-    document.getElementById('qp-moderator-view').classList.add('hidden');
-    document.getElementById('qp-waiting-view').classList.remove('hidden');
+    document.getElementById('qp-inline-moderator').classList.add('hidden');
+    document.getElementById('qp-inline-waiting').classList.remove('hidden');
     const moderatorPlayer = state.players.find(p => p.id === state.moderatorId);
     const moderatorName = moderatorPlayer ? moderatorPlayer.name : 'Der/die Moderator:in';
-    document.getElementById('qp-waiting-heading').textContent = `${moderatorName} wählt gerade die Frage aus …`;
+    document.getElementById('qp-inline-waiting-text').textContent = `${moderatorName} wählt gerade die Frage aus …`;
+    // Nicht-Moderator:innen sehen auf der Karte weiterhin nur den Platzhalter (kein
+    // Text-Update nötig/möglich, da sie den echten Fragetext serverseitig gar nicht
+    // bekommen).
   }
-  showScreen('questionPreview');
+  sync3DBoard(state.players, {}, false, null);
+  showScreen('board');
 }
+
+document.getElementById('btn-qp-inline-next').addEventListener('click', () => {
+  if (!currentCode) return;
+  socket.emit('previewOtherQuestion', { code: currentCode });
+});
+document.getElementById('btn-qp-inline-confirm').addEventListener('click', () => {
+  if (!currentCode) return;
+  socket.emit('confirmQuestion', { code: currentCode });
+});
 
 // ---------- Einführungs-Animation: einmalig ganz zu Beginn eines neuen Spiels ----------
 // Kamera zoomt zum Startfeld, die gewählten Spielfiguren "poppen" dort auf, dann zoomt die
@@ -1778,7 +1801,8 @@ document.getElementById('btn-lobby-timer-confirm').addEventListener('click', () 
   const seconds = lobbyTimerPendingChoice !== undefined ? lobbyTimerPendingChoice : confirmed;
   socket.emit('setAnswerTimeLimit', { code: currentCode, seconds });
   lobbyTimerPendingChoice = undefined;
-  document.getElementById('game-settings-overlay').classList.add('hidden');
+  // Popup bleibt bewusst offen (nur der Button wird "Bestätigt ✓" + ausgegraut) - man muss
+  // aktiv auf "Schließen" klicken, statt dass das Popup von selbst verschwindet.
 });
 
 function renderLobbyPlayerList(state) {

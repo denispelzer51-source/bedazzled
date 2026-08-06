@@ -827,7 +827,11 @@ function playIntroPlacement(players) {
 
   const startWorld = fieldPosition(0);
   const dir = dirForEdge(classifyEdge(startWorld));
-  const camPos = insideCamPos(startWorld, dir, INSIDE_RADIUS);
+  // Deutlich näher als der normale Zug-Zoom (INSIDE_RADIUS) - die Rückmeldung war, dass man
+  // die Figuren beim Auftauchen kaum erkennen konnte. Eigener, spürbar kleinerer Radius nur
+  // für diese Einführungs-Animation.
+  const INTRO_CAM_RADIUS = INSIDE_RADIUS * 0.5;
+  const camPos = insideCamPos(startWorld, dir, INTRO_CAM_RADIUS);
   const camTarget = new THREE.Vector3(startWorld.x, 0.3, startWorld.z);
   const overviewCamPos = camera.position.clone();
   const overviewCamTarget = controls.target.clone();
@@ -906,6 +910,10 @@ window.addEventListener('message', (event) => {
   } else if (data.type === 'drawCard') {
     resetCardPosition();
     drawCardAnimation(data.questionText || '❓');
+  } else if (data.type === 'updateCardText') {
+    updateCardTextInPlace(data.questionText || '❓');
+  } else if (data.type === 'resetCard') {
+    resetCardPosition();
   } else if (data.type === 'introPlacement') {
     playIntroPlacement(data.players);
   } else if (data.type === 'setFieldTypes') {
@@ -1268,8 +1276,6 @@ function drawCardAnimation(questionText) {
                         // bewegt sich dabei auf die (fest stehende) Kamera zu
   const totalMs = liftMs + openMs;
 
-  let overlayShown = false;
-
   function frame(now) {
     const el = now - startTime;
 
@@ -1287,25 +1293,48 @@ function drawCardAnimation(questionText) {
       topCardMesh.position.lerpVectors(liftTarget, cardEndPos, p);
       topCardMesh.quaternion.setFromAxisAngle(flipAxis, flipAngleTotal * p);
       topCardMesh.scale.setScalar(lerp(1, endScale, p));
-
-      // 2D-Frage-Overlay schon knapp VOR dem völligen Abschluss der Animation einblenden
-      // (nicht erst exakt am Ende) - durch die vorhandene CSS-Fade-Transition wirkt der
-      // Übergang dadurch spürbar smoother statt eines harten Schnitts.
-      if (!overlayShown && p >= 0.92) {
-        overlayShown = true;
-        document.getElementById('question-overlay').classList.remove('hidden');
-      }
     }
 
     if (el < totalMs) {
       requestAnimationFrame(frame);
     } else {
-      if (!overlayShown) document.getElementById('question-overlay').classList.remove('hidden');
-      topCardMesh.visible = false; // 2D-Overlay übernimmt jetzt die Anzeige der echten Frage
+      // WICHTIG (neu): die Karte bleibt jetzt sichtbar vor der Kamera stehen (statt wie
+      // vorher ausgeblendet zu werden) - die Fragen-Vorschau läuft direkt auf der Karte
+      // weiter (Text tauschen via updateCardTextInPlace), kein Wechsel mehr zu einem
+      // separaten Bildschirm/Overlay.
       cardDrawing = false;
       if (window.parent && window.parent !== window) {
         window.parent.postMessage({ type: 'cardDrawComplete' }, '*');
       }
+    }
+  }
+  requestAnimationFrame(frame);
+}
+
+// Tauscht nur den Fragetext auf der bereits gezogenen, vor der Kamera stehenden Karte aus -
+// OHNE die Karte neu vom Stapel zu ziehen/zu drehen (die komplette Zieh-Animation läuft nur
+// einmal pro Runde; ein Wechsel zu einer anderen Frage währenddessen tauscht nur den Text,
+// mit einem kurzen Puls als visuellem Feedback, dass sich etwas geändert hat).
+let cardTextPulseActive = false;
+function updateCardTextInPlace(questionText) {
+  if (!topCardMesh || !topCardFrontPlaneMat) return;
+  topCardFrontPlaneMat.map = makeCardFrontTexture(questionText);
+  topCardFrontPlaneMat.needsUpdate = true;
+  if (cardTextPulseActive) return; // keine überlappenden Pulse, falls schnell mehrfach geklickt wird
+  cardTextPulseActive = true;
+  const baseScale = topCardMesh.scale.x || 1;
+  const start = performance.now();
+  const pulseMs = 260;
+  function frame(now) {
+    const p = Math.min(1, (now - start) / pulseMs);
+    // Kurzer Auf-und-Ab-Puls (sin-Kurve: 0 -> 1 -> 0), leicht größer als Ausgangsgröße
+    const bump = Math.sin(p * Math.PI) * 0.06;
+    topCardMesh.scale.setScalar(baseScale + bump);
+    if (p < 1) {
+      requestAnimationFrame(frame);
+    } else {
+      topCardMesh.scale.setScalar(baseScale);
+      cardTextPulseActive = false;
     }
   }
   requestAnimationFrame(frame);
