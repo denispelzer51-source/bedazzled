@@ -830,7 +830,7 @@ function playIntroPlacement(players) {
   // Deutlich näher als der normale Zug-Zoom (INSIDE_RADIUS) - die Rückmeldung war, dass man
   // die Figuren beim Auftauchen kaum erkennen konnte. Eigener, spürbar kleinerer Radius nur
   // für diese Einführungs-Animation.
-  const INTRO_CAM_RADIUS = INSIDE_RADIUS * 0.5;
+  const INTRO_CAM_RADIUS = INSIDE_RADIUS * 0.36;
   const camPos = insideCamPos(startWorld, dir, INTRO_CAM_RADIUS);
   const camTarget = new THREE.Vector3(startWorld.x, 0.3, startWorld.z);
   const overviewCamPos = camera.position.clone();

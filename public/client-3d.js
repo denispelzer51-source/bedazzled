@@ -1431,22 +1431,37 @@ let cardDrawAnimationPlayedThisRound = false;
 // liftMs 600 + openMs 2300 + returnMs 500 = 3400ms), plus etwas Puffer für Netzwerk-Latenz.
 const CARD_DRAW_ANIMATION_MS = 3600;
 
-function setCardDrawGateVisible(visible) {
-  document.getElementById('btn-draw-card-trigger').classList.toggle('hidden', !visible);
-  // Die "normalen" Brett-Buttons (die für den ECHTEN Rundenabschluss gedacht sind) müssen
-  // während dieses Zwischenschritts verschwinden, sonst stehen "Nächste Runde"/"Ergebnisse"
-  // verwirrend neben "Karte ziehen".
-  document.getElementById('btn-next-round').classList.toggle('hidden', visible);
-  document.getElementById('btn-new-game').classList.toggle('hidden', true); // bleibt sowieso meist versteckt
-  document.getElementById('btn-show-results-recap').classList.toggle('hidden', visible);
+// Der Board-Screen wird inzwischen für DREI verschiedene Momente genutzt: (1) "Karte
+// ziehen"-Gate, (2) Fragen-Vorschau (Karte steht sichtbar, Text wird ggf. getauscht), (3)
+// das eigentliche Spielbrett nach der Auflösung (Zug-Animation, Nächste Runde). Jeder dieser
+// drei Momente braucht eine ANDERE Fußzeile - vorher gab es nur ein Boolean
+// ("Karte-ziehen-Gate ja/nein"), wodurch in Zustand (2) fälschlich auch die Buttons aus
+// Zustand (3) sichtbar waren (u.a. "Nächste Runde", obwohl die Runde noch gar nicht
+// begonnen hatte) und zusätzlich die Kategorie-Legende völlig irrelevant mit angezeigt
+// wurde. Jetzt ein einziger, eindeutiger Modus-Schalter für alle drei Zustände.
+function setBoardFooterMode(mode) {
+  // mode: 'gate' | 'preview' | 'normal' | 'intro'
+  document.getElementById('btn-draw-card-trigger').classList.toggle('hidden', mode !== 'gate');
+  document.getElementById('btn-next-round').classList.toggle('hidden', mode !== 'normal');
+  document.getElementById('btn-new-game').classList.add('hidden'); // wird bei gameOver separat wieder eingeblendet
+  document.getElementById('btn-show-results-recap').classList.toggle('hidden', mode !== 'normal');
+  const leaveBtn = document.getElementById('btn-leave-board');
+  if (leaveBtn) leaveBtn.classList.toggle('hidden', mode === 'preview' || mode === 'intro');
+  // Kategorie-Legende (Lila/Blau/Grün/Gelb-Erklärung) ist während der Fragen-Vorschau
+  // irrelevant - welche Kategorie gezogen wurde, sieht man jetzt an der Karte selbst plus
+  // der großen Überschrift oben (siehe renderQuestionPreviewScreen).
+  const legend = document.getElementById('board-legend');
+  if (legend) legend.classList.toggle('hidden', mode === 'preview' || mode === 'intro');
+  if (mode !== 'preview') {
+    document.getElementById('qp-inline-moderator').classList.add('hidden');
+    document.getElementById('qp-inline-waiting').classList.add('hidden');
+  }
 }
 
 // Phase 1: Brett zeigen, Moderator:in bekommt den "Karte ziehen"-Button, andere warten
 function showCardDrawGate(state) {
   document.getElementById('board-screen-heading').textContent = 'Die nächste Frage wartet …';
-  setCardDrawGateVisible(true);
-  document.getElementById('qp-inline-moderator').classList.add('hidden');
-  document.getElementById('qp-inline-waiting').classList.add('hidden');
+  setBoardFooterMode('gate');
   qpLastSentCardText = null;
   sendToBoard3D({ type: 'resetCard' });
   const btn = document.getElementById('btn-draw-card-trigger');
@@ -1461,7 +1476,7 @@ function showCardDrawGate(state) {
 // die normale Fragen-Vorschau enthüllen
 function playCardDrawThenReveal(state) {
   cardDrawAnimationPlaying = true;
-  setCardDrawGateVisible(true);
+  setBoardFooterMode('gate');
   document.getElementById('btn-draw-card-trigger').disabled = true;
   document.getElementById('btn-draw-card-trigger').textContent = '🃏 Karte wird gezogen …';
   // WICHTIG: nur der/die Moderator:in bekommt den echten Fragetext auf der Karte zu sehen -
@@ -1494,11 +1509,16 @@ function playCardDrawThenReveal(state) {
 // bestätigen für die Moderation, Warte-Hinweis für alle anderen). Kein Bildschirmwechsel
 // mehr wie vorher (das war die alte "screen-question-preview"-Vollbild-Ansicht).
 let qpLastSentCardText = null;
+function roundTypeBigLabel(roundType) {
+  if (roundType === 'estimate') return '🔢 Schätzfrage';
+  if (roundType === 'foreignword') return '📖 Fremdwörter';
+  if (roundType === 'drawing') return '🎨 Zeichnen';
+  return '🎭 Normale Frage';
+}
 function renderQuestionPreviewScreen(state) {
-  setCardDrawGateVisible(false);
-  document.getElementById('btn-draw-card-trigger').classList.add('hidden');
+  setBoardFooterMode('preview');
   const qp = state.questionPreview;
-  document.getElementById('board-screen-heading').textContent = 'Wer zieht wie weit?';
+  document.getElementById('board-screen-heading').textContent = qp ? roundTypeBigLabel(qp.roundType) : 'Wer zieht wie weit?';
   const amModeratorNow = state.moderatorId === myId;
 
   if (qp && amModeratorNow) {
@@ -1507,10 +1527,6 @@ function renderQuestionPreviewScreen(state) {
     document.getElementById('qp-inline-waiting').classList.add('hidden');
     const current = qp.candidates[qp.currentIndex];
     if (current) {
-      const fieldInfo = fieldColorInfo(qp.roundType);
-      document.getElementById('qp-inline-category').innerHTML =
-        `<span class="key-dot ${fieldInfo.dotClass}" style="margin-right:6px; vertical-align:middle;"></span>${fieldInfo.label}` +
-        (current.topic ? ' · ' + escapeHtml(current.topic) : '');
       // Die Karte selbst zeigt den Fragetext (3D-Textur) - nur bei einer TATSÄCHLICHEN
       // Änderung neu an den iframe schicken (nicht bei jedem State-Update erneut), sonst
       // würde die kleine Bestätigungs-Animation ständig neu anspringen.
@@ -1555,7 +1571,7 @@ let introPlacementPlaying = false;
 function playIntroPlacementThenGate(state) {
   introPlacementPlaying = true;
   document.getElementById('board-screen-heading').textContent = '✨ Auf geht’s!';
-  setCardDrawGateVisible(false);
+  setBoardFooterMode('intro');
   showScreen('board');
   const playersPayload = state.players.map(p => {
     const key = AVATAR_EMOJI_TO_KEY[p.avatar] || 'diamond';
@@ -2482,7 +2498,7 @@ socket.on('state', (state) => {
   }
 
   if (state.phase === 'board') {
-    setCardDrawGateVisible(false);
+    setBoardFooterMode('normal');
     document.getElementById('board-screen-heading').textContent = 'Wer zieht wie weit?';
     if (enteringBoard) {
       sync3DBoard(state.players, state.adminForcedFromPositions || roundStartPositions, true, () => {
