@@ -1014,18 +1014,36 @@ io.on('connection', (socket) => {
       socket.emit('errorMsg', 'Raum nicht gefunden. Prüfe den Code.');
       return;
     }
+    // WICHTIG: das Spiel kehrt zwischen JEDER Runde kurz in die Phase "lobby" zurück
+    // (Moderator-Wechsel), bevor die nächste Runde beginnt - "phase !== 'lobby'" allein war
+    // bisher die Bedingung, um einen getrennten Spieler wiederzuerkennen. Trennte sich
+    // jemand ausgerechnet in diesem kurzen Zwischen-Runden-Moment (oder blieb dort einfach
+    // hängen), griff die Wiedereinstiegs-Erkennung NICHT, und ein Beitritt mit demselben
+    // Namen wurde entweder abgelehnt ("Name schon vergeben", solange der alte Eintrag noch
+    // da war) oder - nach Ablauf der Karenzzeit - als KOMPLETT NEUER Spieler mit Position 0
+    // behandelt, wodurch der ursprüngliche Punktestand/die Position verloren ging. Die
+    // Erkennung muss daher auch in der Zwischen-Runden-Lobby greifen (gameStarted === true),
+    // nicht nur außerhalb der Lobby-Phase.
+    const nameNormalized = (name || '').trim().toLowerCase();
+    const disconnectedMatch = room.players.find(
+      p => !p.socketId && p.name.trim().toLowerCase() === nameNormalized
+    );
     if (room.phase !== 'lobby') {
-      // Spiel läuft schon - prüfen, ob der Name zu einem getrennten Spieler passt
-      const nameNormalized = (name || '').trim().toLowerCase();
-      const disconnectedMatch = room.players.find(
-        p => !p.socketId && p.name.trim().toLowerCase() === nameNormalized
-      );
+      // Spiel läuft schon (mitten in einer Runde) - prüfen, ob der Name zu einem
+      // getrennten Spieler passt
       if (disconnectedMatch) {
         socket.emit('reclaimAvailable', { code, existingPlayerId: disconnectedMatch.id, existingName: disconnectedMatch.name });
         return;
       }
       // Kein Reconnect-Match → als Pending-Spieler vormerken (joinWhenReady-Flow)
       socket.emit('errorMsg', 'Spiel läuft schon. Nutze "Vormerken" um der nächsten Runde beizutreten.');
+      return;
+    }
+    if (room.gameStarted && disconnectedMatch) {
+      // Zwischen-Runden-Lobby: das ist kein "neuer" Spieler, sondern jemand, der genau in
+      // diesem kurzen Moment die Verbindung verloren hat - Position/Punkte müssen erhalten
+      // bleiben.
+      socket.emit('reclaimAvailable', { code, existingPlayerId: disconnectedMatch.id, existingName: disconnectedMatch.name });
       return;
     }
     const taken = getTakenAvatars(room);
@@ -1588,6 +1606,24 @@ io.on('connection', (socket) => {
     finishDrawingRound(room, code);
   });
 
+  // Ermittelt, ob gerade jemand eine bereits abgeschickte Antwort am Bearbeiten ist, ohne
+  // die Änderung schon erneut abgeschickt zu haben (liveTyping weicht vom letzten
+  // gespeicherten answers-Wert ab). Wird u.a. genutzt, um zu verhindern, dass der/die
+  // Moderator:in mitten in so einer Bearbeitung zur Abstimmung/Auflösung weiterschaltet -
+  // das hat vorher das ganze Spiel durcheinandergebracht, weil die Antwort dann verloren
+  // ging bzw. der Spieler ausgesperrt wurde.
+  function hasUnsavedAnswerEdits(room, moderatorId) {
+    if (!room.liveTyping) return false;
+    return room.players.some(p => {
+      if (p.id === moderatorId) return false;
+      const typing = room.liveTyping[p.id];
+      if (typing === undefined) return false;
+      const submitted = room.answers[p.id];
+      const submittedStr = submitted === undefined ? '' : String(submitted);
+      return typing !== submittedStr;
+    });
+  }
+
   socket.on('goToVoting', ({ code }) => {
     const room = rooms[code];
     if (!room || !isModerator(room, socket)) return;
@@ -1600,6 +1636,15 @@ io.on('connection', (socket) => {
     const answeredCount = Object.keys(room.answers).length;
     if (answeredCount < totalAnswerers && !room.answerTimeExpired) {
       socket.emit('errorMsg', 'Noch nicht alle haben geantwortet.');
+      return;
+    }
+    // NEU: auch wenn rechnerisch schon "alle geantwortet" haben, könnte gerade jemand seine
+    // bereits abgeschickte Antwort überarbeiten (Feld angeklickt/getippt, aber noch nicht neu
+    // abgeschickt) - in diesem Zustand darf es NICHT weitergehen, sonst geht die gerade
+    // eingetippte Änderung verloren. Auch das zählt nur, solange die Zeit nicht schon
+    // abgelaufen ist (Zeitlimit bleibt ein harter Cutoff, wie schon beim Grundcheck oben).
+    if (!room.answerTimeExpired && hasUnsavedAnswerEdits(room, moderatorId)) {
+      socket.emit('errorMsg', 'Ein Spieler bearbeitet gerade noch seine Antwort – bitte kurz warten.');
       return;
     }
     startVotingPhase(room, code);
@@ -1788,6 +1833,11 @@ io.on('connection', (socket) => {
   socket.on('revealEstimate', ({ code }) => {
     const room = rooms[code];
     if (!room || !isModerator(room, socket) || room.roundType !== 'estimate') return;
+    const moderatorIdForEdit = room.players[room.moderatorIndex].id;
+    if (!room.answerTimeExpired && hasUnsavedAnswerEdits(room, moderatorIdForEdit)) {
+      socket.emit('errorMsg', 'Ein Spieler bearbeitet gerade noch seine Schätzung – bitte kurz warten.');
+      return;
+    }
     clearAnswerTimer(room);
 
     const prevPositions = {};

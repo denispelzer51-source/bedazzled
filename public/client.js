@@ -1487,6 +1487,9 @@ function renderLobbyGameSettings(state) {
   const hostHasChosenAvatar = !!(hostPlayer && hostPlayer.avatar);
   if (!amHost || state.gameStarted || !hostHasChosenAvatar) {
     block.classList.add('hidden');
+    // Popup ebenfalls schließen, falls es gerade offen war (z.B. Runde wurde inzwischen
+    // von einem anderen Tab/Gerät aus gestartet)
+    document.getElementById('game-settings-overlay').classList.add('hidden');
     return;
   }
   block.classList.remove('hidden');
@@ -1507,6 +1510,13 @@ function selectLobbyTimerChoice(seconds) {
   lobbyTimerPendingChoice = seconds;
   if (lastState) renderLobbyGameSettings(lastState);
 }
+document.getElementById('btn-open-game-settings').addEventListener('click', () => {
+  document.getElementById('game-settings-overlay').classList.remove('hidden');
+  if (lastState) renderLobbyGameSettings(lastState);
+});
+document.getElementById('btn-close-game-settings').addEventListener('click', () => {
+  document.getElementById('game-settings-overlay').classList.add('hidden');
+});
 document.getElementById('btn-lobby-timer-60').addEventListener('click', () => selectLobbyTimerChoice(60));
 document.getElementById('btn-lobby-timer-120').addEventListener('click', () => selectLobbyTimerChoice(120));
 document.getElementById('btn-lobby-timer-none').addEventListener('click', () => selectLobbyTimerChoice(null));
@@ -1516,6 +1526,9 @@ document.getElementById('btn-lobby-timer-confirm').addEventListener('click', () 
   const seconds = lobbyTimerPendingChoice !== undefined ? lobbyTimerPendingChoice : confirmed;
   socket.emit('setAnswerTimeLimit', { code: currentCode, seconds });
   lobbyTimerPendingChoice = undefined;
+  // Nach dem Bestätigen automatisch schließen - man hat gerade eine Entscheidung
+  // getroffen, das Popup muss danach nicht mehr offen bleiben.
+  document.getElementById('game-settings-overlay').classList.add('hidden');
 });
 
 function renderLobbyPlayerList(state) {

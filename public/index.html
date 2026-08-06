@@ -185,17 +185,8 @@
         <div id="lobby-avatar-picker" class="avatar-picker"></div>
         <button id="btn-confirm-lobby-avatar" class="btn btn-primary" style="margin-top:16px;" disabled>Auswählen</button>
       </div>
-      <div id="lobby-game-settings-block" class="hidden card" style="margin-bottom:16px;">
-        <h3 style="margin:0 0 12px;">⚙️ Spieleinstellungen</h3>
-        <div class="settings-row" style="flex-direction:column; align-items:stretch; gap:8px;">
-          <span>Zeitlimit fürs Antworten</span>
-          <div style="display:flex; gap:6px;">
-            <button id="btn-lobby-timer-60" class="btn btn-secondary" style="flex:1; padding:8px 4px;">1 Min</button>
-            <button id="btn-lobby-timer-120" class="btn btn-secondary" style="flex:1; padding:8px 4px;">2 Min</button>
-            <button id="btn-lobby-timer-none" class="btn btn-secondary" style="flex:1; padding:8px 4px;">Kein Limit</button>
-          </div>
-          <button id="btn-lobby-timer-confirm" class="btn btn-primary" style="margin-top:2px;">Bestätigen</button>
-        </div>
+      <div id="lobby-game-settings-block" class="hidden" style="margin-bottom:16px;">
+        <button id="btn-open-game-settings" type="button" class="btn btn-secondary">⚙️ Spieleinstellungen</button>
       </div>
       <ul id="player-list" class="player-list"></ul>
       <p id="min-players-hint" class="hint">Mindestens 3 Spieler nötig.</p>
@@ -486,6 +477,25 @@
 </div>
 
 <!-- Regelwerk-Overlay (aus der Lobby heraus aufrufbar) -->
+<!-- Spieleinstellungen-Overlay (aus der Lobby heraus aufrufbar, nur Host vor Rundenstart 1) -->
+<div id="game-settings-overlay" class="overlay hidden">
+  <div class="overlay-card settings-card">
+    <h2>⚙️ Spieleinstellungen</h2>
+    <div class="overlay-scroll-body">
+      <div class="settings-row" style="flex-direction:column; align-items:stretch; gap:8px;">
+        <span>Zeitlimit fürs Antworten</span>
+        <div style="display:flex; gap:6px;">
+          <button id="btn-lobby-timer-60" class="btn btn-secondary" style="flex:1; padding:8px 4px;">1 Min</button>
+          <button id="btn-lobby-timer-120" class="btn btn-secondary" style="flex:1; padding:8px 4px;">2 Min</button>
+          <button id="btn-lobby-timer-none" class="btn btn-secondary" style="flex:1; padding:8px 4px;">Kein Limit</button>
+        </div>
+        <button id="btn-lobby-timer-confirm" class="btn btn-primary" style="margin-top:2px;">Bestätigen</button>
+      </div>
+    </div>
+    <button id="btn-close-game-settings" class="btn btn-primary">Schließen</button>
+  </div>
+</div>
+
 <div id="rules-overlay" class="overlay hidden">
   <div class="overlay-card settings-card">
     <h2>📖 Regelwerk</h2>
