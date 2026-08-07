@@ -1537,17 +1537,7 @@ const TOKEN_HOVER_GAP = 0.06; // Mindestabstand zwischen Feldoberfläche und Fig
 
 // ---------- Render-Loop ----------
 function tick() {
-  // WICHTIG: OrbitControls.update() nur laufen lassen, wenn die Steuerung gerade wirklich
-  // aktiv ist. Während unserer eigenen, geskripteten Kamera-Animationen (Kartenzug,
-  // Figuren-Züge, Einführungs-Platzierung) wird camera.position/controls.target direkt
-  // gesetzt UND controls.enabled bewusst auf false geschaltet - trotzdem lief
-  // controls.update() bisher jeden Frame unverändert weiter mit, wodurch OrbitControls
-  // parallel seine eigene interne Kamera-Berechnung (inkl. Dämpfung) fortgeführt hat. Das
-  // konnte genau in dem Moment, in dem unsere eigene Animation aufhört, die Kamera zu
-  // setzen, zu einer kurzen, ruckartigen "Korrektur-Bewegung" führen. Läuft update() nur
-  // noch bei enabled=true, kann sich OrbitControls während unserer Animationen nicht mehr
-  // mit unseren direkten Kamera-Zuweisungen in die Quere kommen.
-  if (controls.enabled) controls.update();
+  controls.update();
   const t = performance.now() * 0.001;
   tokenMeshes.forEach((mesh, idx) => {
     const base = fieldTopY(tokensData[idx].pos) + TOKEN_HOVER_GAP;
