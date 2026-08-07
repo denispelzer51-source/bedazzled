@@ -1537,11 +1537,30 @@ const TOKEN_HOVER_GAP = 0.06; // Mindestabstand zwischen Feldoberfläche und Fig
 
 // ---------- Render-Loop ----------
 function tick() {
-  controls.update();
+  // WICHTIG: OrbitControls.update() nur laufen lassen, wenn die Steuerung gerade wirklich
+  // aktiv ist. Während unserer eigenen, geskripteten Kamera-Animationen (Kartenzug,
+  // Figuren-Züge, Einführungs-Platzierung) wird camera.position/controls.target direkt
+  // gesetzt UND controls.enabled bewusst auf false geschaltet - trotzdem lief
+  // controls.update() bisher jeden Frame unverändert weiter mit, wodurch OrbitControls
+  // parallel seine eigene interne Kamera-Berechnung (inkl. Dämpfung) fortgeführt hat. Das
+  // konnte genau in dem Moment, in dem unsere eigene Animation aufhört, die Kamera zu
+  // setzen, zu einer kurzen, ruckartigen "Korrektur-Bewegung" führen. Läuft update() nur
+  // noch bei enabled=true, kann sich OrbitControls während unserer Animationen nicht mehr
+  // mit unseren direkten Kamera-Zuweisungen in die Quere kommen.
+  if (controls.enabled) controls.update();
   const t = performance.now() * 0.001;
   tokenMeshes.forEach((mesh, idx) => {
     const base = fieldTopY(tokensData[idx].pos) + TOKEN_HOVER_GAP;
-    mesh.position.y = base + Math.sin(t * 1.6 + mesh.userData.bobPhase) * 0.05;
+    // Ausgleich gegen das "Absacken" beim Schrumpfen: die Avatar-Figur sitzt innerhalb der
+    // Figuren-Gruppe auf einem festen lokalen Höhen-Versatz (figure.position.y = 0.5). Weil
+    // die GESAMTE Gruppe (inkl. dieses Versatzes) einheitlich skaliert wird, sinkt die Figur
+    // beim Schrumpfen sichtbar ab, statt einfach nur kleiner zu werden - das erzeugte genau
+    // den gemeldeten Effekt "hovert erst, wird dann schnell nach unten gezogen". Hier wird
+    // die dadurch verlorene Höhe wieder draufgerechnet, damit die Sitzhöhe unabhängig von
+    // der aktuellen Skalierung ungefähr konstant bleibt.
+    const FIGURE_LOCAL_Y = 0.5;
+    const heightCompensation = FIGURE_LOCAL_Y * (1 - mesh.scale.x);
+    mesh.position.y = base + Math.sin(t * 1.6 + mesh.userData.bobPhase) * 0.05 + heightCompensation;
 
     // Weicher Positions-Übergang statt hartem "Reinpressen": wenn sich die Formation eines
     // Feldes ändert (eine Figur kommt dazu oder verlässt es), wird der neue Versatz nur als

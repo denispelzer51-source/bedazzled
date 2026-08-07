@@ -2309,7 +2309,14 @@ socket.on('state', (state) => {
         document.getElementById('input-answer').disabled = false;
         document.getElementById('input-answer-number').disabled = false;
         document.getElementById('btn-submit-answer').disabled = false;
-        document.getElementById('btn-submit-answer').textContent = 'Antwort abschicken';
+        // WICHTIG: hier nicht blind auf "Antwort abschicken" zurücksetzen - sonst wird der
+        // Button nach dem Abschicken bei der nächsten State-Aktualisierung sofort wieder in
+        // den Ursprungszustand versetzt, obwohl die eigene Antwort längst gespeichert ist
+        // (derselbe Bug, der im 2D-Client schon vor langer Zeit behoben wurde, hier im
+        // 3D-Client aber nie mit gefixt worden war).
+        document.getElementById('btn-submit-answer').textContent = state.myAnswerSubmitted
+          ? (state.roundType === 'estimate' ? 'Schätzung abgeschickt ✓ (Änderung möglich)' : 'Antwort abgeschickt ✓ (Änderung möglich)')
+          : 'Antwort abschicken';
       }
     }
     showScreen('answering');

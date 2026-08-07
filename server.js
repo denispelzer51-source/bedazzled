@@ -185,7 +185,13 @@ const ESTIMATE_POINTS = [2, 2, 1]; // Platz 1, 2, 3 – Rest geht leer aus
 const FOREIGNWORD_TRIGGER_FIELDS = [2, 10, 16, 22];
 // Gelbe Felder: Zeichnenrunde (Moderator zeichnet einen Begriff, andere raten mit)
 const DRAWING_TRIGGER_FIELDS = [4, 12, 19, 24];
-const DRAWING_GUESS_POINTS = [3, 2]; // 1. und 2. richtig Ratende:r - danach endet die Runde automatisch
+const DRAWING_GUESS_POINTS_BASE = [3, 2]; // Standard: 1. und 2. richtig Ratende:r
+const DRAWING_GUESS_POINTS_EXTENDED = [3, 2, 1]; // ab 5 Spieler:innen: auch 3. Platz bekommt einen Punkt
+function getDrawingGuessPoints(room) {
+  // "5 oder mehr Spieler in der Runde" = 5+ TOTAL (inkl. Moderator), also 4+ Ratende
+  const totalPlayers = room.players.length;
+  return totalPlayers >= 5 ? DRAWING_GUESS_POINTS_EXTENDED : DRAWING_GUESS_POINTS_BASE;
+}
 
 // Aufholjagd: sobald irgendjemand dieses Feld erreicht/überschreitet, bekommt der/die
 // Letztplatzierte einmalig einen Bonus, damit das Spiel spannend bleibt
@@ -1527,15 +1533,16 @@ io.on('connection', (socket) => {
     if (myId === moderatorId) return; // Moderator zeichnet, rät nicht mit
     if (!room.correctGuessers) room.correctGuessers = [];
     if (room.correctGuessers.includes(myId)) return; // hat schon richtig geraten
-    if (room.correctGuessers.length >= DRAWING_GUESS_POINTS.length) return; // schon 2 Richtige - Runde läuft gleich aus
+    const guessPoints = getDrawingGuessPoints(room);
+    if (room.correctGuessers.length >= guessPoints.length) return; // schon genug Richtige - Runde läuft gleich aus
 
     const normalize = (s) => (s || '').trim().toLowerCase().replace(/[^a-zäöüß0-9 ]/gi, '');
     const isCorrect = normalize(guess) === normalize(room.currentQuestionObj.answer) && normalize(guess).length > 0;
     if (isCorrect) {
-      const place = room.correctGuessers.length; // 0 = erste:r, 1 = zweite:r
+      const place = room.correctGuessers.length; // 0 = erste:r, 1 = zweite:r, 2 = dritte:r
       room.correctGuessers.push(myId);
       const player = room.players.find(p => p.id === myId);
-      if (player) player.position = Math.min(room.boardLength || BOARD_LENGTH, player.position + DRAWING_GUESS_POINTS[place]);
+      if (player) player.position = Math.min(room.boardLength || BOARD_LENGTH, player.position + guessPoints[place]);
       broadcastState(code);
 
       // Sobald die/der Erste richtig geraten hat, bekommen alle anderen (noch ratenden)
@@ -1549,8 +1556,9 @@ io.on('connection', (socket) => {
         });
       }
 
-      // Sobald die ersten beiden richtig geraten haben, endet die Runde automatisch
-      if (room.correctGuessers.length >= DRAWING_GUESS_POINTS.length) {
+      // Sobald alle vergebbaren Plätze (2 oder bei 5+ Spielern 3) richtig geraten wurden,
+      // endet die Runde automatisch
+      if (room.correctGuessers.length >= guessPoints.length) {
         finishDrawingRound(room, code);
       }
     } else {
