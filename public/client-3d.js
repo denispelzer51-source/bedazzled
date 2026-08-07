@@ -466,6 +466,13 @@ const screens = {
 };
 
 function showScreen(name) {
+  // WICHTIG: idempotent gemacht - vorher wurde bei JEDEM Aufruf die 'active'-Klasse aller
+  // Screens entfernt und neu gesetzt, auch wenn der gewünschte Screen (z.B. "board") schon
+  // aktiv war. Das ließ die CSS-Einblend-Animation (.screen{animation:fadeIn}) unnötig neu
+  // anspringen und hat kurz das eingebettete 3D-iframe gestört - dadurch wirkte es, als
+  // würde die gerade gezogene Karte "wegspringen", obwohl sich ihre 3D-Position nie
+  // geändert hat. Ist der Screen schon aktiv, passiert jetzt gar nichts mehr.
+  if (screens[name] && screens[name].classList.contains('active')) return;
   Object.values(screens).forEach(s => s.classList.remove('active'));
   screens[name].classList.add('active');
   updateBoardBarHeightVar();
@@ -1263,13 +1270,13 @@ socket.on('someoneGuessedCorrectly', ({ name }) => {
 // ---------- REVEAL ----------
 // Der Auflösungs-Screen darf frühestens 8 Sekunden nach Rundenbeginn übersprungen werden -
 // sonst schafft es kaum jemand, in der Kürze der Zeit überhaupt zu lesen, was gerade
-// passiert ist. (War bisher nur im 2D-Client als Countdown sichtbar - hier im 3D-Client
-// wurde ein früher Klick vom Server einfach still ignoriert, ohne dass man das gesehen hat.)
-const REVEAL_BOARD_MIN_WAIT_MS = 8000;
+// passiert ist. Bei Zeichenrunden reicht 5s (siehe server.js).
+let REVEAL_BOARD_MIN_WAIT_MS = 8000;
 let revealBoardUnlockAt = 0;
 let revealBoardCountdownTimer = null;
 
-function startRevealBoardCountdown() {
+function startRevealBoardCountdown(roundType) {
+  REVEAL_BOARD_MIN_WAIT_MS = roundType === 'drawing' ? 5000 : 8000;
   clearInterval(revealBoardCountdownTimer);
   revealBoardUnlockAt = Date.now() + REVEAL_BOARD_MIN_WAIT_MS;
   updateRevealBoardButton();
@@ -2036,7 +2043,7 @@ socket.on('state', (state) => {
   const enteringReveal = state.phase === 'reveal' && (!lastState || lastState.phase !== 'reveal');
   if (enteringReveal) {
     playRevealSound();
-    startRevealBoardCountdown();
+    startRevealBoardCountdown(state.roundType);
   }
   if (enteringAnswering) {
     miniBarShowsLive = false;

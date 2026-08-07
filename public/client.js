@@ -1253,12 +1253,14 @@ socket.on('someoneGuessedCorrectly', ({ name }) => {
 // ---------- REVEAL ----------
 // Der Auflösungs-Screen (wer hat welche Antwort abgegeben, wer ist reingefallen, etc.) darf
 // frühestens 8 Sekunden nach Rundenbeginn übersprungen werden - sonst schafft es kaum
-// jemand, in der Kürze der Zeit überhaupt zu lesen, was gerade passiert ist.
-const REVEAL_BOARD_MIN_WAIT_MS = 8000;
+// jemand, in der Kürze der Zeit überhaupt zu lesen, was gerade passiert ist. Bei
+// Zeichenrunden reicht 5s (man hat die Runde ja schon live mitverfolgt, siehe server.js).
+let REVEAL_BOARD_MIN_WAIT_MS = 8000;
 let revealBoardUnlockAt = 0;
 let revealBoardCountdownTimer = null;
 
-function startRevealBoardCountdown() {
+function startRevealBoardCountdown(roundType) {
+  REVEAL_BOARD_MIN_WAIT_MS = roundType === 'drawing' ? 5000 : 8000;
   clearInterval(revealBoardCountdownTimer);
   revealBoardUnlockAt = Date.now() + REVEAL_BOARD_MIN_WAIT_MS;
   updateRevealBoardButton();
@@ -1799,7 +1801,7 @@ socket.on('state', (state) => {
   const enteringReveal = state.phase === 'reveal' && (!lastState || lastState.phase !== 'reveal');
   if (enteringReveal) {
     playRevealSound();
-    startRevealBoardCountdown();
+    startRevealBoardCountdown(state.roundType);
   }
   if (enteringAnswering) {
     miniBarShowsLive = false;

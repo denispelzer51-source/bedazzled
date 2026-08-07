@@ -328,6 +328,7 @@ function rebuildFieldTextures() {
 // letzte Figur das Feld verlassen hat, wechselt es automatisch auf das "Ziel"-Design
 // (Zielflagge/Gold-Karo) - und zurück, falls doch nochmal jemand exakt dort landet oder das
 // Feld erneut zum Rundenbeginn belegt wird.
+let startFinishFadeOverlay = null; // laufende Überblendung (falls vorhanden) zum Abbrechen
 function updateStartFinishTileDesign() {
   const occupied = tokensData.some(t => (((t.pos % BOARD_SLOTS) + BOARD_SLOTS) % BOARD_SLOTS) === FINISH_INDEX);
   if (occupied === startTileShowsStartDesign) return; // keine Änderung nötig
@@ -335,10 +336,54 @@ function updateStartFinishTileDesign() {
   const mesh = fieldMeshes[FINISH_INDEX];
   if (!mesh) return;
   const newTex = makeFieldTexture({ number: FINISH_INDEX, isFinish: true, isStartActive: startTileShowsStartDesign, fieldType: 'finish', paletteIndex: FINISH_INDEX });
-  const topMat = mesh.material[2];
-  if (topMat.map) topMat.map.dispose();
-  topMat.map = newTex;
-  topMat.needsUpdate = true;
+  crossfadeStartFinishTexture(mesh, newTex);
+}
+
+// Sanfte Überblendung (statt hartem Textur-Sprung) zwischen Start- und Zielfeld-Design: eine
+// halbtransparente Hilfs-Ebene mit der NEUEN Textur wird knapp über dem Feld eingeblendet und
+// über ~3 Sekunden von unsichtbar auf voll deckend animiert. Erst danach wird die eigentliche
+// Feld-Textur ausgetauscht und die Hilfs-Ebene wieder entfernt - von außen sieht es aus wie
+// ein weiches Überblenden, nicht wie ein Umspringen.
+function crossfadeStartFinishTexture(mesh, newTex) {
+  if (startFinishFadeOverlay) {
+    // Eine vorherige Überblendung war noch nicht fertig (z.B. sehr schnell hintereinander
+    // ausgelöst) - sauber abbrechen, bevor die neue startet.
+    scene.remove(startFinishFadeOverlay);
+    startFinishFadeOverlay.geometry.dispose();
+    startFinishFadeOverlay.material.dispose();
+    startFinishFadeOverlay = null;
+  }
+  const fw = 0.66, fd = 0.58;
+  const topY = mesh.position.y + mesh.geometry.parameters.height / 2 + 0.003; // knapp über der Deckfläche, gegen Z-Fighting
+  const overlayGeo = new THREE.PlaneGeometry(fw, fd);
+  const overlayMat = new THREE.MeshBasicMaterial({ map: newTex, transparent: true, opacity: 0, depthWrite: false });
+  overlayMat.toneMapped = false;
+  const overlay = new THREE.Mesh(overlayGeo, overlayMat);
+  overlay.rotation.x = -Math.PI / 2;
+  overlay.position.set(mesh.position.x, topY, mesh.position.z);
+  scene.add(overlay);
+  startFinishFadeOverlay = overlay;
+
+  const durationMs = 3000;
+  const start = performance.now();
+  function frame(now) {
+    if (startFinishFadeOverlay !== overlay) return; // wurde zwischenzeitlich abgebrochen
+    const p = Math.min(1, (now - start) / durationMs);
+    overlayMat.opacity = p;
+    if (p < 1) {
+      requestAnimationFrame(frame);
+    } else {
+      const topMat = mesh.material[2];
+      if (topMat.map) topMat.map.dispose();
+      topMat.map = newTex;
+      topMat.needsUpdate = true;
+      scene.remove(overlay);
+      overlayGeo.dispose();
+      overlayMat.dispose();
+      startFinishFadeOverlay = null;
+    }
+  }
+  requestAnimationFrame(frame);
 }
 
 // ---------- Spielbrett-Fläche (rechteckig, liegt auf dem Tisch, Felder stehen drauf) ----------
@@ -1168,6 +1213,7 @@ function animateMove(tokenIdx, steps, onComplete) {
   // nach, statt bis zum Zug-Ende in der alten (jetzt zu großen) Anordnung stehen zu bleiben.
   tokenMeshes[tokenIdx].userData.slotOffset = { x: 0, z: 0 };
   tokenMeshes[tokenIdx].userData.slotScale = 1;
+  tokenMeshes[tokenIdx].userData.scaleHeadStartApplied = false;
   // KEIN sofortiges scale.setScalar(1) mehr - das ließ die Figur beim Losziehen abrupt
   // "aufploppen". Jetzt wächst sie über die normale tick()-Angleichung weich auf volle
   // Größe, auch schon während der Flug-Bewegung selbst (wie gewünscht), statt schlagartig.
@@ -1206,6 +1252,18 @@ function animateMove(tokenIdx, steps, onComplete) {
       wx = endWorld.x; wz = endWorld.z;
       camera.position.lerpVectors(camAtEnd, overviewCamPos, p);
       controls.target.lerpVectors(targetAtEnd, overviewCamTarget, p);
+      // Der eigentlichen Größen-Angleichung (siehe tick()) schon hier einen Vorsprung
+      // geben, statt erst nach komplettem Zug-Ende: die Zielgröße (slotScale) für das
+      // tatsächliche Zielfeld wird schon während des Auszoomens gesetzt, NICHT erst danach.
+      // Position/Formations-Versatz bleiben bewusst unverändert (würde bei einer Änderung
+      // MITTEN im Zug sofort hart springen, da setTokenWorldPos() während der Bewegung
+      // nicht weich interpoliert) - nur die Skalierung profitiert hier vom Vorlauf, weil
+      // deren Angleichung in tick() unabhängig vom Bewegungsstatus läuft.
+      if (!tokenMeshes[tokenIdx].userData.scaleHeadStartApplied) {
+        tokenMeshes[tokenIdx].userData.scaleHeadStartApplied = true;
+        const occupantsAtDest = tokensData.filter((t, i) => i !== tokenIdx && t.pos === endPos).length + 1;
+        tokenMeshes[tokenIdx].userData.slotScale = occupantsAtDest === 1 ? 1 : occupantsAtDest === 2 ? 0.8 : occupantsAtDest === 3 ? 0.72 : 0.65;
+      }
     } else {
       wx = endWorld.x; wz = endWorld.z;
     }
@@ -1482,8 +1540,14 @@ function tick() {
       const targetOffset = mesh.userData.slotOffset || { x: 0, z: 0 };
       if (!mesh.userData.currentOffset) mesh.userData.currentOffset = { x: targetOffset.x, z: targetOffset.z };
       const cur = mesh.userData.currentOffset;
-      cur.x += (targetOffset.x - cur.x) * 0.045;
-      cur.z += (targetOffset.z - cur.z) * 0.045;
+      // Rate an die (schon gedrosselte) Größen-Angleichung angeglichen - vorher war die
+      // Positions-Angleichung deutlich schneller als die Größen-Angleichung, wodurch eine
+      // zurückbleibende Figur beim Neu-Einordnen (z.B. weil eine andere Figur das Feld
+      // verlässt) merklich schneller/"härter" losgesprintet ist, als sie geschrumpft/
+      // gewachsen ist - das wirkte zusammen ruckartig statt wie eine einheitliche, sanfte
+      // Bewegung.
+      cur.x += (targetOffset.x - cur.x) * 0.025;
+      cur.z += (targetOffset.z - cur.z) * 0.025;
       mesh.position.x = fieldPos.x + cur.x;
       mesh.position.z = fieldPos.z + cur.z;
     }

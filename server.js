@@ -1895,9 +1895,13 @@ io.on('connection', (socket) => {
     const room = rooms[code];
     if (!room || !isModerator(room, socket)) return;
     // Serverseitig absichern (nicht nur der ausgegraute Button auf dem Client): der
-    // Auflösungs-Screen muss mindestens 10 Sekunden sichtbar gewesen sein, damit alle
-    // Mitspieler:innen wenigstens kurz lesen können, was gerade passiert ist.
-    if (room.revealStartedAt && Date.now() - room.revealStartedAt < 8000 && !socket.data.isSuperAdmin) return;
+    // Auflösungs-Screen muss mindestens X Sekunden sichtbar gewesen sein, damit alle
+    // Mitspieler:innen wenigstens kurz lesen können, was gerade passiert ist. Bei
+    // Zeichenrunden kürzer (5s) als bei den anderen Rundentypen (8s), da man dort ja schon
+    // während der ganzen Zeichenrunde live mitverfolgt hat, was passiert ist - die
+    // Auflösung bringt weniger neue Information als bei einer Bluff-Frage.
+    const minWaitMs = room.roundType === 'drawing' ? 5000 : 8000;
+    if (room.revealStartedAt && Date.now() - room.revealStartedAt < minWaitMs && !socket.data.isSuperAdmin) return;
     room.phase = 'board';
     broadcastState(code);
   });
