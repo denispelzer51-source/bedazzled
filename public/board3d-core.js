@@ -884,18 +884,25 @@ function syncPlayersFromExternal(players) {
   const incoming = (players || []).slice(0, 6);
   const currentIds = tokensData.map(t => t.playerId);
   const incomingIds = incoming.map(p => p.id);
+  // WICHTIG: als MENGE vergleichen, nicht Index-für-Index! Die Reihenfolge der Spielerliste
+  // kann sich zwischen zwei Synchronisationen ändern (z.B. durch Moderator-Rotation), ohne
+  // dass sich die eigentlichen Spieler geändert haben - ein reiner Index-Vergleich hat das
+  // fälschlich als "andere Spieler" erkannt und jedes Mal ALLE Meshes zerstört und neu
+  // erzeugt, obwohl nur die Reihenfolge anders war. Das war die Ursache für die
+  // verbliebenen kurzen Stotterer (u.a. direkt nach der Einführungs-Animation und direkt
+  // nachdem die Karte offen vor der Kamera steht - beide Momente synchronisieren erneut).
   const samePlayerSet = currentIds.length === incomingIds.length
-    && currentIds.every((id, i) => id === incomingIds[i]);
+    && currentIds.every(id => incomingIds.includes(id));
   if (samePlayerSet && tokenMeshes.length > 0) {
-    // WICHTIG gegen den kurzen "Ruckler/Wackler": wird z.B. direkt nach der
-    // Einführungs-Animation nochmal derselbe Spielerstand synchronisiert (kein Beitritt,
-    // keine Positionsänderung), NICHT alle Meshes zerstören und neu erzeugen - das
-    // verursachte einen sichtbaren Sprung (u.a. weil neu erzeugte Meshes ihre
-    // Wackel-/Bob-Phase zufällig neu bekommen). Stattdessen nur die Positionsdaten
-    // aktualisieren, die bestehenden Meshes bleiben unangetastet.
-    incoming.forEach((p, i) => {
-      tokensData[i].pos = p.position || 0;
-      tokensData[i].name = p.name;
+    // Nur die Positionsdaten aktualisieren, KEINE Meshes neu erzeugen - dabei anhand der
+    // Spieler-ID zuordnen (nicht mehr per Array-Index), damit eine geänderte Reihenfolge
+    // nicht versehentlich die Positionen zweier Spieler vertauscht.
+    incoming.forEach(p => {
+      const idx = tokensData.findIndex(t => t.playerId === p.id);
+      if (idx !== -1) {
+        tokensData[idx].pos = p.position || 0;
+        tokensData[idx].name = p.name;
+      }
     });
     placeTokens();
     updateStartFinishTileDesign();
@@ -1213,7 +1220,6 @@ function animateMove(tokenIdx, steps, onComplete) {
   // nach, statt bis zum Zug-Ende in der alten (jetzt zu großen) Anordnung stehen zu bleiben.
   tokenMeshes[tokenIdx].userData.slotOffset = { x: 0, z: 0 };
   tokenMeshes[tokenIdx].userData.slotScale = 1;
-  tokenMeshes[tokenIdx].userData.scaleHeadStartApplied = false;
   // KEIN sofortiges scale.setScalar(1) mehr - das ließ die Figur beim Losziehen abrupt
   // "aufploppen". Jetzt wächst sie über die normale tick()-Angleichung weich auf volle
   // Größe, auch schon während der Flug-Bewegung selbst (wie gewünscht), statt schlagartig.
@@ -1221,13 +1227,32 @@ function animateMove(tokenIdx, steps, onComplete) {
   updateTokenLayout(tokenIdx);
   preRegroupDestinationField(tokenIdx, endPos);
 
+  // Die Ziel-Größe (falls das Zielfeld schon andere Figuren trägt, kleiner) wird JETZT SCHON
+  // gesetzt - nicht erst kurz vor der Landung. Die Größen-Angleichung in tick() läuft
+  // unabhängig vom Bewegungsstatus, hat dadurch die GESAMTE Zugdauer Zeit, sich langsam
+  // anzupassen, statt erst in den letzten paar hundert Millisekunden loszulegen (das wirkte
+  // beim Landen immer noch wie ein kleiner harter Ruck).
+  const occupantsAtDestNow = tokensData.filter((t, i) => i !== tokenIdx && t.pos === endPos).length + 1;
+  const destScale = occupantsAtDestNow === 1 ? 1 : occupantsAtDestNow === 2 ? 0.8 : occupantsAtDestNow === 3 ? 0.72 : 0.65;
+  let scaleHeadStartApplied = false;
+
   const zoomInMs = 700, trackMs = 900 + steps * 90, zoomOutMs = 700;
   const totalMs = zoomInMs + trackMs + zoomOutMs;
+  // Die Größen-Angleichung fürs Landen bekommt jetzt deutlich mehr Vorlauf als vorher: statt
+  // erst in der Auszoom-Phase (letzte 700ms) beginnt sie schon in den letzten 45% der
+  // Flugstrecke - dadurch ist beim tatsächlichen Landen kaum noch ein Unterschied sichtbar,
+  // die Figur wirkt währenddessen aber immer noch die meiste Zeit "in voller Größe fliegend".
+  const scaleHeadStartAt = zoomInMs + trackMs * 0.55;
   const start = performance.now();
 
   function frame(now) {
     const elapsed = now - start;
     let wx = startWorld.x, wz = startWorld.z;
+
+    if (!scaleHeadStartApplied && elapsed >= scaleHeadStartAt) {
+      scaleHeadStartApplied = true;
+      tokenMeshes[tokenIdx].userData.slotScale = destScale;
+    }
 
     if (elapsed < zoomInMs) {
       // Phase 1: Kamera zoomt an die Figur heran - die Figur steht dabei noch still
@@ -1252,18 +1277,6 @@ function animateMove(tokenIdx, steps, onComplete) {
       wx = endWorld.x; wz = endWorld.z;
       camera.position.lerpVectors(camAtEnd, overviewCamPos, p);
       controls.target.lerpVectors(targetAtEnd, overviewCamTarget, p);
-      // Der eigentlichen Größen-Angleichung (siehe tick()) schon hier einen Vorsprung
-      // geben, statt erst nach komplettem Zug-Ende: die Zielgröße (slotScale) für das
-      // tatsächliche Zielfeld wird schon während des Auszoomens gesetzt, NICHT erst danach.
-      // Position/Formations-Versatz bleiben bewusst unverändert (würde bei einer Änderung
-      // MITTEN im Zug sofort hart springen, da setTokenWorldPos() während der Bewegung
-      // nicht weich interpoliert) - nur die Skalierung profitiert hier vom Vorlauf, weil
-      // deren Angleichung in tick() unabhängig vom Bewegungsstatus läuft.
-      if (!tokenMeshes[tokenIdx].userData.scaleHeadStartApplied) {
-        tokenMeshes[tokenIdx].userData.scaleHeadStartApplied = true;
-        const occupantsAtDest = tokensData.filter((t, i) => i !== tokenIdx && t.pos === endPos).length + 1;
-        tokenMeshes[tokenIdx].userData.slotScale = occupantsAtDest === 1 ? 1 : occupantsAtDest === 2 ? 0.8 : occupantsAtDest === 3 ? 0.72 : 0.65;
-      }
     } else {
       wx = endWorld.x; wz = endWorld.z;
     }

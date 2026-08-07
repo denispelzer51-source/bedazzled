@@ -1290,6 +1290,16 @@ io.on('connection', (socket) => {
     broadcastState(code);
   });
 
+  // Admin-Werkzeug: löst den Kartenzug aus, unabhängig davon, wer gerade Moderator:in ist -
+  // praktisch zum Testen, ohne extra die Moderatorrolle übernehmen zu müssen.
+  socket.on('adminTriggerCardDraw', ({ code }) => {
+    const room = rooms[code];
+    if (!room || !socket.data.isSuperAdmin) return;
+    if (room.phase !== 'previewQuestion' || room.cardDrawn) return;
+    room.cardDrawn = true;
+    broadcastState(code);
+  });
+
   socket.on('confirmQuestion', ({ code }) => {
     const room = rooms[code];
     if (!room || !isModerator(room, socket) || room.phase !== 'previewQuestion') return;

@@ -301,6 +301,10 @@ document.getElementById('btn-admin-swap-question').addEventListener('click', () 
   if (!currentCode) return;
   socket.emit('adminForceSwapQuestion', { code: currentCode });
 });
+document.getElementById('btn-admin-trigger-card-draw').addEventListener('click', () => {
+  if (!currentCode) return;
+  socket.emit('adminTriggerCardDraw', { code: currentCode });
+});
 
 document.getElementById('btn-admin-skip-round').addEventListener('click', () => {
   if (!currentCode) return;

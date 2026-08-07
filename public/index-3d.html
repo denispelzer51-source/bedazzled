@@ -377,15 +377,15 @@
            der Kamera), keine Bildschirm-Überleitung mehr. Moderator:in bekommt hier nur noch
            einen "nächste Frage"-Pfeil (kein "zurück", da linear vorwärts) + Bestätigen-Button
            direkt unter der Karte; andere Spieler:innen sehen nur einen Warte-Hinweis. -->
-      <div id="qp-inline-moderator" class="hidden" style="background:var(--night-2); border:1.5px solid rgba(172,88,249,0.35); border-radius:var(--radius); padding:10px;">
-        <div style="display:flex; gap:8px; margin-bottom:6px;">
-          <button id="btn-qp-inline-prev" class="btn btn-secondary" style="flex:1; padding:8px 4px; font-size:13px;" disabled>◀ Vorherige</button>
-          <button id="btn-qp-inline-next" class="btn btn-secondary" style="flex:1; padding:8px 4px; font-size:13px;">Nächste ▶</button>
+      <div id="qp-inline-moderator" class="hidden" style="background:var(--night-2); border:1.5px solid rgba(172,88,249,0.35); border-radius:var(--radius); padding:16px; margin-bottom:14px;">
+        <div style="display:flex; gap:10px; margin-bottom:10px;">
+          <button id="btn-qp-inline-prev" class="btn btn-secondary" style="flex:1 1 0; min-width:0; padding:10px 6px; font-size:14px;" disabled>◀ Vorherige</button>
+          <button id="btn-qp-inline-next" class="btn btn-secondary" style="flex:1 1 0; min-width:0; padding:10px 6px; font-size:14px;">Nächste ▶</button>
         </div>
-        <button id="btn-qp-inline-confirm" class="btn btn-primary" style="padding:10px 4px; font-size:14px;">✓ Runde mit dieser Frage starten</button>
+        <button id="btn-qp-inline-confirm" class="btn btn-primary" style="padding:12px 6px; font-size:15px;">✓ Runde mit dieser Frage starten</button>
       </div>
-      <div id="qp-inline-waiting" class="hidden" style="text-align:center; background:var(--night-2); border:1.5px solid rgba(172,88,249,0.35); border-radius:var(--radius); padding:10px;">
-        <p id="qp-inline-waiting-text" class="hint" style="font-size:14px; margin:0;"></p>
+      <div id="qp-inline-waiting" class="hidden" style="text-align:center; background:var(--night-2); border:1.5px solid rgba(172,88,249,0.35); border-radius:var(--radius); padding:16px; margin-bottom:14px;">
+        <p id="qp-inline-waiting-text" class="hint" style="font-size:15px; margin:0;"></p>
       </div>
 
       <button id="btn-next-round" class="btn btn-primary mod-only">Nächste Runde</button>
@@ -562,6 +562,7 @@
     <h2>🛠 Admin-Werkzeuge</h2>
     <div class="overlay-scroll-body">
       <button id="btn-admin-swap-question" class="btn btn-secondary" style="margin-bottom:10px;">🔀 Frage des aktuellen Spielers jetzt tauschen</button>
+      <button id="btn-admin-trigger-card-draw" class="btn btn-secondary" style="margin-bottom:10px;">🃏 Kartenzug auslösen</button>
       <button id="btn-admin-skip-round" class="btn btn-secondary" style="margin-bottom:10px;">⏭ Aktuelle Runde überspringen</button>
       <button id="btn-admin-force-drawing" class="btn btn-secondary" style="margin-bottom:10px;">🎨 Zeichnenrunde jetzt starten (Test)</button>
       <button id="btn-admin-force-board" class="btn btn-secondary" style="margin-bottom:10px;">🎲 Zufallszüge + Spielbrett zeigen (Test)</button>
