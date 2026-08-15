@@ -318,6 +318,12 @@ document.getElementById('btn-admin-force-drawing').addEventListener('click', () 
   document.getElementById('admin-tools-overlay').classList.add('hidden');
   document.getElementById('settings-overlay').classList.add('hidden');
 });
+document.getElementById('btn-admin-force-estimate').addEventListener('click', () => {
+  if (!currentCode) return;
+  socket.emit('adminForceEstimateRound', { code: currentCode });
+  document.getElementById('admin-tools-overlay').classList.add('hidden');
+  document.getElementById('settings-overlay').classList.add('hidden');
+});
 
 function renderAdminPlayerList() {
   const box = document.getElementById('admin-player-list');
@@ -1038,7 +1044,10 @@ let moderatorEditGraceUntil = 0;
 socket.on('yourAnswerEditedByModerator', ({ newText }) => {
   moderatorEditGraceUntil = Date.now() + 1500;
   document.getElementById('input-answer').value = newText;
-  setAnswerUIMode('unanswered');
+  // Die Antwort ist nach einer Moderator-Bearbeitung serverseitig bereits gespeichert
+  // (editPlayerAnswer schreibt direkt in room.answers) - muss also als "abgeschickt"
+  // angezeigt werden, nicht als "noch offen".
+  setAnswerUIMode('submitted', { isEstimate: currentRoundType === 'estimate' });
   const msg = document.getElementById('answer-reject-msg');
   msg.textContent = `✏️ Der Moderator/die Moderatorin hat deine Antwort angepasst zu: „${newText}“`;
   msg.classList.remove('hidden');
@@ -1236,7 +1245,38 @@ document.getElementById('btn-drawing-guess-submit').addEventListener('click', ()
 document.getElementById('input-drawing-guess').addEventListener('keydown', (e) => {
   if (e.key === 'Enter') document.getElementById('btn-drawing-guess-submit').click();
 });
-let firstCorrectGuesserName = null; // bleibt bis zum Rundenende bestehen (siehe unten)
+let correctGuesserNames = []; // bleibt bis zum Rundenende bestehen, sammelt ALLE bisher
+// richtig Ratenden (nicht nur den/die zuletzt Hinzugekommene:n)
+
+function formatCorrectGuesserHint() {
+  if (correctGuesserNames.length === 0) return '';
+  if (correctGuesserNames.length === 1) return `${correctGuesserNames[0]} hat schon richtig geraten! Beeil dich!`;
+  return `${correctGuesserNames.join(' & ')} haben schon richtig geraten! Beeil dich!`;
+}
+
+// Das Canvas + die Hinweise darüber (#drawing-sticky-top) sind jetzt position:fixed, damit
+// sie garantiert an derselben Bildschirm-Stelle kleben bleiben, egal was die
+// Bildschirmtastatur macht (siehe style.css für die ausführliche Begründung). Da fixed
+// positionierte Elemente aus dem normalen Textfluss rausfallen, braucht der Inhalt danach
+// einen Platzhalter in exakt derselben Höhe, sonst würde alles darunter nach oben rutschen
+// und unter dem fixierten Kasten verschwinden.
+function updateDrawingStickySpacer() {
+  const stickyBox = document.getElementById('drawing-sticky-top');
+  const spacer = document.getElementById('drawing-sticky-spacer');
+  if (!stickyBox || !spacer) return;
+  spacer.style.height = stickyBox.offsetHeight + 'px';
+}
+window.addEventListener('resize', () => {
+  if (document.getElementById('screen-drawing').classList.contains('active')) updateDrawingStickySpacer();
+});
+// Auch bei ausklappender Bildschirmtastatur ändert sich auf vielen Geräten die
+// visualViewport-Größe (nicht immer ein normales "resize") - deshalb zusätzlich hier
+// mithören, falls verfügbar.
+if (window.visualViewport) {
+  window.visualViewport.addEventListener('resize', () => {
+    if (document.getElementById('screen-drawing').classList.contains('active')) updateDrawingStickySpacer();
+  });
+}
 
 // "Runde beenden" für die erste Minute ausgegraut lassen - sonst kann der Moderator (der ja
 // selbst mitzeichnet) versehentlich viel zu früh draufkommen, bevor überhaupt jemand eine
@@ -1274,19 +1314,20 @@ socket.on('guessWrong', () => {
     if (fb.textContent.includes('Leider')) {
       // Nach der kurzen "falsch"-Meldung wieder die bleibende Hinweis-Meldung zeigen,
       // falls schon jemand anderes richtig geraten hat (statt das Feld einfach zu leeren).
-      fb.textContent = firstCorrectGuesserName
-        ? `${firstCorrectGuesserName} hat schon richtig geraten! Beeil dich!`
-        : '';
+      fb.textContent = formatCorrectGuesserHint();
     }
   }, 2000);
 });
 
+// Ab sofort werden BEIDE (nicht nur die/der Erste) richtig Ratenden angesagt - bei 4
+// Spieler:innen sind das ohnehin schon alle punktenden Plätze, bei 5+ Spieler:innen ist das
+// wichtig, weil dort noch ein 3. Platz mit Punkten folgt.
 socket.on('someoneGuessedCorrectly', ({ name }) => {
-  firstCorrectGuesserName = name;
+  if (!correctGuesserNames.includes(name)) correctGuesserNames.push(name);
   const fb = document.getElementById('drawing-guess-feedback');
   // WICHTIG: bleibt jetzt stehen (kein Auto-Ausblenden mehr) - es geht ja nur noch darum,
-  // den zweiten richtigen Rater zu finden, das soll die ganze Zeit sichtbar bleiben.
-  fb.textContent = `${name} hat schon richtig geraten! Beeil dich!`;
+  // den/die nächste(n) richtig Ratende(n) zu finden, das soll die ganze Zeit sichtbar bleiben.
+  fb.textContent = formatCorrectGuesserHint();
 });
 
 // ---------- REVEAL ----------
@@ -2182,7 +2223,7 @@ socket.on('state', (state) => {
       drawingCtx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
       document.getElementById('input-drawing-guess').value = '';
       document.getElementById('drawing-guess-feedback').textContent = '';
-      firstCorrectGuesserName = null;
+      correctGuesserNames = [];
       document.getElementById('drawing-guess-correct-msg').classList.add('hidden');
     }
     if (iAmModerator) {
@@ -2210,6 +2251,7 @@ socket.on('state', (state) => {
       }
     }
     showScreen('drawing');
+    updateDrawingStickySpacer();
   }
 
   if (state.phase === 'reveal') {
@@ -2365,6 +2407,15 @@ function buildRevealRecapHTML(state) {
   return html;
 }
 document.getElementById('btn-show-results-recap').addEventListener('click', () => {
+  showResultsRecapOverlay();
+});
+document.getElementById('btn-qp-show-results').addEventListener('click', () => {
+  showResultsRecapOverlay();
+});
+document.getElementById('btn-qp-show-results-waiting').addEventListener('click', () => {
+  showResultsRecapOverlay();
+});
+function showResultsRecapOverlay() {
   const state = lastRevealState;
   const catchupEl = document.getElementById('reveal-recap-catchup');
   if (state && state.catchUpAnnouncement) {
@@ -2389,7 +2440,7 @@ document.getElementById('btn-show-results-recap').addEventListener('click', () =
     document.getElementById('reveal-recap-list').innerHTML = full;
   }
   document.getElementById('reveal-recap-overlay').classList.remove('hidden');
-});
+}
 document.getElementById('btn-close-reveal-recap').addEventListener('click', () => {
   document.getElementById('reveal-recap-overlay').classList.add('hidden');
 });

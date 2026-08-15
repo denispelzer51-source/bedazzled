@@ -501,18 +501,27 @@ h2 { font-family: var(--font-display); font-weight: 700; font-size: 24px; text-a
 }
 
 /* Zeichenrunde: das Canvas (+ die kurzen Hinweise darüber) bleibt beim Fokussieren des
-   Rate-Eingabefelds sichtbar "oben kleben", statt wie der Rest der Seite vom Browser aus
-   dem sichtbaren Bereich herausgescrollt zu werden, sobald die Bildschirmtastatur
-   aufklappt. Der Browser scrollt die Seite normalerweise so, dass das fokussierte
-   Eingabefeld über der Tastatur sichtbar wird - durch position:sticky bleibt das Canvas
-   dabei automatisch im sichtbaren Bereich, weil es sich beim Scrollen "oben" festhält,
-   statt aus dem Bildschirm zu wandern.  */
+   Rate-Eingabefelds sichtbar "oben kleben", statt vom Aufklappen der Bildschirmtastatur aus
+   dem sichtbaren Bereich verdrängt zu werden. WICHTIG: position:sticky (frühere Version)
+   verlässt sich darauf, dass der Browser die Seite normal weiterscrollt, wenn die Tastatur
+   aufklappt - das passiert aber nicht auf allen Geräten zuverlässig (manche verkleinern nur
+   den sichtbaren Bereich, ohne einen echten Scroll auszulösen), wodurch das Canvas
+   trotzdem verschwinden konnte. Jetzt position:fixed - bleibt dadurch garantiert an
+   derselben Stelle im Bildschirm kleben, komplett unabhängig vom Scroll-/Tastatur-
+   Verhalten. Der direkt danach folgende #drawing-sticky-spacer (per JS auf die tatsächliche
+   Höhe dieses Kastens gesetzt) verhindert, dass der übrige Inhalt darunter "verschwindet".
+*/
 #drawing-sticky-top {
-  position: sticky;
-  top: calc(6px + env(safe-area-inset-top));
-  z-index: 5;
+  position: fixed;
+  top: calc(24px + env(safe-area-inset-top));
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 480px;
+  box-sizing: border-box;
+  padding: 0 20px 10px;
+  z-index: 15;
   background: var(--night);
-  padding-bottom: 6px;
 }
 
 .rules-panel {

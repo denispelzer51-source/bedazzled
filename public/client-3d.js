@@ -318,6 +318,12 @@ document.getElementById('btn-admin-force-drawing').addEventListener('click', () 
   document.getElementById('admin-tools-overlay').classList.add('hidden');
   document.getElementById('settings-overlay').classList.add('hidden');
 });
+document.getElementById('btn-admin-force-estimate').addEventListener('click', () => {
+  if (!currentCode) return;
+  socket.emit('adminForceEstimateRound', { code: currentCode });
+  document.getElementById('admin-tools-overlay').classList.add('hidden');
+  document.getElementById('settings-overlay').classList.add('hidden');
+});
 
 document.getElementById('btn-admin-force-board').addEventListener('click', () => {
   if (!currentCode) return;
@@ -1041,7 +1047,7 @@ let moderatorEditGraceUntil = 0;
 socket.on('yourAnswerEditedByModerator', ({ newText }) => {
   moderatorEditGraceUntil = Date.now() + 1500;
   document.getElementById('input-answer').value = newText;
-  setAnswerUIMode('unanswered');
+  setAnswerUIMode('submitted', { isEstimate: currentRoundType === 'estimate' });
   const msg = document.getElementById('answer-reject-msg');
   msg.textContent = `✏️ Der Moderator/die Moderatorin hat deine Antwort angepasst zu: „${newText}“`;
   msg.classList.remove('hidden');
@@ -1242,7 +1248,31 @@ document.getElementById('btn-drawing-guess-submit').addEventListener('click', ()
 document.getElementById('input-drawing-guess').addEventListener('keydown', (e) => {
   if (e.key === 'Enter') document.getElementById('btn-drawing-guess-submit').click();
 });
-let firstCorrectGuesserName = null; // bleibt bis zum Rundenende bestehen (siehe unten)
+let correctGuesserNames = []; // bleibt bis zum Rundenende bestehen, sammelt ALLE bisher
+// richtig Ratenden (nicht nur den/die zuletzt Hinzugekommene:n)
+
+function formatCorrectGuesserHint() {
+  if (correctGuesserNames.length === 0) return '';
+  if (correctGuesserNames.length === 1) return `${correctGuesserNames[0]} hat schon richtig geraten! Beeil dich!`;
+  return `${correctGuesserNames.join(' & ')} haben schon richtig geraten! Beeil dich!`;
+}
+
+// Siehe client.js für die ausführliche Begründung - identische Logik hier für den
+// 3D-Client, der bisher gar keine Sticky-Behandlung für das Zeichnen-Canvas hatte.
+function updateDrawingStickySpacer() {
+  const stickyBox = document.getElementById('drawing-sticky-top');
+  const spacer = document.getElementById('drawing-sticky-spacer');
+  if (!stickyBox || !spacer) return;
+  spacer.style.height = stickyBox.offsetHeight + 'px';
+}
+window.addEventListener('resize', () => {
+  if (document.getElementById('screen-drawing').classList.contains('active')) updateDrawingStickySpacer();
+});
+if (window.visualViewport) {
+  window.visualViewport.addEventListener('resize', () => {
+    if (document.getElementById('screen-drawing').classList.contains('active')) updateDrawingStickySpacer();
+  });
+}
 
 // "Runde beenden" für die erste Minute ausgegraut lassen - sonst kann der Moderator (der ja
 // selbst mitzeichnet) versehentlich viel zu früh draufkommen, bevor überhaupt jemand eine
@@ -1280,18 +1310,19 @@ socket.on('guessWrong', () => {
     if (fb.textContent.includes('Leider')) {
       // Nach der kurzen "falsch"-Meldung wieder die bleibende Hinweis-Meldung zeigen,
       // falls schon jemand anderes richtig geraten hat (statt das Feld einfach zu leeren).
-      fb.textContent = firstCorrectGuesserName
-        ? `${firstCorrectGuesserName} hat schon richtig geraten! Beeil dich!`
-        : '';
+      fb.textContent = formatCorrectGuesserHint();
     }
   }, 2000);
 });
 
+// Ab sofort werden BEIDE (nicht nur die/der Erste) richtig Ratenden angesagt - bei 4
+// Spieler:innen sind das ohnehin schon alle punktenden Plätze, bei 5+ Spieler:innen ist das
+// wichtig, weil dort noch ein 3. Platz mit Punkten folgt.
 socket.on('someoneGuessedCorrectly', ({ name }) => {
-  firstCorrectGuesserName = name;
+  if (!correctGuesserNames.includes(name)) correctGuesserNames.push(name);
   const fb = document.getElementById('drawing-guess-feedback');
   // WICHTIG: bleibt jetzt stehen (kein Auto-Ausblenden mehr) - es geht ja nur noch darum,
-  // den zweiten richtigen Rater zu finden, das soll die ganze Zeit sichtbar bleiben.
+  // den/die nächste(n) richtig Ratende(n) zu finden, das soll die ganze Zeit sichtbar bleiben.
   fb.textContent = `${name} hat schon richtig geraten! Beeil dich!`;
 });
 
@@ -1479,7 +1510,7 @@ function setBoardFooterMode(mode) {
   document.getElementById('btn-draw-card-trigger').classList.toggle('hidden', mode !== 'gate');
   document.getElementById('btn-next-round').classList.toggle('hidden', mode !== 'normal');
   document.getElementById('btn-new-game').classList.add('hidden'); // wird bei gameOver separat wieder eingeblendet
-  document.getElementById('btn-show-results-recap').classList.toggle('hidden', mode !== 'normal');
+  document.getElementById('btn-show-results-recap').classList.toggle('hidden', mode !== 'normal' && mode !== 'preview');
   const leaveBtn = document.getElementById('btn-leave-board');
   if (leaveBtn) leaveBtn.classList.toggle('hidden', mode === 'preview' || mode === 'intro');
   // Kategorie-Legende (Lila/Blau/Grün/Gelb-Erklärung) ist während der Fragen-Vorschau
@@ -2437,7 +2468,7 @@ socket.on('state', (state) => {
       drawingCtx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
       document.getElementById('input-drawing-guess').value = '';
       document.getElementById('drawing-guess-feedback').textContent = '';
-      firstCorrectGuesserName = null;
+      correctGuesserNames = [];
       document.getElementById('drawing-guess-correct-msg').classList.add('hidden');
     }
     if (iAmModerator) {
@@ -2465,6 +2496,7 @@ socket.on('state', (state) => {
       }
     }
     showScreen('drawing');
+    updateDrawingStickySpacer();
   }
 
   if (state.phase === 'reveal') {

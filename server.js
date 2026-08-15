@@ -194,9 +194,11 @@ function getDrawingGuessPoints(room) {
   return totalPlayers >= 5 ? DRAWING_GUESS_POINTS_EXTENDED : DRAWING_GUESS_POINTS_BASE;
 }
 
-// Aufholjagd: sobald irgendjemand dieses Feld erreicht/überschreitet, bekommt der/die
-// Letztplatzierte einmalig einen Bonus, damit das Spiel spannend bleibt
-const CATCHUP_TRIGGER_FIELD = 18;
+// Aufholjagd: sobald irgendjemand dieses Feld erreicht/überschreitet, bekommen alle
+// Spieler:innen unterhalb des Schwellenwerts einmalig pro Spiel einen Bonus, damit das
+// Spiel spannend bleibt (siehe applyCatchUpBonus weiter unten)
+const CATCHUP_TRIGGER_FIELD = 20;
+const CATCHUP_THRESHOLD_FIELD = 8; // wer darunter steht, bekommt den Bonus
 const CATCHUP_BONUS = 5;
 
 // Zugangscode für die Fragen-Verwaltung (/admin.html). Auf Render als Umgebungsvariable
@@ -705,12 +707,21 @@ function pickNextQuestion(room, roundType, excludeIndices = []) {
 // Prüft, ob jemand durch die Punktevergabe DIESER Runde neu auf einem Schätzen-Feld
 // gelandet ist (nicht: ob er zufällig schon länger dort steht). Nur ein frischer Zug auf
 // eines der Felder löst die nächste Runde als Schätzen-Karte aus.
-// Aufholjagd: einmalig pro Spiel, sobald jemand das Trigger-Feld erreicht/überschreitet,
-// bekommt der/die Letztplatzierte (bei Gleichstand: alle Letzten) einen Bonus-Vorstoß
-// AUSGESCHALTET (auf Wunsch entfernt) - Funktion bleibt hier stehen, falls der
-// Aufhol-Bonus irgendwann wieder gebraucht wird, wird aber aktuell nirgends mehr aufgerufen.
+// Aufholjagd: einmalig pro Spiel, sobald irgendjemand zum ersten Mal Feld 20 erreicht oder
+// überschreitet, bekommen ALLE Spieler:innen, die noch unter Feld 8 stehen, automatisch
+// einen Bonus-Vorstoß von 5 Feldern gutgeschrieben (nicht nur der/die Letztplatzierte).
 function applyCatchUpBonus(room) {
-  return;
+  if (room.catchUpBonusGiven) return; // nur einmal pro Spiel möglich
+  const someoneAheadEnough = room.players.some(p => p.position >= CATCHUP_TRIGGER_FIELD);
+  if (!someoneAheadEnough) return;
+  room.catchUpBonusGiven = true; // Auslöser ist passiert - unabhängig davon, ob gerade
+  // wer unter dem Schwellenwert steht, wird dieser "Trigger-Moment" nicht nochmal geprüft
+  const laggards = room.players.filter(p => p.position < CATCHUP_THRESHOLD_FIELD);
+  if (laggards.length === 0) return;
+  laggards.forEach(p => {
+    p.position = Math.min(room.boardLength || BOARD_LENGTH, p.position + CATCHUP_BONUS);
+  });
+  room.catchUpAnnouncement = { names: laggards.map(p => p.name), amount: CATCHUP_BONUS };
 }
 
 function applyRoundTypeTriggerCheck(room, prevPositions) {
@@ -1565,10 +1576,11 @@ io.on('connection', (socket) => {
       if (player) player.position = Math.min(room.boardLength || BOARD_LENGTH, player.position + guessPoints[place]);
       broadcastState(code);
 
-      // Sobald die/der Erste richtig geraten hat, bekommen alle anderen (noch ratenden)
-      // Mitspieler:innen eine kurze Benachrichtigung, damit sie wissen, dass es jetzt um
-      // den 2. Platz geht - der Moderator zeichnet einfach weiter, bekommt also keine.
-      if (place === 0 && player) {
+      // Sobald die/der Erste ODER Zweite richtig geraten hat, bekommen alle anderen (noch
+      // ratenden) Mitspieler:innen eine kurze Benachrichtigung - wichtig vor allem ab 5
+      // Spieler:innen, wo es noch einen 3. punktenden Platz gibt. Der Moderator zeichnet
+      // einfach weiter, bekommt also keine Benachrichtigung.
+      if (place <= 1 && player) {
         room.players.forEach(p => {
           if (p.id !== myId && p.id !== moderatorId && p.socketId) {
             io.to(p.socketId).emit('someoneGuessedCorrectly', { name: player.name });
@@ -2133,6 +2145,34 @@ io.on('connection', (socket) => {
     room.phase = 'drawing';
     broadcastState(code);
     console.log(`[ADMIN-TOOL] Zeichnenrunde in Raum ${code} erzwungen (Test).`);
+  });
+
+  // Admin-Werkzeug: springt direkt in eine Schätzfragen-Runde (Antwortphase), zum Testen
+  // der Schätz-Mechanik/Punktelogik ohne eine komplette normale Runde durchspielen zu
+  // müssen.
+  socket.on('adminForceEstimateRound', ({ code }) => {
+    if (!socket.data.isSuperAdmin) return;
+    const room = rooms[code];
+    if (!room || room.players.length < 2) return;
+    const chosen = pickNextQuestion(room, 'estimate', []);
+    if (!chosen) {
+      socket.emit('errorMsg', 'Keine Schätzfragen hinterlegt (Kategorie "Schätzfragen" in /admin.html befüllen).');
+      return;
+    }
+    room.roundType = 'estimate';
+    room.currentQuestionObj = chosen;
+    room.questionCandidates = [];
+    room.previewIndex = 0;
+    room.answers = {};
+    room.votes = {};
+    room.liveTyping = {};
+    room.duplicateConflicts = [];
+    room.cardDrawn = true;
+    room.answerTimeExpired = false;
+    startAnswerTimerIfNeeded(room, code);
+    room.phase = 'answering';
+    broadcastState(code);
+    console.log(`[ADMIN-TOOL] Schätzfragen-Runde in Raum ${code} erzwungen (Test).`);
   });
 
   // Simuliert, dass eine komplette Runde stattgefunden hat: jede Figur macht einen

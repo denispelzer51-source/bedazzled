@@ -310,17 +310,20 @@
 
   <section id="screen-drawing" class="screen">
     <div class="screen-scroll">
-      <div class="phase-tag">🎨 Zeichnenrunde</div>
+      <div id="drawing-sticky-top">
+        <div class="phase-tag">🎨 Zeichnenrunde</div>
 
-      <div id="drawing-mod-hint" class="hidden" style="text-align:center; margin-bottom:10px;">
-        <p style="color:var(--gold); font-weight:700; font-size:18px;" id="drawing-term-display"></p>
-        <p class="hint" style="margin:2px 0 0;">Nur du siehst diesen Begriff – zeichne ihn für die anderen!</p>
-      </div>
-      <div id="drawing-guess-hint" class="hidden" style="text-align:center; margin-bottom:10px;">
-        <p class="hint" style="margin:0;">Rate mit, was gerade gezeichnet wird!</p>
-      </div>
+        <div id="drawing-mod-hint" class="hidden" style="text-align:center; margin-bottom:10px;">
+          <p style="color:var(--gold); font-weight:700; font-size:18px;" id="drawing-term-display"></p>
+          <p class="hint" style="margin:2px 0 0;">Nur du siehst diesen Begriff – zeichne ihn für die anderen!</p>
+        </div>
+        <div id="drawing-guess-hint" class="hidden" style="text-align:center; margin-bottom:10px;">
+          <p class="hint" style="margin:0;">Rate mit, was gerade gezeichnet wird!</p>
+        </div>
 
-      <canvas id="drawing-canvas" width="600" height="420" style="width:100%; aspect-ratio:600/420; background:#fff; border-radius:14px; touch-action:none; display:block;"></canvas>
+        <canvas id="drawing-canvas" width="600" height="420" style="width:100%; max-height:40vh; aspect-ratio:600/420; background:#fff; border-radius:14px; touch-action:none; display:block; margin:0 auto;"></canvas>
+      </div>
+      <div id="drawing-sticky-spacer"></div>
 
       <div id="drawing-mod-tools" class="hidden" style="display:flex; gap:10px; margin-top:14px;">
         <button id="btn-drawing-clear" class="btn btn-secondary" style="flex:1;">🧹 Löschen</button>
@@ -480,7 +483,7 @@
 
       <div class="rules-section">
         <h4>Aufholjagd 🚀</h4>
-        <p>Sobald jemand Feld 18 erreicht oder überschreitet, bekommt der/die Letzte einmalig pro Spiel automatisch <strong>+5 Bonusfelder</strong>. Damit bleibt es bis zum Schluss spannend.</p>
+        <p>Sobald jemand Feld 20 erreicht oder überschreitet, bekommen alle Spieler:innen, die noch unter Feld 8 stehen, einmalig pro Spiel automatisch <strong>+5 Bonusfelder</strong>. Damit bleibt es bis zum Schluss spannend.</p>
       </div>
 
       <div class="rules-section">
@@ -566,6 +569,7 @@
       <button id="btn-admin-trigger-card-draw" class="btn btn-secondary" style="margin-bottom:10px;">🃏 Kartenzug auslösen</button>
       <button id="btn-admin-skip-round" class="btn btn-secondary" style="margin-bottom:10px;">⏭ Aktuelle Runde überspringen</button>
       <button id="btn-admin-force-drawing" class="btn btn-secondary" style="margin-bottom:10px;">🎨 Zeichnenrunde jetzt starten (Test)</button>
+      <button id="btn-admin-force-estimate" class="btn btn-secondary" style="margin-bottom:10px;">🔢 Schätzfragen-Runde jetzt starten (Test)</button>
       <button id="btn-admin-force-board" class="btn btn-secondary" style="margin-bottom:10px;">🎲 Zufallszüge + Spielbrett zeigen (Test)</button>
       <button id="btn-open-admin-players" class="btn btn-secondary" style="margin-bottom:10px;">👥 Mitspieler verwalten</button>
     </div>
