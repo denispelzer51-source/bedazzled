@@ -179,7 +179,8 @@ const ESTIMATE_TRIGGER_FIELDS = [5, 8, 13, 18];
 // bekommt 1 Punkt. Damit ist automatisch sichergestellt, dass zwei Spieler:innen, die
 // zufällig exakt denselben Wert (und damit dieselbe Abweichung) abgeben, auch garantiert
 // dieselbe Punktzahl bekommen (siehe Tie-Handling in der revealEstimate-Auswertung unten).
-const ESTIMATE_POINTS = [2, 2, 1]; // Platz 1, 2, 3 – Rest geht leer aus
+const ESTIMATE_POINTS = [3, 2, 1]; // Basiswerte Platz 1, 2, 3 – Rest geht leer aus. Bei
+// Gleichstand gilt eine abweichende Kompromiss-Logik, siehe revealEstimate weiter unten.
 
 // Blaue Felder: Fremdwörter-Fragen (etwas seltener als die lila Standardfelder)
 const FOREIGNWORD_TRIGGER_FIELDS = [2, 10, 16, 22];
@@ -1356,6 +1357,25 @@ io.on('connection', (socket) => {
     broadcastState(code);
   });
 
+  // Wird ausgelöst, sobald jemand auf "Antwort ändern" klickt - MUSS die schon abgeschickte
+  // Antwort sofort und explizit zurücknehmen (nicht erst warten, bis tatsächlich etwas
+  // anderes getippt wurde). Vorher verließ sich das Spiel ausschließlich auf einen Vergleich
+  // zwischen dem zuletzt getippten und dem abgeschickten Text (liveTyping vs. answers) - im
+  // kurzen Zeitfenster zwischen "Bearbeiten"-Klick und dem ersten neuen Tastendruck war noch
+  // KEIN Unterschied erkennbar, wodurch die Moderation in genau diesem Moment trotzdem zur
+  // Abstimmung/Auflösung weiterschalten konnte, obwohl die Person gerade aktiv am Bearbeiten
+  // war - das hat das Spiel an dieser Stelle kaputt gemacht (Person landete ohne Antwort in
+  // der nächsten Phase).
+  socket.on('unlockAnswerForEditing', ({ code }) => {
+    const room = rooms[code];
+    if (!room || room.phase !== 'answering') return;
+    const myId = socket.data.token;
+    if (room.answers && room.answers[myId] !== undefined) {
+      delete room.answers[myId];
+      broadcastState(code);
+    }
+  });
+
   socket.on('submitAnswer', async ({ code, text }) => {
     const room = rooms[code];
     if (!room || room.phase !== 'answering') return;
@@ -1868,25 +1888,31 @@ io.on('connection', (socket) => {
       .map(([playerId, value]) => ({ playerId, value: Number(value), diff: Math.abs(Number(value) - realValue) }))
       .sort((a, b) => a.diff - b.diff);
 
-    // Punkte je Rang vergeben - bei exakt gleicher Abweichung (typischerweise: zwei
-    // Spieler:innen haben denselben Wert getippt) bekommt der/die Zweite denselben Rang-
-    // Index wie der/die Erste, damit garantiert dieselbe Punktzahl herauskommt, statt durch
-    // Zufall bei der Sortierung 2 statt 1 Punkte weniger zu bekommen ("erste zwei = gleich
-    // gut geschätzt = gleich viele Punkte").
-    let lastDiff = null;
-    let lastPointsIndex = -1;
-    ranked.forEach((entry, i) => {
-      const pointsIndex = (lastDiff !== null && entry.diff === lastDiff) ? lastPointsIndex : i;
-      lastDiff = entry.diff;
-      lastPointsIndex = pointsIndex;
-      entry.pointsIndex = pointsIndex;
-      const points = ESTIMATE_POINTS[pointsIndex] || 0;
-      if (points > 0) {
-        const player = room.players.find(p => p.id === entry.playerId);
-        if (player) player.position = Math.min(room.boardLength || BOARD_LENGTH, player.position + points);
-        if (pointsIndex === 0) ensureStats(room, entry.playerId).estimateBest += 1;
+    // Punkte-Vergabe (neue Vorgabe): Basiswerte Platz 1/2/3 = 3/2/1 Punkte, Rest leer aus.
+    // Bei einem Gleichstand (zwei oder mehr Spieler:innen mit exakt demselben Wert) bekommt
+    // die GESAMTE gleichauf liegende Gruppe den "eine Stufe niedrigeren" Kompromisswert -
+    // z.B. sind die ersten beiden gleichauf, bekommen BEIDE 2 Punkte (nicht 3+2), und
+    // wer/welche direkt danach kommt, rutscht entsprechend nach (bekommt 1 Punkt). Das gilt
+    // unabhängig davon, wie viele Personen gleichauf liegen (auch bei 3 oder 4 gleichauf
+    // liegenden Personen bekommt jede von ihnen denselben Kompromisswert).
+    let cursor = 0;
+    let i = 0;
+    while (i < ranked.length) {
+      let j = i;
+      while (j + 1 < ranked.length && ranked[j + 1].diff === ranked[i].diff) j++;
+      const groupSize = j - i + 1;
+      const points = groupSize === 1 ? (ESTIMATE_POINTS[cursor] || 0) : (ESTIMATE_POINTS[cursor + 1] || 0);
+      for (let k = i; k <= j; k++) {
+        ranked[k].points = points;
+        if (points > 0) {
+          const player = room.players.find(p => p.id === ranked[k].playerId);
+          if (player) player.position = Math.min(room.boardLength || BOARD_LENGTH, player.position + points);
+          if (cursor === 0) ensureStats(room, ranked[k].playerId).estimateBest += 1;
+        }
       }
-    });
+      cursor += groupSize;
+      i = j + 1;
+    }
 
     // Für die Auflösungs-Anzeige im Client aufbereiten (Rang, Name, Wert, Punkte)
     room.estimateResults = ranked.map((entry, i) => {
@@ -1896,7 +1922,7 @@ io.on('connection', (socket) => {
         name: player ? player.name : '???',
         value: entry.value,
         diff: entry.diff,
-        points: ESTIMATE_POINTS[entry.pointsIndex] || 0,
+        points: entry.points || 0,
       };
     });
 

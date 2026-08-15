@@ -939,3 +939,8 @@ h2 { font-family: var(--font-display); font-weight: 700; font-size: 24px; text-a
 
 /* Demo board canvas */
 #demo-board-canvas { border-radius: 12px; display: block; margin: 12px auto 0; max-width: 100%; }
+
+/* Eingabefeld optisch ausgegraut, sobald die Antwort abgeschickt wurde (Bearbeitung erst
+   nach Klick auf "Antwort ändern" wieder möglich) */
+.answer-locked-visual { opacity: 0.55; }
+

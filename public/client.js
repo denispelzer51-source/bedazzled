@@ -920,13 +920,63 @@ document.getElementById('btn-share-whatsapp').addEventListener('click', () => {
 // ---------- ANSWERING ----------
 let currentRoundType = 'question';
 
+// Zentrale Steuerung für Eingabefeld + Status-Label + Button, damit dieselbe Logik nicht an
+// zehn verschiedenen Stellen im Code dupliziert und dabei zwangsläufig irgendwann
+// inkonsistent wird. Drei Zustände:
+// - 'unanswered': Feld normal nutzbar, Button = "Antwort abschicken"
+// - 'submitted':  Feld sichtbar ausgegraut (nur optisch, echtes Sperren übernimmt weiterhin
+//                 disabled), Status-Label "Antwort abgeschickt ✓" sichtbar, Button wird zu
+//                 "Antwort ändern" (klickt man drauf, wird die Antwort serverseitig
+//                 zurückgenommen, NICHT einfach nur das Feld entsperrt)
+// - 'locked':     komplett gesperrt (Zeit abgelaufen oder alle fertig), kein Ändern mehr
+//                 möglich
+function setAnswerUIMode(mode, opts) {
+  const ta = document.getElementById('input-answer');
+  const num = document.getElementById('input-answer-number');
+  const btn = document.getElementById('btn-submit-answer');
+  const status = document.getElementById('answer-submitted-status');
+  if (mode === 'submitted') {
+    ta.disabled = true; num.disabled = true;
+    ta.classList.add('answer-locked-visual'); num.classList.add('answer-locked-visual');
+    status.classList.remove('hidden');
+    status.textContent = (opts && opts.isEstimate) ? 'Schätzung abgeschickt ✓' : 'Antwort abgeschickt ✓';
+    btn.disabled = false;
+    btn.textContent = 'Antwort ändern';
+    btn.dataset.mode = 'edit';
+  } else if (mode === 'locked') {
+    ta.disabled = true; num.disabled = true;
+    ta.classList.remove('answer-locked-visual'); num.classList.remove('answer-locked-visual');
+    status.classList.add('hidden');
+    btn.disabled = true;
+    btn.textContent = (opts && opts.text) || 'Alle fertig – keine Änderung mehr möglich';
+    btn.dataset.mode = 'locked';
+  } else {
+    ta.disabled = false; num.disabled = false;
+    ta.classList.remove('answer-locked-visual'); num.classList.remove('answer-locked-visual');
+    status.classList.add('hidden');
+    btn.disabled = false;
+    btn.textContent = 'Antwort abschicken';
+    btn.dataset.mode = 'submit';
+  }
+}
+
 document.getElementById('btn-submit-answer').addEventListener('click', () => {
+  const btn = document.getElementById('btn-submit-answer');
+  if (btn.dataset.mode === 'edit') {
+    // Nicht nur das Feld optisch entsperren - dem Server aktiv mitteilen, dass die Antwort
+    // gerade bearbeitet wird, damit die Moderation währenddessen nicht zur Abstimmung/
+    // Auflösung weiterschalten kann (siehe unlockAnswerForEditing in server.js).
+    socket.emit('unlockAnswerForEditing', { code: currentCode });
+    setAnswerUIMode('unanswered');
+    if (currentRoundType !== 'estimate') document.getElementById('input-answer').focus();
+    else document.getElementById('input-answer-number').focus();
+    return;
+  }
   if (currentRoundType === 'estimate') {
     const numberInput = document.getElementById('input-answer-number');
     const value = numberInput.value.trim();
     if (value === '') return;
     socket.emit('submitAnswer', { code: currentCode, text: value });
-    document.getElementById('btn-submit-answer').textContent = 'Schätzung abgeschickt ✓ (Änderung möglich)';
     playSubmitSound();
     return;
   }
@@ -944,13 +994,10 @@ socket.on('answerChecking', () => {
 });
 
 socket.on('answerRejected', ({ reason }) => {
-  const ta = document.getElementById('input-answer');
-  ta.disabled = false;
-  document.getElementById('btn-submit-answer').disabled = false;
-  document.getElementById('btn-submit-answer').textContent = 'Antwort abschicken';
+  setAnswerUIMode('unanswered');
   document.getElementById('answer-reject-msg').textContent = reason;
   document.getElementById('answer-reject-msg').classList.remove('hidden');
-  ta.focus();
+  document.getElementById('input-answer').focus();
 });
 
 socket.on('voteLocked', ({ reason }) => {
@@ -974,10 +1021,7 @@ socket.on('voteRejected', ({ reason }) => {
 });
 
 socket.on('answerLocked', ({ reason }) => {
-  document.getElementById('input-answer').disabled = true;
-  document.getElementById('input-answer-number').disabled = true;
-  document.getElementById('btn-submit-answer').disabled = true;
-  document.getElementById('btn-submit-answer').textContent = 'Alle fertig – keine Änderung mehr möglich';
+  setAnswerUIMode('locked', { text: 'Alle fertig – keine Änderung mehr möglich' });
   document.getElementById('answer-reject-msg').textContent = reason;
   document.getElementById('answer-reject-msg').classList.remove('hidden');
 });
@@ -993,11 +1037,8 @@ let moderatorEditGraceUntil = 0;
 
 socket.on('yourAnswerEditedByModerator', ({ newText }) => {
   moderatorEditGraceUntil = Date.now() + 1500;
-  const ta = document.getElementById('input-answer');
-  ta.value = newText;
-  ta.disabled = false;
-  document.getElementById('btn-submit-answer').disabled = false;
-  document.getElementById('btn-submit-answer').textContent = 'Antwort abschicken';
+  document.getElementById('input-answer').value = newText;
+  setAnswerUIMode('unanswered');
   const msg = document.getElementById('answer-reject-msg');
   msg.textContent = `✏️ Der Moderator/die Moderatorin hat deine Antwort angepasst zu: „${newText}“`;
   msg.classList.remove('hidden');
@@ -1005,13 +1046,9 @@ socket.on('yourAnswerEditedByModerator', ({ newText }) => {
 
 socket.on('yourAnswerDeletedByModerator', () => {
   moderatorEditGraceUntil = Date.now() + 1500;
-  const ta = document.getElementById('input-answer');
-  ta.value = '';
-  ta.disabled = false;
+  document.getElementById('input-answer').value = '';
   document.getElementById('input-answer-number').value = '';
-  document.getElementById('input-answer-number').disabled = false;
-  document.getElementById('btn-submit-answer').disabled = false;
-  document.getElementById('btn-submit-answer').textContent = 'Antwort abschicken';
+  setAnswerUIMode('unanswered');
   const msg = document.getElementById('answer-reject-msg');
   msg.textContent = '🗑️ Der Moderator/die Moderatorin hat deine Antwort gelöscht - bitte gib eine neue ein.';
   msg.classList.remove('hidden');
@@ -1019,10 +1056,8 @@ socket.on('yourAnswerDeletedByModerator', () => {
 
 socket.on('answerCorrected', ({ text, wasChanged }) => {
   document.getElementById('input-answer').value = text;
-  document.getElementById('input-answer').disabled = false; // Änderung bleibt möglich, solange nicht alle fertig sind
-  document.getElementById('btn-submit-answer').disabled = false;
   document.getElementById('answer-reject-msg').classList.add('hidden');
-  document.getElementById('btn-submit-answer').textContent = 'Antwort abgeschickt ✓ (Änderung möglich)';
+  setAnswerUIMode('submitted', { isEstimate: currentRoundType === 'estimate' });
 });
 
 // Live-Tippen: Moderator:in sieht in Echtzeit, was gerade eingetippt wird
@@ -1819,15 +1854,11 @@ socket.on('state', (state) => {
       // statt das Feld fälschlich leer zurückzusetzen (sonst laufen Spieler auseinander)
       ta.value = state.myAnswerText || '';
       num.value = state.myAnswerText || '';
-      ta.disabled = false;
-      num.disabled = false;
-      document.getElementById('btn-submit-answer').disabled = false;
-      document.getElementById('btn-submit-answer').textContent = 'Antwort abgeschickt ✓ (Änderung möglich)';
+      setAnswerUIMode('submitted', { isEstimate: state.roundType === 'estimate' });
     } else {
-      ta.value = ''; ta.disabled = false;
-      num.value = ''; num.disabled = false;
-      document.getElementById('btn-submit-answer').disabled = false;
-      document.getElementById('btn-submit-answer').textContent = 'Antwort abschicken';
+      ta.value = '';
+      num.value = '';
+      setAnswerUIMode('unanswered');
     }
   }
   if (enteringBoard) {
@@ -2029,35 +2060,15 @@ socket.on('state', (state) => {
       document.getElementById('moderator-answers-preview').classList.add('hidden');
       document.getElementById('duplicate-conflict-box').classList.add('hidden');
 
-      // Sobald alle abgeschickt haben, keine weiteren Änderungen mehr zulassen - aber
-      // WICHTIG: sobald der Moderator eine Antwort löscht/bearbeitet und dadurch nicht
-      // mehr "alle" abgegeben haben, muss das Feld wieder nutzbar werden (vorher fehlte
-      // hier der else-Zweig, wodurch das Feld für den betroffenen Spieler für den Rest
-      // der Runde ausgegraut blieb, obwohl er ja gar keine Antwort mehr im System hatte).
-      // Zusätzlich: kurzes Gnaden-Fenster nach einer Moderator-Bearbeitung, damit eine fast
-      // zeitgleiche "alle fertig"-Aktualisierung das Feld nicht doch wieder sperrt, solange
-      // andere Mitspieler:innen noch schreiben.
       const countBasedAllAnswered = state.answeredCount >= Math.max(state.players.length - 1, 0);
       const inModeratorEditGrace = Date.now() < moderatorEditGraceUntil;
       const allAnswered = (countBasedAllAnswered && !inModeratorEditGrace) || state.answerTimeExpired;
       if (allAnswered) {
-        document.getElementById('input-answer').disabled = true;
-        document.getElementById('input-answer-number').disabled = true;
-        document.getElementById('btn-submit-answer').disabled = true;
-        document.getElementById('btn-submit-answer').textContent = state.answerTimeExpired
-          ? 'Zeit abgelaufen – keine Änderung mehr möglich'
-          : 'Alle fertig – keine Änderung mehr möglich';
+        setAnswerUIMode('locked', {
+          text: state.answerTimeExpired ? 'Zeit abgelaufen – keine Änderung mehr möglich' : 'Alle fertig – keine Änderung mehr möglich',
+        });
       } else {
-        document.getElementById('input-answer').disabled = false;
-        document.getElementById('input-answer-number').disabled = false;
-        document.getElementById('btn-submit-answer').disabled = false;
-        // WICHTIG: hier nicht blind auf "Antwort abschicken" zurücksetzen - sonst wird der
-        // Button nach dem Abschicken bei der naechsten State-Aktualisierung sofort wieder
-        // in den Ursprungszustand versetzt, obwohl die eigene Antwort laengst gespeichert
-        // ist. Stattdessen anhand von myAnswerSubmitted den passenden Text zeigen.
-        document.getElementById('btn-submit-answer').textContent = state.myAnswerSubmitted
-          ? (state.roundType === 'estimate' ? 'Schätzung abgeschickt ✓ (Änderung möglich)' : 'Antwort abgeschickt ✓ (Änderung möglich)')
-          : 'Antwort abschicken';
+        setAnswerUIMode(state.myAnswerSubmitted ? 'submitted' : 'unanswered', { isEstimate: state.roundType === 'estimate' });
       }
     }
     showScreen('answering');
